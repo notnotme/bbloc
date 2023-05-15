@@ -54,7 +54,6 @@ void Debug::processEvent(SDL_Event* event) {
 }
 
 void Debug::render(SDL_Window* window) {
-    // Draw some shape on top of everything for debug purpose
     glm::ivec2 windowSize;
     SDL_GetWindowSize(window, &windowSize.x, &windowSize.y);
     auto left = glm::floor(mCursorRenderer->mDrawingBox.position.x - (mCursorRenderer->mDrawingBox.size.x / 2.0f));

@@ -9,7 +9,7 @@
 
 class Cursor {
 public:
-    /// @brief Directions
+    /// @brief Directions of the caret
     enum Direction : uint8_t {
         UP      = 1,
         DOWN    = 2,
@@ -65,16 +65,16 @@ public:
     /// @return The number of lines
     virtual size_t size() const = 0;
 
-    /// @brief Get astring_view of a line
+    /// @brief Get a string_view of a line inside the Cursor
     /// @param line The line number
     /// @return u16string_view of the requested line, throw if out of bounds
     virtual const std::u16string_view stringView(size_t line) const = 0;
 
     /// @brief Return the position of the caret
-    /// @return The position of the caret, not always inside the content of mLines (can be an edge of line)
+    /// @return The position of the caret, not always inside the content of mLines (can be at an edge of a line)
     glm::u32vec2 position() const;
 
-    /// @brief Set the position of the caret
+    /// @brief Set the position of the caret (can be at an edge of a line (length))
     void position(uint32_t line, uint32_t character);
 
     /// @brief Move the caret position to the end of the file
