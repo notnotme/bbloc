@@ -56,7 +56,11 @@ public:
 
     /// @brief Load a new file into this cursor, throw if cannot load
     /// @param path The path of the file to load
-    virtual void load(const std::string path) = 0;
+    virtual void load(const std::string path);
+
+    /// @brief Save the current cursor, throw if cannot save
+    /// @param path The path of the file to save
+    virtual void save(const std::string path);
 
     /// @brief Clear the current cursor from all its lines and reset caret position
     virtual void clear();
@@ -144,6 +148,10 @@ protected:
 
     /// @brief A converter from utf8 text to utf16
     std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> mConverter;
+
+    /// @brief Append a line in the internal storage of the Cursor
+    /// @param line The line to append into the Curso
+    virtual void pushLine(const std::u16string line) = 0;
 
 private:
 

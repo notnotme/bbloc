@@ -11,7 +11,6 @@ public:
     StringCursor();
     virtual ~StringCursor();
 
-    void load(const std::string path) override;
     void clear() override;
     size_t size() const override;
     const std::u16string_view stringView(size_t line) const override;
@@ -21,13 +20,20 @@ public:
     bool remove() override;
     bool newLine() override;
 
+protected:
+
+    void pushLine(const std::u16string line) override;
+
 private:
 
     /// @brief Allow debug to inspect
     friend class Debug;
     
+    /// @brief Hold lines data
     struct Line {
+        /// @brief Start index of the line in mBuffer
         size_t start;
+        /// @brief length of the line in characters
         size_t count;
     };
 

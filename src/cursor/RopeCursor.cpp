@@ -1,12 +1,5 @@
 #include "RopeCursor.h"
 
-#include <stdexcept>
-#include <algorithm>
-#include <fstream>
-#include <filesystem>
-
-#define LINES_RESERVE 2048 // char reserved per lines at file read time
-
 RopeCursor::RopeCursor() :
 Cursor() {
     mLines.emplace_back((Line) { 0, 0 });
@@ -16,33 +9,9 @@ RopeCursor::~RopeCursor() {
 }
 
 void RopeCursor::load(const std::string path) {
-    clear();
-
-    if (!std::filesystem::is_regular_file(path)) {
-        throw std::runtime_error(std::string("Not a regular file: ").append(path));
-    }
-
-    std::ifstream fileStream(path, std::ios::in | std::ios::binary);
-    if(!fileStream.is_open()) {
-        throw std::runtime_error(std::string("Can't open ").append(path));
-    }
-
-    std::string line;
-    line.reserve(LINES_RESERVE);
-   
-    while (std::getline(fileStream, line)) {
-        mLines.emplace_back((Line) { mRope.length(), line.length() });
-        auto string = mConverter.from_bytes(line);
-        mRope.append(string.data());
-    }
-    
-    if (mLines.empty()) {
-        mLines.emplace_back((Line) { 0, 0 });
-    }
-
-    mDataView = mRope.c_str();
-    fileStream.close();
-}
+    Cursor::load(path);
+    refreshView();
+};
 
 void RopeCursor::clear() {
     Cursor::clear();
@@ -195,4 +164,9 @@ bool RopeCursor::newLine() {
 
 void RopeCursor::refreshView() {
     mDataView = mRope.c_str();
+}
+
+void RopeCursor::pushLine(const std::u16string line) {
+    mLines.emplace_back((Line) { mRope.length(), line.length() });
+    mRope.append(line.c_str());
 }

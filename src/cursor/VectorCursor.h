@@ -11,16 +11,18 @@ public:
     VectorCursor();
     virtual ~VectorCursor();
 
-    void load(const std::string path) override;
     void clear() override;
     size_t size() const override;
     const std::u16string_view stringView(size_t line) const override;
     bool insert(char16_t character) override;
     bool insert(std::u16string text) override;
     bool insert(const char *utf8Text) override;
-
     bool remove() override;
     bool newLine() override;
+
+protected:
+
+    void pushLine(const std::u16string line) override;
 
 private:
     

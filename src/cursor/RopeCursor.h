@@ -26,13 +26,20 @@ public:
     bool remove() override;
     bool newLine() override;
 
+protected:
+
+    void pushLine(const std::u16string line) override;
+    
 private:
 
     /// @brief Allow debug to inspect
     friend class Debug;
     
+    /// @brief Hold lines data
     struct Line {
+        /// @brief Start index of the line in mRope
         size_t start;
+        /// @brief length of the line in characters
         size_t count;
     };
 

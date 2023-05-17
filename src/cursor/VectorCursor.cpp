@@ -1,11 +1,6 @@
 #include "VectorCursor.h"
 
-#include <stdexcept>
-#include <fstream>
-#include <filesystem>
-
 #define VECTOR_LINES_RESERVE 8192 // u16string reserved by cursor
-#define LINES_RESERVE 2048 // char reserved per lines
 
 VectorCursor::VectorCursor() :
 Cursor() {
@@ -14,33 +9,6 @@ Cursor() {
 }
 
 VectorCursor::~VectorCursor() {
-}
-
-void VectorCursor::load(const std::string path) {
-    clear();
-
-    if (!std::filesystem::is_regular_file(path)) {
-        throw std::runtime_error(std::string("Not a regular file: ").append(path));
-    }
-
-    std::ifstream fileStream(path, std::ios::in | std::ios::binary);
-    if(!fileStream.is_open()) {
-        throw std::runtime_error(std::string("Can't open ").append(path));
-    }
-   
-    std::string line;
-    line.reserve(LINES_RESERVE);
-
-    while (std::getline(fileStream, line)) {
-        auto string = mConverter.from_bytes(line);
-        mLines.emplace_back(string);
-    }
-
-    if (mLines.empty()) {
-        mLines.emplace_back(std::u16string());
-    }
-    
-    fileStream.close();
 }
 
 void VectorCursor::clear() {
@@ -148,3 +116,7 @@ bool VectorCursor::newLine() {
 
     return true;
 };
+
+void VectorCursor::pushLine(const std::u16string line) {
+    mLines.emplace_back(line);
+}

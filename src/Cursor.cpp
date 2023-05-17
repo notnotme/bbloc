@@ -1,5 +1,11 @@
 #include "Cursor.h"
 
+#include <stdexcept>
+#include <fstream>
+#include <filesystem>
+
+#define LINES_RESERVE 2048 // char reserved per lines
+
 Cursor::Cursor() :
 mPosition(0) {
     mSelection.start = { 0, 0 };
@@ -7,6 +13,53 @@ mPosition(0) {
 }
 
 Cursor::~Cursor() {
+}
+
+void Cursor::load(const std::string path) {
+    clear();
+
+    if (!std::filesystem::is_regular_file(path)) {
+        throw std::runtime_error(std::string("Not a regular file: ").append(path));
+    }
+
+    std::ifstream fileStream(path);
+    if(!fileStream.is_open()) {
+        throw std::runtime_error(std::string("Can't open ").append(path));
+    }
+   
+    std::string line;
+    line.reserve(LINES_RESERVE);
+
+    while (std::getline(fileStream, line)) {
+        auto string = mConverter.from_bytes(line);
+        pushLine(string);
+    }
+
+    if (size() == 0) {
+        // Never load a 0 lines Cursor
+        pushLine(std::u16string());
+    }
+    
+    fileStream.close();
+}
+
+void Cursor::save(const std::string path) {
+    std::ofstream fileStream(path, std::ofstream::out);
+    if(!fileStream.is_open()) {
+        throw std::runtime_error(std::string("Can't open ").append(path));
+    }
+
+    auto lineCount = size();
+    for (size_t line = 0; line < lineCount; ++line) {
+        auto str = stringView(line);
+        fileStream << mConverter.to_bytes(str.begin(), str.end());
+
+        if(line < lineCount - 1) {
+            fileStream << "\n";
+        }
+    }
+    
+    fileStream.close();
 }
 
 void Cursor::clear() {

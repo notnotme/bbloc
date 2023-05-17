@@ -1,9 +1,6 @@
 #include "StringCursor.h"
 
-#include <stdexcept>
 #include <algorithm>
-#include <fstream>
-#include <filesystem>
 
 #define VECTOR_LINES_RESERVE 8192 // u16string reserved by cursor
 #define LINES_RESERVE 2048 // char reserved per lines 
@@ -17,34 +14,6 @@ Cursor() {
 }
 
 StringCursor::~StringCursor() {
-}
-
-void StringCursor::load(const std::string path) {
-    clear();
-
-    if (!std::filesystem::is_regular_file(path)) {
-        throw std::runtime_error(std::string("Not a regular file: ").append(path));
-    }
-
-    std::ifstream fileStream(path, std::ios::in | std::ios::binary);
-    if(!fileStream.is_open()) {
-        throw std::runtime_error(std::string("Can't open ").append(path));
-    }
-
-    std::string line;
-    line.reserve(LINES_RESERVE);
-   
-    while (std::getline(fileStream, line)) {
-        auto string = mConverter.from_bytes(line);
-        mLines.emplace_back((Line) { mBuffer.length(), string.length() });
-        mBuffer.append(string);
-    }
-    
-    if (mLines.empty()) {
-        mLines.emplace_back((Line) { 0, 0 });
-    }
-
-    fileStream.close();
 }
 
 void StringCursor::clear() {
@@ -188,3 +157,8 @@ bool StringCursor::newLine() {
 
     return true;
 };
+
+void StringCursor::pushLine(const std::u16string line) {
+    mLines.emplace_back((Line) { mBuffer.length(), line.length() });
+    mBuffer.append(line);
+}
