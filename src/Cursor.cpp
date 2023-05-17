@@ -44,7 +44,7 @@ void Cursor::load(const std::string path) {
 }
 
 void Cursor::save(const std::string path) {
-    std::ofstream fileStream(path, std::ofstream::out);
+    std::ofstream fileStream(path);
     if(!fileStream.is_open()) {
         throw std::runtime_error(std::string("Can't open ").append(path));
     }
