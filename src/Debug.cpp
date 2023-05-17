@@ -147,7 +147,7 @@ void Debug::render(SDL_Window* window) {
                         if (scissor) mCursorRenderer->enableDrawBit(CursorRenderer::DrawBit::SCISSOR);
                         else mCursorRenderer->disableDrawBit(CursorRenderer::DrawBit::SCISSOR);
                     }
-                    ImGui::LabelText("GlyphBuffer count", "%lu glyphs", mCursorRenderer->mSpriteBuffer->index());
+                    ImGui::LabelText("SpriteBuffer count", "%lu", mCursorRenderer->mSpriteBuffer->index());
                     ImGui::EndTabItem();
                 }
                 if (ImGui::BeginTabItem("Cursor")) {
