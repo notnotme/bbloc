@@ -57,13 +57,6 @@ const char* GLYPH_SHADER_FRAGMENT_SRC = R"text(
     uniform sampler2D tex0;
 
     void main() {
-        /* SDF
-        float texelAlpha = texture(tex0, inTexCoord).r;
-        float sigDist = max(min(texelAlpha, texelAlpha), min(max(texelAlpha, texelAlpha), texelAlpha));
-        float w = fwidth(sigDist);
-        float opacity = smoothstep(0.5 - w, 0.5 + w, sigDist);
-        fragColor = vec4(inColor.rgb, opacity * inColor.a);
-        */
         float texelAlpha = texture(tex0, inTexCoord).r * inColor.a;
         fragColor = vec4(inColor.rgb, texelAlpha);
     }
