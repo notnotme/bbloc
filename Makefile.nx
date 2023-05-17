@@ -45,7 +45,7 @@ APP_VERSION	:= $(GIT_VERSION)
 ROMFS		:= romfs
 INCLUDES	:= include
 SOURCES		:=\
-            include/imgui \
+			include/imgui \
 			src/renderer/sprite \
 			src/renderer \
 			src/cursor \
