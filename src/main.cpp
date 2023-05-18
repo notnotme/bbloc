@@ -10,15 +10,61 @@
 #include "cursor/StringCursor.h"
 #include "cursor/RopeCursor.h"
 #include "CursorRenderer.h"
+#include "Controls.h"
 #include "Debug.h"
+
+std::shared_ptr<FontTexture> fontTexture = std::make_shared<FontTexture>();
+std::shared_ptr<CursorRenderer> renderer = std::make_shared<CursorRenderer>();
+std::shared_ptr<Cursor> cursor = std::make_shared<RopeCursor>();
+std::shared_ptr<Controls> controls = std::make_shared<Controls>();
+std::shared_ptr<Debug> debug = std::make_shared<Debug>(cursor, renderer);
+
+void bindKeyboardControls() {
+    controls->bindKey(SDLK_ESCAPE, [](SDL_Keycode keyCode, uint16_t modifier) {
+        // TOOD: Save modified cursor(s)
+        SDL_Event quitEvent;
+        quitEvent.type = SDL_QUIT;
+        SDL_PushEvent(&quitEvent);
+    });
+    controls->bindKey(SDLK_UP, [](SDL_Keycode keyCode, uint16_t modifier) {
+        cursor->move(Cursor::Direction::UP);
+    });
+    controls->bindKey(SDLK_DOWN, [](SDL_Keycode keyCode, uint16_t modifier) {
+        cursor->move(Cursor::Direction::DOWN);
+    });
+    controls->bindKey(SDLK_LEFT, [](SDL_Keycode keyCode, uint16_t modifier) {
+        cursor->move(Cursor::Direction::LEFT);
+    });
+    controls->bindKey(SDLK_RIGHT, [](SDL_Keycode keyCode, uint16_t modifier) {
+        cursor->move(Cursor::Direction::RIGHT);
+    });
+    controls->bindKey(SDLK_BACKSPACE, [](SDL_Keycode keyCode, uint16_t modifier) {
+        cursor->remove();
+    });
+    controls->bindKey(SDLK_RETURN, [](SDL_Keycode keyCode, uint16_t modifier) {
+        cursor->newLine();
+    });
+    controls->bindKey(SDLK_TAB, [](SDL_Keycode keyCode, uint16_t modifier) {
+        cursor->insert(u'\t');
+    });
+    controls->bindKey(SDLK_l, [](SDL_Keycode keyCode, uint16_t modifier) {
+        if (modifier & KMOD_CTRL) {
+            cursor->load("romfs/main.cpp");
+            renderer->invalidate();
+        }
+    });
+    controls->bindKey(SDLK_s, [](SDL_Keycode keyCode, uint16_t modifier) {
+        if (modifier & KMOD_CTRL) {
+            cursor->save("test.txt");
+        }
+    });
+};
+
+void bindGamepadControls() {
+};
 
 int main(int argc, char *argv[]) {
     glm::ivec2 windowSize = { 1280, 720 };
-    std::shared_ptr<FontTexture> fontTexture = std::make_shared<FontTexture>();
-    std::shared_ptr<CursorRenderer> renderer = std::make_shared<CursorRenderer>();
-    std::shared_ptr<Cursor> cursor = std::make_shared<RopeCursor>();
-    std::shared_ptr<Debug> debug = std::make_shared<Debug>(cursor, renderer);
-
     SDL_Window* window = nullptr;
     SDL_GLContext context = nullptr;
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER);
@@ -53,10 +99,12 @@ int main(int argc, char *argv[]) {
     renderer->updateWindowSize(windowSize.x, windowSize.y);
     renderer->bindTo(cursor, fontTexture);
 
+    bindKeyboardControls();
+    bindGamepadControls();
+
     SDL_Event event;
     auto frequency = SDL_GetPerformanceFrequency();
     auto loop = true;
-    auto prompt = false;
     while (loop) {
         while (SDL_PollEvent(&event)) {
             debug->processEvent(&event);
@@ -78,53 +126,13 @@ int main(int argc, char *argv[]) {
                 if (debug->visible()) {
                     break;
                 }
-                if (prompt) {
-                    // User input in the prompt area
-                    // ... code ...
-                } else {
-                    // In editor mode
-                    switch (event.key.keysym.sym)
-                    {
-                    case SDLK_ESCAPE:
-                        // TOOD: Save modified cursor(s)
-                        SDL_Event quitEvent;
-                        quitEvent.type = SDL_QUIT;
-                        SDL_PushEvent(&quitEvent);
-                    break;
-                    case SDLK_UP:
-                        cursor->move(Cursor::Direction::UP);
-                    break;
-                    case SDLK_DOWN:
-                        cursor->move(Cursor::Direction::DOWN);
-                    break;
-                    case SDLK_LEFT:
-                        cursor->move(Cursor::Direction::LEFT);
-                    break;
-                    case SDLK_RIGHT:
-                        cursor->move(Cursor::Direction::RIGHT);
-                    break;
-                    case SDLK_BACKSPACE:
-                        cursor->remove();
-                    break;
-                    case SDLK_RETURN:
-                        cursor->newLine();
-                    break;
-                    case SDLK_TAB:
-                        cursor->insert(u'\t');
-                    break;
-                    }
-                }
+                controls->keyDown(event.key.keysym.sym, event.key.keysym.mod);
             break;
             case SDL_TEXTINPUT:
                 if (debug->visible()) {
                     break;
                 }
-                if (prompt) {
-                    // User input in the prompt area
-                    // ... code ..
-                } else {
-                    cursor->insert(event.text.text);
-                }
+                cursor->insert(event.text.text);
             break;
             }
         }
