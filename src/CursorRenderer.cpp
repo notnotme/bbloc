@@ -782,6 +782,7 @@ void CursorRenderer::invalidate() {
     mDirtyBit |= CALCULATE_LINE_IN_VIEW;
     mDirtyBit |= CALCULATE_MARGIN_WIDTH;
     mDirtyBit |= CALCULATE_STATUS_BAR_HEIGHT;
+    mDirtyBit |= GENERATE_STATUS_BAR_STR;
 }
 
 void CursorRenderer::scrollBy(float x, float y) {
