@@ -85,7 +85,7 @@ public:
     void eof();
 
      /// @brief Move the caret position to the begining of the file
-   void bof();
+    void bof();
 
     /// @brief Move the caret position to the end of the current line
     void eol();
@@ -150,7 +150,7 @@ protected:
     std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> mConverter;
 
     /// @brief Append a line in the internal storage of the Cursor
-    /// @param line The line to append into the Curso
+    /// @param line The line to append into the Cursor
     virtual void pushLine(const std::u16string line) = 0;
 
 private:
