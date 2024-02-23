@@ -8,13 +8,13 @@ struct SpriteVertex {
     glm::vec2 position;
     glm::vec2 size;
     glm::vec4 texture;
-    glm::u8vec4 color;
+    glm::u8vec4 tint;
 };
 
 /// @brief The vertex attributes used by the shader and buffer
 struct SpriteVertexAttribute {
     GLint position;
-    GLint color;
+    GLint tint;
     GLint texture;
     GLint size;
 };

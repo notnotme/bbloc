@@ -32,28 +32,28 @@ public:
     /// @brief Unmap this buffer, this flush the modified memory into the gpu
     void unmap();
 
-    /// @brief Return the current number of glyph contained by this buffer
-    /// @return current number of glyph
+    /// @brief Return the current number of vertex contained by this buffer
+    /// @return current number of vertex
     size_t index();
 
-    /// @brief Return the size of this buffer
-    /// @return The size, in glyph count
+    /// @brief Return the total size of this buffer
+    /// @return The size, in vertex count
     size_t size();
 
-    /// @brief Add a glyph into this buffer
-    /// @param glyph The glyph to insert
-    void add(const SpriteVertex& glyph);
+    /// @brief Add a SpriteVertex into this buffer
+    /// @param vertex The SpriteVertex to insert
+    void add(const SpriteVertex& vertex);
 
-    /// @brief Add a glyph into this buffer
-    /// @param glyph The glyph to insert
-    void update(size_t index, const SpriteVertex& glyph);
+    /// @brief Add a SpriteVertex into this buffer
+    /// @param vertex The SpriteVertex to insert
+    void update(size_t index, const SpriteVertex& vertex);
 
     /// @brief draw the content of the buffer
     void draw();
 
     /// @brief Draw the content of this buffer with an index
     /// @param start The start index in the buffer
-    /// @param count The number of glyph to render
+    /// @param count The number of vertex to render
     void draw(size_t start, size_t count);
 
 private:

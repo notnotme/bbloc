@@ -9,8 +9,8 @@ const char* GLYPH_SHADER_VERTEX_SRC = R"text(
 
     layout (location = 0) in vec2 position;
     layout (location = 1) in vec2 size;
-    layout (location = 2) in vec4 texCoord0;
-    layout (location = 3) in vec4 color;
+    layout (location = 2) in vec4 texCoord;
+    layout (location = 3) in vec4 tint;
 
     out vec4 inColor;
     out vec2 inTexCoord;
@@ -40,8 +40,8 @@ const char* GLYPH_SHADER_VERTEX_SRC = R"text(
 
         vec3 transformed = position_mat * vec3(plut[gl_VertexID] * size, 1.0);
         gl_Position = projection * vec4(transformed, 1.0);
-        inTexCoord = vec2(texCoord0[tlut[gl_VertexID].x], texCoord0[tlut[gl_VertexID].y]);
-        inColor = color;
+        inTexCoord = vec2(texCoord[tlut[gl_VertexID].x], texCoord[tlut[gl_VertexID].y]);
+        inColor = tint;
     }
 )text";
 
@@ -89,8 +89,8 @@ void SpriteShader::initialize() {
     mTextureUniform = glGetUniformLocation(mProgramShaderId, "tex0");
     mGlyphVertexAttribute.position = glGetAttribLocation(mProgramShaderId, "position");
     mGlyphVertexAttribute.size = glGetAttribLocation(mProgramShaderId, "size");
-    mGlyphVertexAttribute.texture = glGetAttribLocation(mProgramShaderId, "texCoord0");
-    mGlyphVertexAttribute.color = glGetAttribLocation(mProgramShaderId, "color");
+    mGlyphVertexAttribute.texture = glGetAttribLocation(mProgramShaderId, "texCoord");
+    mGlyphVertexAttribute.tint = glGetAttribLocation(mProgramShaderId, "tint");
 }
 
 void SpriteShader::finalize() {

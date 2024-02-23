@@ -96,8 +96,8 @@ public:
     void get(char16_t character, const TileCallback callback);
 
     /// @brief Return the texture coordinates of the 0xff pixel inside the texture
-    /// @return The texture coordinates of the square
-    glm::vec4 squareCoordinates() const;
+    /// @return The texture coordinates of the pixel
+    glm::vec4 pixelCoordinates() const;
 
 private:
 
@@ -122,7 +122,7 @@ private:
     uint16_t mMaxRowHeight;
 
     /// @brief The coordinates of the filled square inside the texture
-    glm::vec4 mSquareCoordinates;
+    glm::vec4 mPixelCoordinates;
 
     /// @brief Grow the texture by a power of two, the already existing characters are kept
     void grow();
@@ -138,7 +138,7 @@ private:
     /// @param tile The tile to copy inside the texture data
     void copyToTexture(Tile* tile);
 
-    /// @brief Create the filled square inside the texture and set mSquareCoordinates values
-    void createSquare();
+    /// @brief Create a white pixel inside the texture and set mPixelCoordinates values
+    void createPixel();
 
 };

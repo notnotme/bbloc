@@ -231,7 +231,7 @@ void CursorRenderer::update(float time) {
             sprite.position.y = bottom - mDimenPrecalc.statusBarHeight / 2.0f;
             sprite.size.x = backgroundSize.x;
             sprite.size.y = mDimenPrecalc.statusBarHeight;
-            sprite.color = mStyle.marginColor;
+            sprite.tint = mStyle.marginColor;
             mSpriteBuffer->add(sprite);
             ++mRenderPrecalc.backgroundGlyphCount;
 
@@ -249,7 +249,7 @@ void CursorRenderer::update(float time) {
             sprite.position.y = backgroundPosition.y;
             sprite.size.x = mDimenPrecalc.marginWidth;
             sprite.size.y = backgroundSize.y;
-            sprite.color = mStyle.marginColor;
+            sprite.tint = mStyle.marginColor;
             mSpriteBuffer->add(sprite);
             ++mRenderPrecalc.backgroundGlyphCount;
 
@@ -257,7 +257,7 @@ void CursorRenderer::update(float time) {
             if (mStyle.marginBorderWidth > 0) {
                 sprite.position.x = left + mDimenPrecalc.marginWidth + mStyle.marginBorderWidth / 2.0f;
                 sprite.size.x = mStyle.marginBorderWidth;
-                sprite.color = mStyle.marginBorderColor;
+                sprite.tint = mStyle.marginBorderColor;
                 mSpriteBuffer->add(sprite);
                 ++mRenderPrecalc.backgroundGlyphCount;
             }
@@ -281,14 +281,14 @@ void CursorRenderer::update(float time) {
             sprite.position.y = backgroundPosition.y;
             sprite.size.x = mDimenPrecalc.scrollbarWidth;
             sprite.size.y = backgroundSize.y;
-            sprite.color = mStyle.scrollbarColor;
+            sprite.tint = mStyle.scrollbarColor;
             mSpriteBuffer->add(sprite);
             ++mRenderPrecalc.backgroundGlyphCount;
 
             sprite.position.y = top + indicatorPosition.y;
             sprite.size.x = mDimenPrecalc.scrollbarWidth;
             sprite.size.y = indicatorWidth.y;
-            sprite.color = mStyle.scrollbarIndicatorColor;
+            sprite.tint = mStyle.scrollbarIndicatorColor;
             mSpriteBuffer->add(sprite);
             ++mRenderPrecalc.backgroundGlyphCount;
 
@@ -297,14 +297,14 @@ void CursorRenderer::update(float time) {
             sprite.position.y = bottom - halfScrollbarWidth;
             sprite.size.x = backgroundSize.x;
             sprite.size.y = mDimenPrecalc.scrollbarWidth;
-            sprite.color = mStyle.scrollbarColor;
+            sprite.tint = mStyle.scrollbarColor;
             mSpriteBuffer->add(sprite);
             ++mRenderPrecalc.backgroundGlyphCount;
 
             sprite.position.x = left + indicatorPosition.x;
             sprite.size.x = indicatorWidth.x;
             sprite.size.y = mDimenPrecalc.scrollbarWidth;
-            sprite.color = mStyle.scrollbarIndicatorColor;
+            sprite.tint = mStyle.scrollbarIndicatorColor;
             mSpriteBuffer->add(sprite);
             ++mRenderPrecalc.backgroundGlyphCount;
             
@@ -313,7 +313,7 @@ void CursorRenderer::update(float time) {
             sprite.position.y = bottom - halfScrollbarWidth;
             sprite.size.x = mDimenPrecalc.scrollbarWidth;
             sprite.size.y = mDimenPrecalc.scrollbarWidth;
-            sprite.color = mStyle.scrollbarColor;
+            sprite.tint = mStyle.scrollbarColor;
             mSpriteBuffer->add(sprite);
             ++mRenderPrecalc.backgroundGlyphCount;
             
@@ -327,7 +327,7 @@ void CursorRenderer::update(float time) {
         sprite.position.y = backgroundPosition.y;
         sprite.size.x = backgroundSize.x;
         sprite.size.y = backgroundSize.y;
-        sprite.color = mStyle.backgroundColor;
+        sprite.tint = mStyle.backgroundColor;
         mSpriteBuffer->add(sprite);
         ++mRenderPrecalc.backgroundGlyphCount;
 
@@ -376,7 +376,7 @@ void CursorRenderer::update(float time) {
                                 sprite.position.y = glm::round(printAtY - (tile.bearing.y - tile.size.y / 2.0f));
                                 sprite.size = tile.size;
                                 sprite.texture = tile.texture;
-                                sprite.color = mStyle.currentLineNumberColor;
+                                sprite.tint = mStyle.currentLineNumberColor;
                                 
                                 mSpriteBuffer->add(sprite);
                                 printAtX += tile.advance;
@@ -393,7 +393,7 @@ void CursorRenderer::update(float time) {
                                     sprite.position.y =  glm::round(printAtY - (tile.bearing.y - tile.size.y / 2.0f));
                                     sprite.size = tile.size;
                                     sprite.texture = tile.texture;
-                                    sprite.color = isCurrentLine ? mStyle.currentLineNumberColor : mStyle.lineNumberColor;
+                                    sprite.tint = isCurrentLine ? mStyle.currentLineNumberColor : mStyle.lineNumberColor;
 
                                     mSpriteBuffer->add(sprite);
                                     printAtX += tile.advance;
@@ -417,7 +417,7 @@ void CursorRenderer::update(float time) {
                     sprite.texture = mCaretPrecalc.texture;
                     sprite.position.x = backgroundPosition.x;
                     sprite.position.y = glm::round(topText + positionInView);
-                    sprite.color = mStyle.currentLinebackgroundColor;
+                    sprite.tint = mStyle.currentLinebackgroundColor;
                     sprite.size.x = backgroundSize.x;
                     sprite.size.y = lineHeightPixel;
                     mSpriteBuffer->add(sprite);
@@ -454,7 +454,7 @@ void CursorRenderer::update(float time) {
                                 // In visible area
                                 sprite.size = tile.size;
                                 sprite.texture = tile.texture;
-                                sprite.color = mStyle.textColor;
+                                sprite.tint = mStyle.textColor;
 
                                 mSpriteBuffer->add(sprite);
                                 ++mRenderPrecalc.textGlyphCount;
@@ -479,7 +479,7 @@ void CursorRenderer::update(float time) {
                 // check if we are in the view area on the y axis
                 if (selectionStartInViewY || selectionEndInViewY) {
                     sprite.texture = mCaretPrecalc.texture;
-                    sprite.color = mStyle.selectedTextColor;
+                    sprite.tint = mStyle.selectedTextColor;
                     sprite.size.y = lineHeightPixel;
                     for(auto y = selection.start.y; y<=selection.end.y; ++y) {
                         auto line = mCursor->stringView(y);
@@ -526,9 +526,9 @@ void CursorRenderer::update(float time) {
             sprite.size.x =  mStyle.caretWidth;
             sprite.size.y = lineHeightPixel;
             if (mCaretPrecalc.visible) {
-                sprite.color = mStyle.caretColor;
+                sprite.tint = mStyle.caretColor;
             } else {
-                sprite.color = glm::u8vec4(255);
+                sprite.tint = glm::u8vec4(255);
             }
 
             mRenderPrecalc.caretGlyphIndex = mSpriteBuffer->index();
@@ -552,7 +552,7 @@ void CursorRenderer::update(float time) {
                         default:
                             sprite.size = tile.size;
                             sprite.texture = tile.texture;
-                            sprite.color = mStyle.textColor;
+                            sprite.tint = mStyle.textColor;
 
                             mSpriteBuffer->add(sprite);
                             ++mRenderPrecalc.statusBarTextGlyphCount;
@@ -575,9 +575,9 @@ void CursorRenderer::update(float time) {
         sprite.size.x = mStyle.caretWidth;
         sprite.size.y = mCaretPrecalc.size.y;
         if (mCaretPrecalc.visible) {
-            sprite.color = mStyle.caretColor;
+            sprite.tint = mStyle.caretColor;
         } else {
-            sprite.color = glm::u8vec4(255);
+            sprite.tint = glm::u8vec4(255);
         }
         mSpriteBuffer->update(mRenderPrecalc.caretGlyphIndex, sprite);
     }

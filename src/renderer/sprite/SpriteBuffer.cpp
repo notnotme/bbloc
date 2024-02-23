@@ -23,11 +23,11 @@ void SpriteBuffer::initialize(const SpriteVertexAttribute& vertexattribute, Usag
     glEnableVertexAttribArray(vertexattribute.position);
     glEnableVertexAttribArray(vertexattribute.size);
     glEnableVertexAttribArray(vertexattribute.texture);
-    glEnableVertexAttribArray(vertexattribute.color);
+    glEnableVertexAttribArray(vertexattribute.tint);
     glVertexAttribDivisor(vertexattribute.position, 1);
     glVertexAttribDivisor(vertexattribute.size, 1);
     glVertexAttribDivisor(vertexattribute.texture, 1);
-    glVertexAttribDivisor(vertexattribute.color, 1);
+    glVertexAttribDivisor(vertexattribute.tint, 1);
 
     glVertexAttribPointer(vertexattribute.position, 2, GL_FLOAT, GL_FALSE, sizeof(SpriteVertex),
         (void*) offsetof(SpriteVertex, position));
@@ -38,8 +38,8 @@ void SpriteBuffer::initialize(const SpriteVertexAttribute& vertexattribute, Usag
     glVertexAttribPointer(vertexattribute.texture, 4, GL_FLOAT, GL_FALSE, sizeof(SpriteVertex),
         (void*) offsetof(SpriteVertex, texture));
 
-    glVertexAttribPointer(vertexattribute.color, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(SpriteVertex),
-        (void*) offsetof(SpriteVertex, color));
+    glVertexAttribPointer(vertexattribute.tint, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(SpriteVertex),
+        (void*) offsetof(SpriteVertex, tint));
 }
 
 void SpriteBuffer::finalize() {
@@ -70,8 +70,8 @@ void SpriteBuffer::add(const SpriteVertex& vertex) {
     ++mIndex;
 }
 
-void SpriteBuffer::update(size_t index, const SpriteVertex& glyph) {
-    glBufferSubData(GL_ARRAY_BUFFER, index * sizeof(SpriteVertex), sizeof(SpriteVertex), &glyph);
+void SpriteBuffer::update(size_t index, const SpriteVertex& vertex) {
+    glBufferSubData(GL_ARRAY_BUFFER, index * sizeof(SpriteVertex), sizeof(SpriteVertex), &vertex);
 }
 
 void SpriteBuffer::draw() {

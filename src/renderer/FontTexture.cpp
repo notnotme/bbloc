@@ -123,7 +123,7 @@ void FontTexture::grow() {
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, mTextureSize, mTextureSize, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mTextureSize, mTextureSize, GL_RED, GL_UNSIGNED_BYTE, data);
-    createSquare();
+    createPixel();
 
     mNextPosition.x = TILE_SPACING;
     mNextPosition.y = TILE_SPACING;
@@ -186,7 +186,7 @@ void FontTexture::clearCharacterCache(bool reset) {
     
     glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, mTextureSize, mTextureSize, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mTextureSize, mTextureSize, GL_RED, GL_UNSIGNED_BYTE, data);
-    createSquare();
+    createPixel();
 
     mNextPosition.x = TILE_SPACING;
     mNextPosition.y = TILE_SPACING;
@@ -258,18 +258,18 @@ glm::u32vec2 FontTexture::measure(char16_t character) const {
     return glyphSize;
 }
 
-glm::vec4 FontTexture::squareCoordinates() const {
-    return mSquareCoordinates;
+glm::vec4 FontTexture::pixelCoordinates() const {
+    return mPixelCoordinates;
 }
 
-void FontTexture::createSquare() {
+void FontTexture::createPixel() {
     uint8_t pixel = 0xff;
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 1, 1, GL_RED, GL_UNSIGNED_BYTE, &pixel);
 
     // Sample in the center of the pixel
     auto halfTextel = (1.0f / mTextureSize) / 2.0f;
-    mSquareCoordinates.s = halfTextel;
-    mSquareCoordinates.t = halfTextel;
-    mSquareCoordinates.p = halfTextel;
-    mSquareCoordinates.q = halfTextel;
+    mPixelCoordinates.s = halfTextel;
+    mPixelCoordinates.t = halfTextel;
+    mPixelCoordinates.p = halfTextel;
+    mPixelCoordinates.q = halfTextel;
 }
