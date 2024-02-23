@@ -408,6 +408,64 @@ void CursorRenderer::update(float time) {
                 }
             }
 
+            // Draw the cursor selection
+            // TODO: draw only 3 quad when selection contains multiple lines
+            auto selection = mCursor->selection();
+            if (!selection.empty()) {
+                bool selectionStartInViewY = selection.start.y >= firstVisibleLine || selection.start.y < firstVisibleLine + mDimenPrecalc.visibleLineCount;
+                bool selectionEndInViewY = selection.end.y >= firstVisibleLine || selection.end.y < firstVisibleLine + mDimenPrecalc.visibleLineCount;
+                // check if we are in the view area on the y axis
+                if (selectionStartInViewY || selectionEndInViewY) {
+                    sprite.texture = mCaretPrecalc.texture;
+                    sprite.tint = mStyle.selectedTextColor;
+                    sprite.size.y = lineHeightPixel;
+                    if (selection.start.y == selection.end.y) {
+                            // Start / end on the same line
+                            auto line = mCursor->stringView(selection.start.y);
+                            auto startY = (selection.start.y - firstVisibleLine) * lineHeightPixel;
+                            startY -= mCaretPrecalc.blockGlyphBearingY - lineHeightPixel / 2.0f;
+
+                            auto selectionStartX = mFontTexture->measure(line.substr(0, selection.start.x)).x;
+                            auto selectionWidthPixel = mFontTexture->measure(line.substr(selection.start.x, selection.end.x - selection.start.x)).x;
+                            sprite.position.x = (backgroundPosition.x - backgroundSize.x / 2.0f) + (selectionStartX + (selectionWidthPixel / 2.0f)) + scroll.x;
+                            sprite.position.y = glm::round(topText + startY);
+                            sprite.size.x = selectionWidthPixel;
+                            mSpriteBuffer->add(sprite);
+                            ++mRenderPrecalc.selectionGlyphCount;
+                    } else {
+                        // Start / end on multiple lines
+                        for(auto y = selection.start.y; y<=selection.end.y; ++y) {
+                            auto line = mCursor->stringView(y);
+                            auto startY = (y - firstVisibleLine) * lineHeightPixel;
+                            startY -= mCaretPrecalc.blockGlyphBearingY - lineHeightPixel / 2.0f;
+                            if (y == selection.start.y) {
+                                auto selectionStartX = mFontTexture->measure(line.substr(0, selection.start.x)).x;
+                                auto selectionWidthPixel = backgroundSize.x - selectionStartX;
+                                sprite.position.x = (backgroundPosition.x - backgroundSize.x / 2.0f) + (selectionStartX + (selectionWidthPixel / 2.0f)) + scroll.x / 2.0f;
+                                sprite.position.y = glm::round(topText + startY);
+                                sprite.size.x = selectionWidthPixel - scroll.x;
+                                mSpriteBuffer->add(sprite);
+                                ++mRenderPrecalc.selectionGlyphCount;
+                            } else if (y == selection.end.y) {
+                                auto selectionEndX = mFontTexture->measure(line.substr(0, selection.end.x)).x;
+                                sprite.position.x = (backgroundPosition.x - backgroundSize.x / 2.0f) + (selectionEndX / 2.0f) + scroll.x;
+                                sprite.position.y = glm::round(topText + startY);
+                                sprite.size.x = selectionEndX;
+                                mSpriteBuffer->add(sprite);
+                                ++mRenderPrecalc.selectionGlyphCount;
+                            } else {
+                                sprite.position.x = backgroundPosition.x;
+                                sprite.position.y = glm::round(topText + startY);
+                                sprite.size.x = backgroundSize.x;
+                                mSpriteBuffer->add(sprite);
+                                ++mRenderPrecalc.selectionGlyphCount;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Text
             if (drawBit(HIGHTLIGHT_CURRENT_LINE)) {
                 // Check if we are in the view area on the y axis
                 if (caretPosition.y >= firstVisibleLine && caretPosition.y < firstVisibleLine + mDimenPrecalc.visibleLineCount) {
@@ -425,7 +483,19 @@ void CursorRenderer::update(float time) {
                 }
             }
 
-            // Text
+            // Put the caret in the buffer, keep trace of it's position
+            sprite.position = mCaretPrecalc.position;
+            sprite.texture = mCaretPrecalc.texture;
+            sprite.size.x =  mStyle.caretWidth;
+            sprite.size.y = lineHeightPixel;
+            if (mCaretPrecalc.visible) {
+                sprite.tint = mStyle.caretColor;
+            } else {
+                sprite.tint = glm::u8vec4(0);
+            }
+            mRenderPrecalc.caretGlyphIndex = mSpriteBuffer->index();
+            mSpriteBuffer->add(sprite);
+
             auto printAtX = left;
             auto printAtY = topText;
             for (size_t lineIndex = firstVisibleLine; lineIndex < lastVisibleLine; ++lineIndex) {
@@ -470,70 +540,6 @@ void CursorRenderer::update(float time) {
                 printAtX = left;
             }
 
-            // Draw the cursor selection
-            // TODO: draw only 3 quad when selection contains multiple lines
-            auto selection = mCursor->selection();
-            if (!selection.empty()) {
-                bool selectionStartInViewY = selection.start.y >= firstVisibleLine || selection.start.y < firstVisibleLine + mDimenPrecalc.visibleLineCount;
-                bool selectionEndInViewY = selection.end.y >= firstVisibleLine || selection.end.y < firstVisibleLine + mDimenPrecalc.visibleLineCount;
-                // check if we are in the view area on the y axis
-                if (selectionStartInViewY || selectionEndInViewY) {
-                    sprite.texture = mCaretPrecalc.texture;
-                    sprite.tint = mStyle.selectedTextColor;
-                    sprite.size.y = lineHeightPixel;
-                    for(auto y = selection.start.y; y<=selection.end.y; ++y) {
-                        auto line = mCursor->stringView(y);
-                        auto startY = (y - firstVisibleLine) * lineHeightPixel;
-                        startY -= mCaretPrecalc.blockGlyphBearingY - lineHeightPixel / 2.0f;
-                        if (selection.start.y == selection.end.y) {
-                            // Start / end on the same line
-                            auto selectionStartX = mFontTexture->measure(line.substr(0, selection.start.x)).x;
-                            auto selectionWidthPixel = mFontTexture->measure(line.substr(selection.start.x, selection.end.x - selection.start.x)).x;
-                            sprite.position.x = (backgroundPosition.x - backgroundSize.x / 2.0f) + (selectionStartX + (selectionWidthPixel / 2.0f)) + scroll.x;
-                            sprite.position.y = glm::round(topText + startY);
-                            sprite.size.x = selectionWidthPixel;
-                            mSpriteBuffer->add(sprite);
-                            ++mRenderPrecalc.selectionGlyphCount;
-                        } else if (y == selection.start.y) {
-                            auto selectionStartX = mFontTexture->measure(line.substr(0, selection.start.x)).x;
-                            auto selectionWidthPixel = backgroundSize.x - selectionStartX;
-                            sprite.position.x = (backgroundPosition.x - backgroundSize.x / 2.0f) + (selectionStartX + (selectionWidthPixel / 2.0f)) + scroll.x / 2.0f;
-                            sprite.position.y = glm::round(topText + startY);
-                            sprite.size.x = selectionWidthPixel - scroll.x;
-                            mSpriteBuffer->add(sprite);
-                            ++mRenderPrecalc.selectionGlyphCount;
-                        } else if (y == selection.end.y) {
-                            auto selectionEndX = mFontTexture->measure(line.substr(0, selection.end.x)).x;
-                            sprite.position.x = (backgroundPosition.x - backgroundSize.x / 2.0f) + (selectionEndX / 2.0f) + scroll.x;
-                            sprite.position.y = glm::round(topText + startY);
-                            sprite.size.x = selectionEndX;
-                            mSpriteBuffer->add(sprite);
-                            ++mRenderPrecalc.selectionGlyphCount;
-                        } else {
-                            sprite.position.x = backgroundPosition.x;
-                            sprite.position.y = glm::round(topText + startY);
-                            sprite.size.x = backgroundSize.x;
-                            mSpriteBuffer->add(sprite);
-                            ++mRenderPrecalc.selectionGlyphCount;
-                        }
-                    }
-                }
-            }
-
-            // Put the caret in the buffer, keep trace of it's position
-            sprite.position = mCaretPrecalc.position;
-            sprite.texture = mCaretPrecalc.texture;
-            sprite.size.x =  mStyle.caretWidth;
-            sprite.size.y = lineHeightPixel;
-            if (mCaretPrecalc.visible) {
-                sprite.tint = mStyle.caretColor;
-            } else {
-                sprite.tint = glm::u8vec4(255);
-            }
-
-            mRenderPrecalc.caretGlyphIndex = mSpriteBuffer->index();
-            mSpriteBuffer->add(sprite);
-
             // Draw the status bar text 
             if (drawBit(STATUS_BAR)) {
                 auto printAtX = mDrawingBox.viewport.x + TEXT_MARGIN * 2; // Add a mandatory left margin (TODO: move that elsewhere)
@@ -577,7 +583,7 @@ void CursorRenderer::update(float time) {
         if (mCaretPrecalc.visible) {
             sprite.tint = mStyle.caretColor;
         } else {
-            sprite.tint = glm::u8vec4(255);
+            sprite.tint = glm::u8vec4(0);
         }
         mSpriteBuffer->update(mRenderPrecalc.caretGlyphIndex, sprite);
     }
@@ -611,16 +617,15 @@ void CursorRenderer::render() {
     mSpriteShader->setMatrix(mRenderPrecalc.viewMatrix);
     mSpriteBuffer->use();
 
-    // Render background shapes
+    // Render All background shapes
     mSpriteBuffer->draw(0, mRenderPrecalc.backgroundGlyphCount);
     drawIndex += mRenderPrecalc.backgroundGlyphCount;
     
-    scissorPosition.y += mDimenPrecalc.statusBarHeight;
-    scissorSize.y -= mDimenPrecalc.statusBarHeight;
-
-    // Background shapes 
+    // Render margin text
     if (drawBit(LEFT_MARGIN)) {
         if (drawBit(SCISSOR)) {
+            scissorPosition.y += mDimenPrecalc.statusBarHeight;
+            scissorSize.y -= mDimenPrecalc.statusBarHeight;
             scissorSize.x = mDimenPrecalc.marginWidth;
             glScissor(scissorPosition.x, scissorPosition.y, scissorSize.x, scissorSize.y);
         }
@@ -634,6 +639,7 @@ void CursorRenderer::render() {
         }
     }
 
+    // Render selection + caret + text
     if (drawBit(SCISSOR)) {
         scissorPosition.x += mDimenPrecalc.marginWidth + mDimenPrecalc.borderWidth;
         scissorSize.x = mDrawingBox.size.x - mDimenPrecalc.marginWidth - mDimenPrecalc.borderWidth - mDimenPrecalc.scrollbarWidth;
@@ -642,24 +648,10 @@ void CursorRenderer::render() {
         glScissor(scissorPosition.x, scissorPosition.y, scissorSize.x, scissorSize.y);
     }
 
-    // Margin and main text
-    mSpriteBuffer->draw(drawIndex, mRenderPrecalc.textGlyphCount);
-    drawIndex += mRenderPrecalc.textGlyphCount;
+    mSpriteBuffer->draw(drawIndex, mRenderPrecalc.selectionGlyphCount + mRenderPrecalc.textGlyphCount + 1); 
+    drawIndex += mRenderPrecalc.selectionGlyphCount + mRenderPrecalc.textGlyphCount + 1;
 
-    // Selection and caret
-    glEnable(GL_COLOR_LOGIC_OP);
-    glLogicOp(GL_EQUIV);
-    if (!mCursor->selection().empty()) {
-        // Avoid a second draw call for the caret
-        mSpriteBuffer->draw(drawIndex, mRenderPrecalc.selectionGlyphCount + 1); 
-        drawIndex += mRenderPrecalc.selectionGlyphCount + 1;
-    } else {
-        mSpriteBuffer->draw(mRenderPrecalc.caretGlyphIndex, 1);
-        drawIndex += 1;
-    }
-    glDisable(GL_COLOR_LOGIC_OP);
-
-    // Status bar text
+    // Render status bar text
     if (drawBit(STATUS_BAR)) {
         if (drawBit(SCISSOR)) {
             scissorPosition.x -= mDimenPrecalc.marginWidth + mDimenPrecalc.borderWidth;
