@@ -8,7 +8,8 @@
 Debug::Debug(std::shared_ptr<Cursor> cursor, std::shared_ptr<CursorRenderer> renderer) :
 mCursor(cursor),
 mCursorRenderer(renderer),
-mShowDebugWindow(false) {
+mShowDebugWindow(false),
+mVsync(true) {
 }
 
 Debug::~Debug() {
@@ -146,6 +147,10 @@ void Debug::render(SDL_Window* window) {
                     if (ImGui::Checkbox("Enable scissor", &scissor)) {
                         if (scissor) mCursorRenderer->enableDrawBit(CursorRenderer::DrawBit::SCISSOR);
                         else mCursorRenderer->disableDrawBit(CursorRenderer::DrawBit::SCISSOR);
+                    }
+                    if (ImGui::Checkbox("Enable Vsync", &mVsync)) {
+                        if (mVsync) SDL_GL_SetSwapInterval(1);
+                        else SDL_GL_SetSwapInterval(0);
                     }
                     ImGui::LabelText("SpriteBuffer count", "%lu", mCursorRenderer->mSpriteBuffer->index());
                     ImGui::EndTabItem();

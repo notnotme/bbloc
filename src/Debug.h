@@ -19,4 +19,5 @@ private:
     std::shared_ptr<Cursor> mCursor;
     std::shared_ptr<CursorRenderer> mCursorRenderer;
     bool mShowDebugWindow;
+    bool mVsync;
 };
