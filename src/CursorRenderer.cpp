@@ -2,13 +2,12 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
-#define SHAPE_BUFFER_SIZE 8192 // Number of Vertex
-#define GLYPH_BUFFER_SIZE 8192 // Number of Vertex
+#define SPRITE_BUFFER_SIZE 8192 // Number of Vertex
 #define TEXT_MARGIN 1 // Pixels
 
 CursorRenderer::CursorRenderer() :
 mSpriteShader(std::make_unique<SpriteShader>()),
-mSpriteBuffer(std::make_unique<SpriteBuffer>(GLYPH_BUFFER_SIZE)),
+mSpriteBuffer(std::make_unique<SpriteBuffer>(SPRITE_BUFFER_SIZE)),
 mScroll(0),
 mDrawingBox({ { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0, 0, 0} }),
 mRenderPrecalc({ 0, 0, 0, 0, 0, 0, glm::mat4(1) }),
