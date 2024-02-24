@@ -81,45 +81,75 @@ bool StringCursor::insert(const char *utf8Text) {
     return true;
 }
 
-bool StringCursor::remove() {
+bool StringCursor::remove(bool forward) {
     auto removed = true;
-    if (mPosition.x > 0) {
-        // Case 1, the caret is in the middle of the line, we delete one characters
-        mBuffer.erase(mLines[mPosition.y].start + mPosition.x - 1, 1);
-        --mLines[mPosition.y].count;
-        --mPosition.x;
+    if (!forward) {
+        if (mPosition.x > 0) {
+            // Case 1, the caret is after the first character, we delete one characters
+            mBuffer.erase(mLines[mPosition.y].start + mPosition.x - 1, 1);
+            --mLines[mPosition.y].count;
+            --mPosition.x;
 
-        // Update the remaining lines
-        std::for_each(mLines.begin() + mPosition.y + 1, mLines.end(), [&](Line& line) {
-            --line.start;
-        });
+            // Update the remaining lines
+            std::for_each(mLines.begin() + mPosition.y + 1, mLines.end(), [&](Line& line) {
+                --line.start;
+            });
 
-        // Only one line change
-        mEventStack.emplace((Event) { LINE_CHANGED, mPosition.y });
-        mEventStack.emplace((Event) { CARET_MOVED, LEFT });
-    } else {
-        // Case 2, the caret is at the very begining, we delete the line
-        if (mPosition.y > 0) {
-            // - delete the line but keep the string
-            auto reminder = mBuffer.substr(mLines[mPosition.y].start, mLines[mPosition.y].count);
-            mLines.erase(mLines.begin() + mPosition.y);
-
-            // - move the caret up at the end of the line
-            --mPosition.y;
-            mPosition.x = mLines[mPosition.y].count;
-            mLines[mPosition.y].count += reminder.length();
-            
-            // - past the reminder of the deleted line (what was after the caret position)
-
-
-            // One line changed, we deleted the other
-            mEventStack.emplace((Event) { LINE_DELETED, mPosition.y + 1 });
+            // Only one line change
             mEventStack.emplace((Event) { LINE_CHANGED, mPosition.y });
-            mEventStack.emplace((Event) { CARET_MOVED, RIGHT | UP });
+            mEventStack.emplace((Event) { CARET_MOVED, LEFT });
         } else {
-            removed = false;
+            // Case 2, the caret is at the very begining, we delete the line
+            if (mPosition.y > 0) {
+                // - delete the line but keep the string
+                auto reminder = mLines[mPosition.y].count;
+                mLines.erase(mLines.begin() + mPosition.y);
+
+                // - move the caret up at the end of the line
+                --mPosition.y;
+                mPosition.x = mLines[mPosition.y].count;
+                mLines[mPosition.y].count += reminder;
+
+                // One line changed, we deleted the other
+                mEventStack.emplace((Event) { LINE_DELETED, mPosition.y + 1 });
+                mEventStack.emplace((Event) { LINE_CHANGED, mPosition.y });
+                mEventStack.emplace((Event) { CARET_MOVED, RIGHT | UP });
+            } else {
+                removed = false;
+            }
+        }
+    } else {
+        // Case 1, the line is not empty and the caret is not at the end of it, we delete one characters
+        if (mLines[mPosition.y].count > 0 && mPosition.x < mLines[mPosition.y].count) {
+            mBuffer.erase(mLines[mPosition.y].start + mPosition.x, 1);
+            --mLines[mPosition.y].count;
+
+            // Update the remaining lines
+            std::for_each(mLines.begin() + mPosition.y + 1, mLines.end(), [&](Line& line) {
+                --line.start;
+            });
+
+            // Only one line change
+            mEventStack.emplace((Event) { LINE_CHANGED, mPosition.y });
+            mEventStack.emplace((Event) { CARET_MOVED, LEFT });
+        } else {
+            // Case 2, the caret is at the end of the line
+             if (mPosition.y < mLines.size() - 1) {
+                // - delete the line but keep the string
+                auto reminder = mLines[mPosition.y + 1].count;
+                mLines.erase(mLines.begin() + mPosition.y + 1);
+                mLines[mPosition.y].count += reminder;
+
+                // One line changed, we deleted the other
+                mEventStack.emplace((Event) { LINE_DELETED, mPosition.y + 1 });
+                mEventStack.emplace((Event) { LINE_CHANGED, mPosition.y });
+                mEventStack.emplace((Event) { CARET_MOVED, 0 });
+            } else {
+                removed = false;
+            }
         }
     }
+
 
     return removed;
 }

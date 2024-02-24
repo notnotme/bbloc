@@ -145,8 +145,9 @@ public:
     virtual bool insert(const char *utf8Text) = 0;
 
     /// @brief Remove a character at the caret position, delete the line if there is no more characters
+    /// @param forward If true, remove the character in front of the cursor, otherwise, remove the previous character
     /// @return true if the remove succeed, false otherwise
-    virtual bool remove() = 0;
+    virtual bool remove(bool forward) = 0;
 
     /// @brief Create a new line at the caret position
     /// @return true if the creation succeed, false otherwise

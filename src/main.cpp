@@ -62,7 +62,14 @@ void bindKeyboardControls() {
         if (cursor->selectionVisible()) {
             cursor->eraseSelection();
         } else {
-            cursor->remove();
+            cursor->remove(false);
+        }
+    });
+    controls->bindKey(SDLK_DELETE, [](SDL_Keycode keyCode, uint16_t modifier) {
+        if (cursor->selectionVisible()) {
+            cursor->eraseSelection();
+        } else {
+            cursor->remove(true);
         }
     });
     controls->bindKey(SDLK_RETURN, [](SDL_Keycode keyCode, uint16_t modifier) {

@@ -17,7 +17,7 @@ public:
     bool insert(char16_t character) override;
     bool insert(std::u16string text) override;
     bool insert(const char *utf8Text) override;
-    bool remove() override;
+    bool remove(bool forward) override;
     bool newLine() override;
     void eraseSelection() override;
 

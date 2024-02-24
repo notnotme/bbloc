@@ -52,35 +52,58 @@ bool VectorCursor::insert(const char *utf8Text) {
     return true;
 }
 
-bool VectorCursor::remove() {
+bool VectorCursor::remove(bool forward) {
     auto removed = true;
-    if (!mLines[mPosition.y].empty() && mPosition.x > 0) {
-        // Case 1, the caret is in the middle of the line, we delete one characters
-        mLines[mPosition.y].erase(mPosition.x-1, 1);
-        --mPosition.x;
-        // Only one line change
-        mEventStack.emplace((Event) { LINE_CHANGED, mPosition.y });
-        mEventStack.emplace((Event) { CARET_MOVED, LEFT });
-    } else {
-        // Case 2, the caret is at the very begining
-        if (mPosition.y > 0) {
-            // - we remove that line but keep the reminder
-            auto reminder = mLines[mPosition.y].substr(mPosition.x);
-            mLines.erase(mLines.begin() + mPosition.y);
-         
-            // - move the caret up at the end of the line
-            --mPosition.y;
-            mPosition.x = mLines[mPosition.y].length();
-      
-            // - past the reminder of the deleted line (what was after the caret position)
-            mLines[mPosition.y].append(reminder);
-
-            // One line changed, we deleted the other
-            mEventStack.emplace((Event) { LINE_DELETED, mPosition.y + 1 });
+    if (!forward) {
+        if (!mLines[mPosition.y].empty() && mPosition.x > 0) {
+            // Case 1, the caret is in the middle of the line, we delete one characters
+            mLines[mPosition.y].erase(mPosition.x-1, 1);
+            --mPosition.x;
+            // Only one line change
             mEventStack.emplace((Event) { LINE_CHANGED, mPosition.y });
-            mEventStack.emplace((Event) { CARET_MOVED, RIGHT | UP });
+            mEventStack.emplace((Event) { CARET_MOVED, LEFT });
         } else {
-            removed = false;
+            // Case 2, the caret is at the very begining
+            if (mPosition.y > 0) {
+                // - we remove that line but keep the reminder
+                auto reminder = mLines[mPosition.y].substr(mPosition.x);
+                mLines.erase(mLines.begin() + mPosition.y);
+
+                // - move the caret up at the end of the line
+                --mPosition.y;
+                mPosition.x = mLines[mPosition.y].length();
+
+                // - past the reminder of the deleted line (what was after the caret position)
+                mLines[mPosition.y].append(reminder);
+
+                // One line changed, we deleted the other
+                mEventStack.emplace((Event) { LINE_DELETED, mPosition.y + 1 });
+                mEventStack.emplace((Event) { LINE_CHANGED, mPosition.y });
+                mEventStack.emplace((Event) { CARET_MOVED, RIGHT | UP });
+            } else {
+                removed = false;
+            }
+        }
+    } else {
+        if (!mLines[mPosition.y].empty() && mPosition.x < mLines[mPosition.y].length()) {
+            // Case 1, the caret can delete forward
+            mLines[mPosition.y].erase(mPosition.x, 1);
+            // Only one line change
+            mEventStack.emplace((Event) { LINE_CHANGED, mPosition.y });
+        } else {
+            // Case 2, the caret is on an empty line or at the end of a line
+            if (mPosition.y < mLines.size() - 1) {
+                // - we remove that line but keep the reminder
+                mLines[mPosition.y].append(mLines[mPosition.y + 1]);
+                mLines.erase(mLines.begin() + mPosition.y + 1);
+
+                // One line changed, we deleted the other
+                mEventStack.emplace((Event) { LINE_DELETED, mPosition.y + 1 });
+                mEventStack.emplace((Event) { LINE_CHANGED, mPosition.y });
+                mEventStack.emplace((Event) { CARET_MOVED, 0 });
+            } else {
+                removed = false;
+            }
         }
     }
 
