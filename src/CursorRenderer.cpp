@@ -1018,55 +1018,10 @@ void CursorRenderer::scrollCaretToBorder(uint8_t border) {
 }
 
 void CursorRenderer::checkLine(size_t index, CheckLine check) {
-    auto changedLine = mCursor->stringView(index);
-    auto changedLineWidth = mFontTexture->measure(changedLine).x;
-    auto& longuestLineWidth = mDimenPrecalc.lineWidth.back();
     std::list<std::pair<size_t, float>>::iterator it;
 
-    switch (check) {
-    case EDITED:
-        // Find the precalculated line width
-        it = std::find_if(mDimenPrecalc.lineWidth.begin(), mDimenPrecalc.lineWidth.end(), [&](const std::pair<size_t, float>& pair) {
-            return pair.first == index;
-        });
-
-        if (it == mDimenPrecalc.lineWidth.end()) {
-            // Should never goes here
-            return;
-        }
-    
-        it->second = changedLineWidth;
-        if (index == longuestLineWidth.first) {
-            // Longuest line change make scroll dirty but not the line width list as we updated the top value
-            mDirtyBit |= CALCULATE_MAX_SCROLL;
-        } else {
-            if (changedLineWidth > longuestLineWidth.second) {
-                // The longuest line changed and the max scroll 
-                mDirtyBit |= CALCULATE_MAX_SCROLL;
-            }
-            // But we don't know were we are in the line width list, we need to sort it
-            mDirtyBit |= REORDER_LINE_WIDTH;
-        }
-    break;
-    case CREATED:
-        // Increase each line number at and after index in the precalc
-        std::for_each(mDimenPrecalc.lineWidth.begin(), mDimenPrecalc.lineWidth.end(), [&](std::pair<size_t, float>& pair) {
-            if (pair.first >= index) {
-                ++pair.first;
-            }
-        });
-
-        if (changedLineWidth > longuestLineWidth.second) {
-            // The inserted line is the new longuest line, replae to back element in the list
-            mDimenPrecalc.lineWidth.insert(mDimenPrecalc.lineWidth.end(), std::make_pair(index, changedLineWidth));
-        } else {
-            // Put at the beginning, and we need to sort the lines again
-            mDimenPrecalc.lineWidth.insert(mDimenPrecalc.lineWidth.begin(), std::make_pair(index, changedLineWidth));
-            mDirtyBit |= REORDER_LINE_WIDTH;
-        }
-    break;
-    case DELETED:
-        // Find the precalculated line width
+    if (check == DELETED) {
+       // Find the precalculated line width item
         it = std::find_if(mDimenPrecalc.lineWidth.begin(), mDimenPrecalc.lineWidth.end(), [&](const std::pair<size_t, float>& pair) {
             return pair.first == index;
         });
@@ -1083,7 +1038,55 @@ void CursorRenderer::checkLine(size_t index, CheckLine check) {
             }
         });
         mDimenPrecalc.lineWidth.erase(it);
-    break;
+    } else {
+        auto changedLine = mCursor->stringView(index);
+        auto changedLineWidth = mFontTexture->measure(changedLine).x;
+        auto& longuestLineWidth = mDimenPrecalc.lineWidth.back();
+
+        switch (check) {
+        case EDITED:
+            // Find the precalculated line width
+            it = std::find_if(mDimenPrecalc.lineWidth.begin(), mDimenPrecalc.lineWidth.end(), [&](const std::pair<size_t, float>& pair) {
+                return pair.first == index;
+            });
+
+            if (it == mDimenPrecalc.lineWidth.end()) {
+                // Should never goes here
+                return;
+            }
+
+            it->second = changedLineWidth;
+            if (index == longuestLineWidth.first) {
+                // Longuest line change make scroll dirty but not the line width list as we updated the top value
+                mDirtyBit |= CALCULATE_MAX_SCROLL;
+            } else {
+                if (changedLineWidth > longuestLineWidth.second) {
+                    // The longuest line changed and the max scrolls
+                    mDirtyBit |= CALCULATE_MAX_SCROLL;
+                }
+                // But we don't know were we are in the line width list, we need to sort it
+                mDirtyBit |= REORDER_LINE_WIDTH;
+            }
+        break;
+        case CREATED:
+            // Increase each line number at and after index in the precalc
+            std::for_each(mDimenPrecalc.lineWidth.begin(), mDimenPrecalc.lineWidth.end(), [&](std::pair<size_t, float>& pair) {
+                if (pair.first >= index) {
+                    ++pair.first;
+                }
+            });
+
+            if (changedLineWidth > longuestLineWidth.second) {
+                // The inserted line is the new longuest line, replae to back element in the list
+                mDimenPrecalc.lineWidth.insert(mDimenPrecalc.lineWidth.end(), std::make_pair(index, changedLineWidth));
+            } else {
+                // Put at the beginning, and we need to sort the lines again
+                mDimenPrecalc.lineWidth.insert(mDimenPrecalc.lineWidth.begin(), std::make_pair(index, changedLineWidth));
+                mDirtyBit |= REORDER_LINE_WIDTH;
+            }
+        break;
+        default: break;
+        }
     }
 }
 
