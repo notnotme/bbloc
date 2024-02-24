@@ -409,7 +409,6 @@ void CursorRenderer::update(float time) {
             }
 
             // Draw the cursor selection
-            // TODO: draw only 3 quad when selection contains multiple lines
             auto selection = mCursor->selection();
             if (!selection.empty()) {
                 bool selectionStartInViewY = selection.start.y >= firstVisibleLine || selection.start.y < firstVisibleLine + mDimenPrecalc.visibleLineCount;
@@ -420,20 +419,28 @@ void CursorRenderer::update(float time) {
                     sprite.tint = mStyle.selectedTextColor;
                     sprite.size.y = lineHeightPixel;
                     if (selection.start.y == selection.end.y) {
-                            // Start / end on the same line
-                            auto line = mCursor->stringView(selection.start.y);
-                            auto startY = (selection.start.y - firstVisibleLine) * lineHeightPixel;
-                            startY -= mCaretPrecalc.blockGlyphBearingY - lineHeightPixel / 2.0f;
+                        // Start / end on the same line
+                        if (selection.end.x < selection.start.x) {
+                            // Check if we need to invert X axis
+                            std::swap(selection.end.x, selection.start.x);
+                        }
+                        auto line = mCursor->stringView(selection.start.y);
+                        auto startY = (selection.start.y - firstVisibleLine) * lineHeightPixel;
+                        startY -= mCaretPrecalc.blockGlyphBearingY - lineHeightPixel / 2.0f;
 
-                            auto selectionStartX = mFontTexture->measure(line.substr(0, selection.start.x)).x;
-                            auto selectionWidthPixel = mFontTexture->measure(line.substr(selection.start.x, selection.end.x - selection.start.x)).x;
-                            sprite.position.x = (backgroundPosition.x - backgroundSize.x / 2.0f) + (selectionStartX + (selectionWidthPixel / 2.0f)) + scroll.x;
-                            sprite.position.y = glm::round(topText + startY);
-                            sprite.size.x = selectionWidthPixel;
-                            mSpriteBuffer->add(sprite);
-                            ++mRenderPrecalc.selectionGlyphCount;
+                        auto selectionStartX = mFontTexture->measure(line.substr(0, selection.start.x)).x;
+                        auto selectionWidthPixel = mFontTexture->measure(line.substr(selection.start.x, selection.end.x - selection.start.x)).x;
+                        sprite.position.x = (backgroundPosition.x - backgroundSize.x / 2.0f) + (selectionStartX + (selectionWidthPixel / 2.0f)) + scroll.x;
+                        sprite.position.y = glm::round(topText + startY);
+                        sprite.size.x = selectionWidthPixel;
+                        mSpriteBuffer->add(sprite);
+                        ++mRenderPrecalc.selectionGlyphCount;
                     } else {
                         // Start / end on multiple lines
+                        if (selection.end.y < selection.start.y) {
+                            // Check if we need to invert Y axis
+                            std::swap(selection.end, selection.start);
+                        }
                         for(auto y = selection.start.y; y<=selection.end.y; ++y) {
                             auto line = mCursor->stringView(y);
                             auto startY = (y - firstVisibleLine) * lineHeightPixel;
@@ -454,6 +461,7 @@ void CursorRenderer::update(float time) {
                                 mSpriteBuffer->add(sprite);
                                 ++mRenderPrecalc.selectionGlyphCount;
                             } else {
+                                // TODO: merge all lines inbetween start and end
                                 sprite.position.x = backgroundPosition.x;
                                 sprite.position.y = glm::round(topText + startY);
                                 sprite.size.x = backgroundSize.x;
@@ -648,8 +656,16 @@ void CursorRenderer::render() {
         glScissor(scissorPosition.x, scissorPosition.y, scissorSize.x, scissorSize.y);
     }
 
-    mSpriteBuffer->draw(drawIndex, mRenderPrecalc.selectionGlyphCount + mRenderPrecalc.textGlyphCount + 1); 
-    drawIndex += mRenderPrecalc.selectionGlyphCount + mRenderPrecalc.textGlyphCount + 1;
+    if (!mCursor->selectionVisible()) {
+        // Maybe skip the selection
+        drawIndex += mRenderPrecalc.selectionGlyphCount;
+
+        mSpriteBuffer->draw(drawIndex, mRenderPrecalc.textGlyphCount + 1);
+        drawIndex += mRenderPrecalc.textGlyphCount + 1;
+    } else {
+        mSpriteBuffer->draw(drawIndex, mRenderPrecalc.selectionGlyphCount + mRenderPrecalc.textGlyphCount + 1);
+        drawIndex += mRenderPrecalc.selectionGlyphCount + mRenderPrecalc.textGlyphCount + 1;
+    }
 
     // Render status bar text
     if (drawBit(STATUS_BAR)) {

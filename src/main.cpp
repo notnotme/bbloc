@@ -27,24 +27,54 @@ void bindKeyboardControls() {
         SDL_PushEvent(&quitEvent);
     });
     controls->bindKey(SDLK_UP, [](SDL_Keycode keyCode, uint16_t modifier) {
+        if (modifier & KMOD_SHIFT) {
+            cursor->enterSelection();
+        } else {
+            cursor->exitSelection();
+        }
         cursor->move(Cursor::Direction::UP);
     });
     controls->bindKey(SDLK_DOWN, [](SDL_Keycode keyCode, uint16_t modifier) {
+        if (modifier & KMOD_SHIFT) {
+            cursor->enterSelection();
+        } else {
+            cursor->exitSelection();
+        }
         cursor->move(Cursor::Direction::DOWN);
     });
     controls->bindKey(SDLK_LEFT, [](SDL_Keycode keyCode, uint16_t modifier) {
+        if (modifier & KMOD_SHIFT) {
+            cursor->enterSelection();
+        } else {
+            cursor->exitSelection();
+        }
         cursor->move(Cursor::Direction::LEFT);
     });
     controls->bindKey(SDLK_RIGHT, [](SDL_Keycode keyCode, uint16_t modifier) {
+        if (modifier & KMOD_SHIFT) {
+            cursor->enterSelection();
+        } else {
+            cursor->exitSelection();
+        }
         cursor->move(Cursor::Direction::RIGHT);
     });
     controls->bindKey(SDLK_BACKSPACE, [](SDL_Keycode keyCode, uint16_t modifier) {
-        cursor->remove();
+        if (cursor->selectionVisible()) {
+            cursor->eraseSelection();
+        } else {
+            cursor->remove();
+        }
     });
     controls->bindKey(SDLK_RETURN, [](SDL_Keycode keyCode, uint16_t modifier) {
+        if (cursor->selectionVisible()) {
+            cursor->eraseSelection();
+        }
         cursor->newLine();
     });
     controls->bindKey(SDLK_TAB, [](SDL_Keycode keyCode, uint16_t modifier) {
+        if (cursor->selectionVisible()) {
+            cursor->eraseSelection();
+        }
         cursor->insert(u'\t');
     });
     controls->bindKey(SDLK_l, [](SDL_Keycode keyCode, uint16_t modifier) {
@@ -131,6 +161,9 @@ int main(int argc, char *argv[]) {
             case SDL_TEXTINPUT:
                 if (debug->visible()) {
                     break;
+                }
+                if (cursor->selectionVisible()) {
+                    cursor->eraseSelection();
                 }
                 cursor->insert(event.text.text);
             break;

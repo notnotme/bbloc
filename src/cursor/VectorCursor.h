@@ -19,6 +19,7 @@ public:
     bool insert(const char *utf8Text) override;
     bool remove() override;
     bool newLine() override;
+    void eraseSelection() override;
 
 protected:
 

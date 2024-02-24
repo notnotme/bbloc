@@ -7,9 +7,8 @@
 #define LINES_RESERVE 2048 // char reserved per lines
 
 Cursor::Cursor() :
-mPosition(0) {
-    mSelection.start = { 0, 0 };
-    mSelection.end = { 0, 0 };
+mPosition({ 0, 0 }),
+mSelection({ false, false, { 0, 0 }, { 0, 0 } }) {
 }
 
 Cursor::~Cursor() {
@@ -64,6 +63,7 @@ void Cursor::save(const std::string path) {
 
 void Cursor::clear() {
     mPosition = { 0, 0 };
+    mSelection = { false, false, { 0, 0 }, { 0, 0 } };
     while (!mEventStack.empty()) {
         mEventStack.pop();
     }
@@ -182,6 +182,12 @@ bool Cursor::move(Direction direction) {
     break;
     }
 
+    if (mSelection.edit) {
+        mSelection.end = mPosition;
+    } else if (mSelection.visible) {
+        mSelection.visible = false;
+    }
+
     auto moved = direction != 0;
     if (moved) {
         mEventStack.emplace((Event) { CARET_MOVED, (uint64_t) move });
@@ -202,6 +208,44 @@ void Cursor::popEvent() {
     if (!mEventStack.empty()) {
         mEventStack.pop();
     }
+}
+
+bool Cursor::selectionVisible() const {
+    return mSelection.visible;
+}
+
+void Cursor::enterSelection() {
+    if (!mSelection.visible) {
+        mSelection.visible = true;
+    }
+    if (!mSelection.edit) {
+        mSelection.edit = true;
+        mSelection.start = mPosition;
+        mSelection.end = mPosition;
+    }
+}
+
+void Cursor::exitSelection() {
+    if (mSelection.edit) {
+        mSelection.edit = false;
+    }
+}
+
+void Cursor::hideSelection() {
+    if (mSelection.visible) {
+        mSelection.visible = false;
+    }
+}
+
+void Cursor::toggleSelection() {
+    mSelection.visible = !mSelection.visible;
+}
+
+void Cursor::eraseSelection() {
+    mSelection.edit = false;
+    mSelection.visible = false;
+    mSelection.start = { 0, 0 };
+    mSelection.end = { 0, 0 };
 }
 
 void Cursor::eof() {

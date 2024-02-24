@@ -158,6 +158,66 @@ bool StringCursor::newLine() {
     return true;
 };
 
+
+void StringCursor::eraseSelection() {
+    if (mSelection.empty()) {
+        return;
+    }
+
+    auto totalCount = 0;
+    if (mSelection.start.y == mSelection.end.y) {
+        // Start / end on the same line
+        if (mSelection.end.x < mSelection.start.x) {
+            // Check if we need to invert X axis
+            std::swap(mSelection.start, mSelection.end);
+        }
+
+        totalCount = mSelection.end.x - mSelection.start.x;
+        mLines[mPosition.y].count -= totalCount;
+        mBuffer.erase(mLines[mSelection.start.y].start + mSelection.start.x, totalCount);
+        mEventStack.emplace((Event) { LINE_CHANGED, mSelection.start.y });
+        mEventStack.emplace((Event) { CARET_MOVED, LEFT });
+    } else {
+        // Start / end on multiple line
+        if (mSelection.end.y < mSelection.start.y) {
+            // Check if we need to invert Y axis
+            std::swap(mSelection.start, mSelection.end);
+        }
+
+        for (auto line = mSelection.start.y; line <= mSelection.end.y; ++line) {
+            auto& string = mLines[line];
+            if (line == mSelection.start.y) {
+                auto count = string.count - mSelection.start.x;
+                string.count -= count;
+                totalCount += count;
+                mEventStack.emplace((Event) { LINE_CHANGED, line });
+            } else if (line == mSelection.end.y) {
+                string.count -= mSelection.end.x;
+                totalCount += mSelection.end.x;
+                mEventStack.emplace((Event) { LINE_DELETED, line });
+            } else {
+                totalCount += string.count;
+                mEventStack.emplace((Event) { LINE_DELETED, line });
+            }
+        }
+
+        mLines[mSelection.start.y].count += mLines[mSelection.end.y].count;
+        mBuffer.erase(mLines[mSelection.start.y].start + mSelection.start.x, totalCount);
+        mLines.erase(mLines.begin() + mSelection.start.y + 1, mLines.begin() + mSelection.end.y + 1);
+        mEventStack.emplace((Event) { CARET_MOVED, LEFT | UP });
+    }
+
+    // Update the remaining lines
+    std::for_each(mLines.begin() + mSelection.start.y + 1, mLines.end(), [&](Line& line) {
+        line.start -= totalCount;
+    });
+
+    mPosition = mSelection.start;
+
+    // Reset internal struct
+    Cursor::eraseSelection();
+}
+
 void StringCursor::pushLine(const std::u16string line) {
     mLines.emplace_back((Line) { mBuffer.length(), line.length() });
     mBuffer.append(line);

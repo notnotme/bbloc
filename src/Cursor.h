@@ -39,6 +39,10 @@ public:
 
     /// @brief Hold the current caret selection
     struct Selection {
+        /// @brief True if the selection is curently visible
+        bool visible;
+        /// @brief True if the selection is in edit mode (add or remove from selection)
+        bool edit;
         /// @brief Start of the selection line/character
         glm::u32vec2 start;
         /// @brief End of the selection line/character
@@ -102,12 +106,28 @@ public:
     /// @return The selection struct with start/end information
     Selection selection() const;
 
+    /// @brief Get the display status of the selection
+    /// @return True if the selection is visible
+    bool selectionVisible() const;
+
     /// @brief Get the last event from the cursor, if any
     /// @return The event that is on the top of the stack of event, nullptr if no event is in the stack
     const Event* event() const;
 
     /// @brief Remove the top event from the stack of event of this cursor
     void popEvent();
+
+    /// @brief Set the cursor in edit mode and visible state to true
+    void enterSelection();
+
+    /// @brief Set the cursor edit state to false
+    void exitSelection();
+
+    /// @brief Hide the selection
+    void hideSelection();
+
+    /// @brief Show or hide the selection
+    void toggleSelection();
 
     /// @brief Insert a character at the caret position
     /// @param character The character to insert
@@ -131,6 +151,9 @@ public:
     /// @brief Create a new line at the caret position
     /// @return true if the creation succeed, false otherwise
     virtual bool newLine() = 0;
+
+    /// @brief  Erase the current selected characters from the cursor
+    virtual void eraseSelection();
 
 protected:
     
