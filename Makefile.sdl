@@ -27,7 +27,7 @@ PREFIX	=
 CC		= $(PREFIX)gcc
 CXX		= $(PREFIX)g++
 
-CFLAGS	+= -Wl,-q -Wall -Iinclude \
+CFLAGS	+= -Wl,-q -Wall -Iinclude -DIMGUI_IMPL_OPENGL_LOADER_CUSTOM \
 			`sdl2-config --cflags` \
 			`pkg-config freetype2 --cflags`  \
 			`pkg-config glm --cflags` 

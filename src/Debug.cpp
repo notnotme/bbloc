@@ -68,7 +68,7 @@ void Debug::render(SDL_Window* window) {
     if (bRender < mCursorRenderer->mRenderTime) bRender = mCursorRenderer->mRenderTime;
     
     ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplSDL2_NewFrame(window);
+    ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
     //ImGui::ShowDemoWindow();
     if (mShowDebugWindow) {
