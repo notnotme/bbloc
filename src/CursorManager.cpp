@@ -66,6 +66,10 @@ size_t CursorManager::count() const {
     return mCursorList.size();
 }
 
+size_t CursorManager::index() const {
+    return mActiveCursorIndex;
+}
+
 void CursorManager::next(bool loop) {
     if (mCursorList.empty() || mCursorList.size() == 1) {
         return;

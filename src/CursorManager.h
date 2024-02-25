@@ -26,6 +26,9 @@ public:
     /// @brief return the number of cursor in the manager
     size_t count() const;
 
+    /// @brief return the current index of the active cursor in the manager
+    size_t index() const;
+
     /// @brief Switch to next cursor, or does nothing
     /// @param loop True if the function must loop in the cursor list
     void next(bool loop);

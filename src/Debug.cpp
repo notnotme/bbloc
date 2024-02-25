@@ -88,15 +88,16 @@ void Debug::render(SDL_Window* window) {
                 ImGui::EndMenuBar();
             }
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+            ImGui::AlignTextToFramePadding();
+            ImGui::LabelText("Update (ms)", "%.3f, %.3f", mCursorRenderer->mUpdateTime, bUpdate);
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Reset##bUpdate")) bUpdate = 0.0f;
+            ImGui::AlignTextToFramePadding();
+            ImGui::LabelText("Render (ms)", "%.3f, %.3f", mCursorRenderer->mRenderTime, bRender);
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Reset##bRender")) bRender = 0.0f;
             if (ImGui::BeginTabBar("DebugTabs", ImGuiTabBarFlags_None)) {
                 if (ImGui::BeginTabItem("Renderer")) {
-                    ImGui::LabelText("Update", "%.3f, %.3f", mCursorRenderer->mUpdateTime, bUpdate);
-                    ImGui::SameLine();
-                    if (ImGui::SmallButton("Reset##bUpdate")) bUpdate = 0.0f;
-                    ImGui::LabelText("Render", "%.3f, %.3f", mCursorRenderer->mRenderTime, bRender);
-                    ImGui::SameLine();
-                    if (ImGui::SmallButton("Reset##bRender")) bRender = 0.0f;
-                    ImGui::SeparatorText("DrawingBox");
                     ImGui::LabelText("Screen coordinates", "%.1f, %.1f, %.1f, %.1f", left, top, right, bottom);
                     auto drawingBox = mCursorRenderer->mDrawingBox;
                     if (ImGui::InputFloat("Position X", &drawingBox.position.x, 1, 5)) {
@@ -158,9 +159,24 @@ void Debug::render(SDL_Window* window) {
                     ImGui::EndTabItem();
                 }
                 if (ImGui::BeginTabItem("Cursor")) {
-                    ImGui::LabelText("Lines", "%li", cursor->size());
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::LabelText("Current", "%li/%li", mCursorManager->index() + 1, mCursorManager->count());
+                    ImGui::SameLine();
+                    if (ImGui::ArrowButton("PrevCursor", ImGuiDir_Left)) {
+                        mCursorManager->previous(true);
+                        mCursorRenderer->bindTo(mCursorManager->get(), nullptr);
+                        mCursorRenderer->invalidate();
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::ArrowButton("NextCursor", ImGuiDir_Right)) {
+                        mCursorManager->next(true);
+                        mCursorRenderer->bindTo(mCursorManager->get(), nullptr);
+                        mCursorRenderer->invalidate();
+                    }
+                    ImGui::LabelText("Line count", "%li", cursor->size());
                     ImGui::SeparatorText("Caret");
                     ImGui::LabelText("Position", "%i, %i", cursor->mPosition.x, cursor->mPosition.y);
+                    ImGui::PushButtonRepeat(true);
                     if (ImGui::ArrowButton("CaretUp", ImGuiDir_Up)) cursor->move(Cursor::Direction::UP);
                     ImGui::SameLine();
                     if (ImGui::ArrowButton("CaretDown", ImGuiDir_Down)) cursor->move(Cursor::Direction::DOWN);
@@ -168,6 +184,7 @@ void Debug::render(SDL_Window* window) {
                     if (ImGui::ArrowButton("CaretLeft", ImGuiDir_Left)) cursor->move(Cursor::Direction::LEFT);
                     ImGui::SameLine();
                     if (ImGui::ArrowButton("CaretRight", ImGuiDir_Right)) cursor->move(Cursor::Direction::RIGHT);
+                    ImGui::PopButtonRepeat();
                     ImGui::SameLine();
                     if (ImGui::Button("BOF")) cursor->bof();
                     ImGui::SameLine();
