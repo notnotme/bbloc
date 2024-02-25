@@ -5,8 +5,8 @@
 #include <imgui/imgui_impl_sdl2.h>
 #include <imgui/imgui_impl_opengl3.h>
 
-Debug::Debug(std::shared_ptr<Cursor> cursor, std::shared_ptr<CursorRenderer> renderer) :
-mCursor(cursor),
+Debug::Debug(std::shared_ptr<CursorManager> manager, std::shared_ptr<CursorRenderer> renderer) :
+mCursorManager(manager),
 mCursorRenderer(renderer),
 mShowDebugWindow(false),
 mVsync(true) {
@@ -55,6 +55,8 @@ void Debug::processEvent(SDL_Event* event) {
 }
 
 void Debug::render(SDL_Window* window) {
+    auto cursor = mCursorManager->get();
+
     glm::ivec2 windowSize;
     SDL_GetWindowSize(window, &windowSize.x, &windowSize.y);
     auto left = glm::floor(mCursorRenderer->mDrawingBox.position.x - (mCursorRenderer->mDrawingBox.size.x / 2.0f));
@@ -156,24 +158,24 @@ void Debug::render(SDL_Window* window) {
                     ImGui::EndTabItem();
                 }
                 if (ImGui::BeginTabItem("Cursor")) {
-                    ImGui::LabelText("Lines", "%li", mCursor->size());
+                    ImGui::LabelText("Lines", "%li", cursor->size());
                     ImGui::SeparatorText("Caret");
-                    ImGui::LabelText("Position", "%i, %i", mCursor->mPosition.x, mCursor->mPosition.y);
-                    if (ImGui::ArrowButton("CaretUp", ImGuiDir_Up)) mCursor->move(Cursor::Direction::UP);
+                    ImGui::LabelText("Position", "%i, %i", cursor->mPosition.x, cursor->mPosition.y);
+                    if (ImGui::ArrowButton("CaretUp", ImGuiDir_Up)) cursor->move(Cursor::Direction::UP);
                     ImGui::SameLine();
-                    if (ImGui::ArrowButton("CaretDown", ImGuiDir_Down)) mCursor->move(Cursor::Direction::DOWN);
+                    if (ImGui::ArrowButton("CaretDown", ImGuiDir_Down)) cursor->move(Cursor::Direction::DOWN);
                     ImGui::SameLine();
-                    if (ImGui::ArrowButton("CaretLeft", ImGuiDir_Left)) mCursor->move(Cursor::Direction::LEFT);
+                    if (ImGui::ArrowButton("CaretLeft", ImGuiDir_Left)) cursor->move(Cursor::Direction::LEFT);
                     ImGui::SameLine();
-                    if (ImGui::ArrowButton("CaretRight", ImGuiDir_Right)) mCursor->move(Cursor::Direction::RIGHT);
+                    if (ImGui::ArrowButton("CaretRight", ImGuiDir_Right)) cursor->move(Cursor::Direction::RIGHT);
                     ImGui::SameLine();
-                    if (ImGui::Button("BOF")) mCursor->bof();
+                    if (ImGui::Button("BOF")) cursor->bof();
                     ImGui::SameLine();
-                    if (ImGui::Button("EOF")) mCursor->eof();
+                    if (ImGui::Button("EOF")) cursor->eof();
                     ImGui::SameLine();
-                    if (ImGui::Button("BOL")) mCursor->bol();
+                    if (ImGui::Button("BOL")) cursor->bol();
                     ImGui::SameLine();
-                    if (ImGui::Button("EOL")) mCursor->eol();
+                    if (ImGui::Button("EOL")) cursor->eol();
                     ImGui::SeparatorText("Scroll");
                     ImGui::LabelText("Max scroll", "%f, %f", mCursorRenderer->mDimenPrecalc.maxScroll.x, mCursorRenderer->mDimenPrecalc.maxScroll.y);
                     glm::vec2 scroll = mCursorRenderer->mScroll;

@@ -18,6 +18,7 @@ OBJS	=\
 		src/cursor/StringCursor.o \
 		src/cursor/RopeCursor.o \
 		src/Cursor.o \
+		src/CursorManager.o \
 		src/Controls.o \
 		src/Debug.o \
 		src/CursorRenderer.o \

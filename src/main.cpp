@@ -6,18 +6,16 @@
 #include <glm/glm.hpp>
 
 #include "renderer/FontTexture.h"
-#include "cursor/VectorCursor.h" 
-#include "cursor/StringCursor.h"
-#include "cursor/RopeCursor.h"
+#include "CursorManager.h"
 #include "CursorRenderer.h"
 #include "Controls.h"
 #include "Debug.h"
 
 std::shared_ptr<FontTexture> fontTexture = std::make_shared<FontTexture>();
 std::shared_ptr<CursorRenderer> renderer = std::make_shared<CursorRenderer>();
-std::shared_ptr<Cursor> cursor = std::make_shared<RopeCursor>();
+std::shared_ptr<CursorManager> cursorManager = std::make_shared<CursorManager>();
 std::shared_ptr<Controls> controls = std::make_shared<Controls>();
-std::shared_ptr<Debug> debug = std::make_shared<Debug>(cursor, renderer);
+std::shared_ptr<Debug> debug = std::make_shared<Debug>(cursorManager, renderer);
 
 void bindKeyboardControls() {
     controls->bindKey(SDLK_ESCAPE, [](SDL_Keycode keyCode, uint16_t modifier) {
@@ -27,6 +25,7 @@ void bindKeyboardControls() {
         SDL_PushEvent(&quitEvent);
     });
     controls->bindKey(SDLK_UP, [](SDL_Keycode keyCode, uint16_t modifier) {
+        auto cursor = cursorManager->get();
         if (modifier & KMOD_SHIFT) {
             cursor->enterSelection();
         } else {
@@ -35,6 +34,7 @@ void bindKeyboardControls() {
         cursor->move(Cursor::Direction::UP);
     });
     controls->bindKey(SDLK_DOWN, [](SDL_Keycode keyCode, uint16_t modifier) {
+        auto cursor = cursorManager->get();
         if (modifier & KMOD_SHIFT) {
             cursor->enterSelection();
         } else {
@@ -43,22 +43,35 @@ void bindKeyboardControls() {
         cursor->move(Cursor::Direction::DOWN);
     });
     controls->bindKey(SDLK_LEFT, [](SDL_Keycode keyCode, uint16_t modifier) {
+        auto cursor = cursorManager->get();
         if (modifier & KMOD_SHIFT) {
             cursor->enterSelection();
+            cursor->move(Cursor::Direction::LEFT);
+        } else if (modifier & KMOD_ALT) {
+            cursorManager->previous(true);
+            renderer->bindTo(cursorManager->get(), fontTexture);
+            renderer->invalidate();
         } else {
             cursor->exitSelection();
+            cursor->move(Cursor::Direction::LEFT);
         }
-        cursor->move(Cursor::Direction::LEFT);
     });
     controls->bindKey(SDLK_RIGHT, [](SDL_Keycode keyCode, uint16_t modifier) {
+        auto cursor = cursorManager->get();
         if (modifier & KMOD_SHIFT) {
             cursor->enterSelection();
+            cursor->move(Cursor::Direction::RIGHT);
+        } else if (modifier & KMOD_ALT) {
+            cursorManager->next(true);
+            renderer->bindTo(cursorManager->get(), fontTexture);
+            renderer->invalidate();
         } else {
             cursor->exitSelection();
+            cursor->move(Cursor::Direction::RIGHT);
         }
-        cursor->move(Cursor::Direction::RIGHT);
     });
     controls->bindKey(SDLK_BACKSPACE, [](SDL_Keycode keyCode, uint16_t modifier) {
+        auto cursor = cursorManager->get();
         if (cursor->selectionVisible()) {
             cursor->eraseSelection();
         } else {
@@ -66,6 +79,7 @@ void bindKeyboardControls() {
         }
     });
     controls->bindKey(SDLK_DELETE, [](SDL_Keycode keyCode, uint16_t modifier) {
+        auto cursor = cursorManager->get();
         if (cursor->selectionVisible()) {
             cursor->eraseSelection();
         } else {
@@ -73,24 +87,21 @@ void bindKeyboardControls() {
         }
     });
     controls->bindKey(SDLK_RETURN, [](SDL_Keycode keyCode, uint16_t modifier) {
+        auto cursor = cursorManager->get();
         if (cursor->selectionVisible()) {
             cursor->eraseSelection();
         }
         cursor->newLine();
     });
     controls->bindKey(SDLK_TAB, [](SDL_Keycode keyCode, uint16_t modifier) {
+        auto cursor = cursorManager->get();
         if (cursor->selectionVisible()) {
             cursor->eraseSelection();
         }
         cursor->insert(u'\t');
     });
-    controls->bindKey(SDLK_l, [](SDL_Keycode keyCode, uint16_t modifier) {
-        if (modifier & KMOD_CTRL) {
-            cursor->load("romfs/main.cpp");
-            renderer->invalidate();
-        }
-    });
     controls->bindKey(SDLK_s, [](SDL_Keycode keyCode, uint16_t modifier) {
+        auto cursor = cursorManager->get();
         if (modifier & KMOD_CTRL) {
             cursor->save("test.txt");
         }
@@ -127,14 +138,17 @@ int main(int argc, char *argv[]) {
     glActiveTexture(GL_TEXTURE0);
 
     debug->initialize(window, context);
-
-    cursor->load("romfs/UiSystem.cpp");
     fontTexture->initialize(256);
     fontTexture->setFont("romfs/consola.ttf");
+
     renderer->initialize();
     renderer->updateDrawingBox(windowSize.x / 2.0f, windowSize.y / 2.0f, windowSize.x, windowSize.y);
     renderer->updateWindowSize(windowSize.x, windowSize.y);
-    renderer->bindTo(cursor, fontTexture);
+
+    cursorManager->open("romfs/main.cpp");
+    cursorManager->open("romfs/UiSystem.cpp");
+    cursorManager->open("romfs/main.cpp");
+    renderer->bindTo(cursorManager->get(), fontTexture);
 
     bindKeyboardControls();
     bindGamepadControls();
@@ -169,6 +183,8 @@ int main(int argc, char *argv[]) {
                 if (debug->visible()) {
                     break;
                 }
+
+                auto cursor = cursorManager->get();
                 if (cursor->selectionVisible()) {
                     cursor->eraseSelection();
                 }

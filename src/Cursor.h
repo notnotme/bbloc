@@ -78,6 +78,9 @@ public:
     /// @return u16string_view of the requested line, throw if out of bounds
     virtual const std::u16string_view stringView(size_t line) const = 0;
 
+    /// @brief return the path of this buffer
+    const std::string path() const;
+
     /// @brief Return the position of the caret
     /// @return The position of the caret, not always inside the content of mLines (can be at an edge of a line)
     glm::u32vec2 position() const;
@@ -160,6 +163,9 @@ protected:
     
     /// @brief Allow debug to inspect
     friend class Debug;
+
+    /// @brief The path of the current cursor
+    std::string mPath;
 
     /// @brief The current caret position line/character
     glm::u32vec2 mPosition;

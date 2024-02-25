@@ -40,6 +40,7 @@ void Cursor::load(const std::string path) {
     }
     
     fileStream.close();
+    mPath = path;
 }
 
 void Cursor::save(const std::string path) {
@@ -59,6 +60,7 @@ void Cursor::save(const std::string path) {
     }
     
     fileStream.close();
+    mPath = path;
 }
 
 void Cursor::clear() {
@@ -67,6 +69,10 @@ void Cursor::clear() {
     while (!mEventStack.empty()) {
         mEventStack.pop();
     }
+}
+
+const std::string Cursor::path() const {
+    return mPath;
 }
 
 glm::u32vec2 Cursor::position() const {
