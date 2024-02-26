@@ -92,10 +92,13 @@ public:
     /// @brief Finalize the renderer, must be called before forgeting it
     void finalize() const;
     
-    /// @brief Bind the renderer to a Cursor object (this will make the renderer dirty)
-    /// @param cursor The Cursor that should be rendered
+    /// @brief Bind the renderer to a FontTexture object
     /// @param fontTexture The FontTexture that will the font data to the renderer
-    void bindTo(const std::shared_ptr<Cursor> cursor, const std::shared_ptr<FontTexture> fontTexture);
+    void bind(const std::shared_ptr<FontTexture> fontTexture);
+
+    /// @brief Bind the renderer to a Cursor object
+    /// @param cursor The Cursor that should be rendered
+    void bind(const std::shared_ptr<Cursor> cursor);
     
     /// @brief Update the DrawingBox dimension/position (origin centered)
     /// @param xPixel The position on the X axis in pixels

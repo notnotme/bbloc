@@ -55,15 +55,17 @@ void CursorRenderer::updateDrawingBox(float xPixel, float yPixel, float widthPix
     mDirtyBit |= CALCULATE_CARET_POSITION;
 }
 
-void CursorRenderer::bindTo(const std::shared_ptr<Cursor> cursor, const std::shared_ptr<FontTexture> fontTexture) {
-    if (fontTexture != nullptr) {
-        mFontTexture = fontTexture;
-    }
+void CursorRenderer::bind(const std::shared_ptr<FontTexture> fontTexture) {
+    mFontTexture = fontTexture;
+    mDirtyBit |= CALCULATE_CARET_PRECALC | CALCULATE_MAX_SCROLL | CALCULATE_LONGUEST_LINE_NUMBER_STR | CALCULATE_ALL_LINE_WIDTH
+    | CALCULATE_CARET_POSITION | CALCULATE_LINE_IN_VIEW | CALCULATE_MARGIN_WIDTH | CALCULATE_SCROLLBAR_WIDTH | CALCULATE_STATUS_BAR_HEIGHT;
+}
 
+void CursorRenderer::bind(const std::shared_ptr<Cursor> cursor) {
     mCursor = cursor;
-    mDirtyBit = CALCULATE_CARET_PRECALC | CALCULATE_MAX_SCROLL | CALCULATE_LONGUEST_LINE_NUMBER_STR | CALCULATE_ALL_LINE_WIDTH
-    | CALCULATE_CARET_POSITION | CALCULATE_LINE_IN_VIEW | CALCULATE_MARGIN_WIDTH | CALCULATE_SCROLLBAR_WIDTH | CALCULATE_STATUS_BAR_HEIGHT
-    | GENERATE_CARET_POSITION_STR | GENERATE_STATUS_BAR_STR;
+    mDirtyBit |= CALCULATE_MAX_SCROLL | CALCULATE_LONGUEST_LINE_NUMBER_STR | CALCULATE_ALL_LINE_WIDTH
+    | CALCULATE_CARET_POSITION | CALCULATE_MARGIN_WIDTH | CALCULATE_SCROLLBAR_WIDTH | GENERATE_CARET_POSITION_STR
+    | GENERATE_STATUS_BAR_STR;
 }
 
 void CursorRenderer::update(float time) {

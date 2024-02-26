@@ -164,13 +164,13 @@ void Debug::render(SDL_Window* window) {
                     ImGui::SameLine();
                     if (ImGui::ArrowButton("PrevCursor", ImGuiDir_Left)) {
                         mCursorManager->previous(true);
-                        mCursorRenderer->bindTo(mCursorManager->get(), nullptr);
+                        mCursorRenderer->bind(mCursorManager->get());
                         mCursorRenderer->invalidate();
                     }
                     ImGui::SameLine();
                     if (ImGui::ArrowButton("NextCursor", ImGuiDir_Right)) {
                         mCursorManager->next(true);
-                        mCursorRenderer->bindTo(mCursorManager->get(), nullptr);
+                        mCursorRenderer->bind(mCursorManager->get());
                         mCursorRenderer->invalidate();
                     }
                     ImGui::LabelText("Line count", "%li", cursor->size());

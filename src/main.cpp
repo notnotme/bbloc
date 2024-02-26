@@ -49,7 +49,7 @@ void bindKeyboardControls() {
             cursor->move(Cursor::Direction::LEFT);
         } else if (modifier & KMOD_ALT) {
             cursorManager->previous(true);
-            renderer->bindTo(cursorManager->get(), fontTexture);
+            renderer->bind(cursorManager->get());
             renderer->invalidate();
         } else {
             cursor->exitSelection();
@@ -63,7 +63,7 @@ void bindKeyboardControls() {
             cursor->move(Cursor::Direction::RIGHT);
         } else if (modifier & KMOD_ALT) {
             cursorManager->next(true);
-            renderer->bindTo(cursorManager->get(), fontTexture);
+            renderer->bind(cursorManager->get());
             renderer->invalidate();
         } else {
             cursor->exitSelection();
@@ -148,7 +148,8 @@ int main(int argc, char *argv[]) {
     cursorManager->open("romfs/main.cpp");
     cursorManager->open("romfs/UiSystem.cpp");
     cursorManager->open("romfs/main.cpp");
-    renderer->bindTo(cursorManager->get(), fontTexture);
+    renderer->bind(fontTexture);
+    renderer->bind(cursorManager->get());
 
     bindKeyboardControls();
     bindGamepadControls();
