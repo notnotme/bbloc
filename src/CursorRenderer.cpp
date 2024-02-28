@@ -3,20 +3,17 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #define SPRITE_BUFFER_SIZE 8192 // Number of Vertex
-#define TEXT_MARGIN 1 // Pixels
 
 CursorRenderer::CursorRenderer() :
 mSpriteShader(std::make_unique<SpriteShader>()),
 mSpriteBuffer(std::make_unique<SpriteBuffer>(SPRITE_BUFFER_SIZE)),
-mScroll(0),
 mDrawingBox({ { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0, 0, 0} }),
-mRenderPrecalc({ 0, 0, 0, 0, 0, 0, glm::mat4(1) }),
-mDimenPrecalc({ 0, 0, 0, 0, 0, 0, 0, { 0, 0 } }),
-mCaretPrecalc({ true, 0.5f, 0, 0, 0, { 2, 0 }, { 0, 0 }, { 0, 0, 0, 0 } }),
-mDrawBit(SCISSOR | LEFT_MARGIN | LINE_NUMBER | SCROLL_BAR | LINE_NUMBER_INDICATOR | HIGHTLIGHT_CURRENT_LINE | STATUS_BAR),
-mDirtyBit(CALCULATE_CARET_PRECALC | CALCULATE_MAX_SCROLL | CALCULATE_LONGUEST_LINE_NUMBER_STR | CALCULATE_ALL_LINE_WIDTH
-    | CALCULATE_CARET_POSITION | CALCULATE_LINE_IN_VIEW | CALCULATE_MARGIN_WIDTH | CALCULATE_SCROLLBAR_WIDTH
-    | CALCULATE_STATUS_BAR_HEIGHT | GENERATE_CARET_POSITION_STR | GENERATE_STATUS_BAR_STR),
+mRenderPrecalc({ 0, 0, 0, 0, 0, glm::mat4(1) }),
+mDimenPrecalc({ 0, 0, 0, { 0, 0 } }),
+mCaretPrecalc({ true, 0.5f, 0, 0, { 2, 0 }, { 0, 0 } }),
+mScroll(0),
+mDrawBit(UINT8_MAX),
+mDirtyBit(UINT32_MAX),
 mUpdateTime(0),
 mRenderTime(0) {
 }
@@ -47,25 +44,27 @@ void CursorRenderer::updateDrawingBox(float xPixel, float yPixel, float widthPix
     mDrawingBox.size.y = heightPixel;
     mDrawingBox.viewport.x = mDrawingBox.position.x - mDrawingBox.size.x / 2.0f;
     mDrawingBox.viewport.y = mDrawingBox.position.x + mDrawingBox.size.x / 2.0f;
-    mDrawingBox.viewport.z = mDrawingBox.position.y + mDrawingBox.size.y / 2.0f;
-    mDrawingBox.viewport.w = mDrawingBox.position.y - mDrawingBox.size.y / 2.0f;
+    mDrawingBox.viewport.w = mDrawingBox.position.y + mDrawingBox.size.y / 2.0f;
+    mDrawingBox.viewport.z = mDrawingBox.position.y - mDrawingBox.size.y / 2.0f;
 
     mDirtyBit |= CALCULATE_MAX_SCROLL;
     mDirtyBit |= CALCULATE_LINE_IN_VIEW;
     mDirtyBit |= CALCULATE_CARET_POSITION;
+    mDirtyBit |= INVALIDATE_SPRITES;
+    mDirtyBit |= INVALIDATE_SCROLL_INDICATORS;
 }
 
 void CursorRenderer::bind(const std::shared_ptr<FontTexture> fontTexture) {
     mFontTexture = fontTexture;
-    mDirtyBit |= CALCULATE_CARET_PRECALC | CALCULATE_MAX_SCROLL | CALCULATE_LONGUEST_LINE_NUMBER_STR | CALCULATE_ALL_LINE_WIDTH
-    | CALCULATE_CARET_POSITION | CALCULATE_LINE_IN_VIEW | CALCULATE_MARGIN_WIDTH | CALCULATE_SCROLLBAR_WIDTH | CALCULATE_STATUS_BAR_HEIGHT;
+    mDirtyBit |= CALCULATE_CARET_PRECALC | CALCULATE_MAX_SCROLL | CALCULATE_LONGUEST_LINE_NUMBER
+    | CALCULATE_ALL_LINE_WIDTH | CALCULATE_CARET_POSITION | CALCULATE_LINE_IN_VIEW | INVALIDATE_SPRITES
+    | INVALIDATE_SCROLL_INDICATORS;
 }
 
 void CursorRenderer::bind(const std::shared_ptr<Cursor> cursor) {
     mCursor = cursor;
-    mDirtyBit |= CALCULATE_MAX_SCROLL | CALCULATE_LONGUEST_LINE_NUMBER_STR | CALCULATE_ALL_LINE_WIDTH
-    | CALCULATE_CARET_POSITION | CALCULATE_MARGIN_WIDTH | CALCULATE_SCROLLBAR_WIDTH | GENERATE_CARET_POSITION_STR
-    | GENERATE_STATUS_BAR_STR;
+    mDirtyBit |= CALCULATE_MAX_SCROLL | CALCULATE_LONGUEST_LINE_NUMBER | CALCULATE_ALL_LINE_WIDTH
+    | CALCULATE_CARET_POSITION | INVALIDATE_SCROLL_INDICATORS;
 }
 
 void CursorRenderer::update(float time) {
@@ -76,39 +75,22 @@ void CursorRenderer::update(float time) {
     }
 
     // Pump and clear the cursor events
-    mCaretPrecalc.lastCaretDirection = 0;
-    std::u16string characterNumberText;
-    std::u16string lineNumberText;
-    const auto caretPosition = mCursor->position();
+    auto caretPosition = mCursor->position();
     auto cursorEvent = mCursor->event();
+    auto lastCaretDirection = 0;
     while (cursorEvent != nullptr) {
         switch (cursorEvent->type) {
         case Cursor::EventType::CARET_MOVED:
             mDirtyBit |= CALCULATE_CARET_POSITION;
             mDirtyBit |= TRY_SCROLL_TO_BORDERS;
-            mDirtyBit |= GENERATE_CARET_POSITION_STR;
-            mDirtyBit |= GENERATE_STATUS_BAR_STR;
             // Trigger both caret direction to make it visible on screen if it is out of bounds
-            mCaretPrecalc.lastCaretDirection |= VERTICAL;
-            mCaretPrecalc.lastCaretDirection |= HORIZONTAL;
-        break;
-        case Cursor::EventType::LINE_CHANGED:
-            checkLine(cursorEvent->data, EDITED);
-            mDirtyBit |= TEXT_CHANGED;
+            lastCaretDirection |= VERTICAL;
+            lastCaretDirection |= HORIZONTAL;
         break;
         case Cursor::EventType::LINE_CREATED:
-            checkLine(cursorEvent->data, CREATED);
-            mDirtyBit |= CALCULATE_LONGUEST_LINE_NUMBER_STR;
-            mDirtyBit |= GENERATE_STATUS_BAR_STR;
-            mDirtyBit |= CALCULATE_MAX_SCROLL;
-            mDirtyBit |= TEXT_CHANGED;
-        break;
+        case Cursor::EventType::LINE_CHANGED:
         case Cursor::EventType::LINE_DELETED:
-            checkLine(cursorEvent->data, DELETED);
-            mDirtyBit |= CALCULATE_LONGUEST_LINE_NUMBER_STR;
-            mDirtyBit |= GENERATE_STATUS_BAR_STR;
-            mDirtyBit |= CALCULATE_MAX_SCROLL;
-            mDirtyBit |= TEXT_CHANGED;
+            checkLine(cursorEvent->data, (CheckLine) cursorEvent->type);
         break;
         }
 
@@ -119,8 +101,8 @@ void CursorRenderer::update(float time) {
     // Inspect what changed in the internal state
     auto updateBuffer = false;
     auto updateCaret = false;
-
     if (mDirtyBit & CALCULATE_CARET_PRECALC) {
+        invalidateSpriteTextures();
         calculateCaretPrecalc();
         updateBuffer = true;
     }
@@ -134,49 +116,25 @@ void CursorRenderer::update(float time) {
     if (mDirtyBit & CALCULATE_LINE_IN_VIEW) {
         calculateLineInView();
     }
-    if (mDirtyBit & CALCULATE_LONGUEST_LINE_NUMBER_STR) {
+    if (mDirtyBit & CALCULATE_LONGUEST_LINE_NUMBER) {
         calculateLonguestLineNumberPixel();
         updateBuffer = true;
     }
-    if (mDirtyBit & CALCULATE_MARGIN_WIDTH) {
-        calculateMarginWidth();
-        updateBuffer = true;
-    }
-    if (mDirtyBit & CALCULATE_SCROLLBAR_WIDTH) {
-        calculateScrollbarWidth();
-        updateBuffer = true;
-    }
-    if (mDirtyBit & CALCULATE_STATUS_BAR_HEIGHT) {
-        calculateStatusBarHeight();
+    if (mDirtyBit & INVALIDATE_SPRITES) {
+        invalidateSprite();
         updateBuffer = true;
     }
     if (mDirtyBit & CALCULATE_MAX_SCROLL) {
         calculateMaxScroll();
         updateBuffer = true;
     }
+    if (mDirtyBit & INVALIDATE_SCROLL_INDICATORS) {
+        invalidateScrollIndicators();
+        updateBuffer = true;
+    }
     if (mDirtyBit & CALCULATE_CARET_POSITION) {
         calculateCaretPosition();
         updateCaret = true;
-    }
-    if (mDirtyBit & GENERATE_CARET_POSITION_STR) {
-        generateCaretPositionString();
-        updateBuffer = true;
-    }
-    if (mDirtyBit & GENERATE_STATUS_BAR_STR) {
-        generateStatusBarString();
-        updateBuffer = true;
-    }
-    if (mDirtyBit & TRY_SCROLL_TO_BORDERS) {
-        scrollCaretToBorder(mCaretPrecalc.lastCaretDirection);
-        // Passing here indicate that the caret moved, so make it instantly visible
-        mCaretPrecalc.visible = true;
-        mCaretPrecalc.nextBlink = time + mCaretPrecalc.blinkRate;
-        if (mCaretPrecalc.lastCaretDirection & VERTICAL) {
-            // Needed to update the indicator position in the margin area
-            updateBuffer = true;
-        } else {
-            updateCaret = true;
-        }
     }
     if (mDirtyBit & SCROLL_POSITION_CHANGED) {
         mDirtyBit &= ~SCROLL_POSITION_CHANGED;
@@ -190,164 +148,88 @@ void CursorRenderer::update(float time) {
         mDirtyBit &= ~TEXT_CHANGED;
         updateBuffer = true;
     }
-
-    if (time > mCaretPrecalc.nextBlink) {
-        mCaretPrecalc.nextBlink = time + mCaretPrecalc.blinkRate;
+    if (mDirtyBit & TRY_SCROLL_TO_BORDERS) {
+        scrollCaretToBorder(lastCaretDirection);
+        // Passing here indicate that the caret moved, so make it instantly visible
+        mCaretPrecalc.visible = true;
+        mCaretPrecalc.nextBlinkTime = time + mCaretPrecalc.blinkTime;
+        if (lastCaretDirection & VERTICAL) {
+            // Needed to update the indicator position in the margin area
+            updateBuffer = true;
+        } else {
+            updateCaret = true;
+        }
+    }
+    if (time > mCaretPrecalc.nextBlinkTime) {
+        mCaretPrecalc.nextBlinkTime = time + mCaretPrecalc.blinkTime;
         mCaretPrecalc.visible = !mCaretPrecalc.visible;
         updateCaret = true;
     }
 
     SpriteVertex sprite;
     if (updateBuffer) {
-        // Inverse scroll now
-        auto scroll = -mScroll;
-        // Create needed values
-        auto lineHeightPixel = mCaretPrecalc.size.y;
-        auto left = mDrawingBox.viewport.x;
-        auto right = mDrawingBox.viewport.y;
-        auto bottom = mDrawingBox.viewport.z;
-        auto top = mDrawingBox.viewport.w;
-        
         // Reset mRenderPrecalc data
         mRenderPrecalc.backgroundGlyphCount = 0;
         mRenderPrecalc.textGlyphCount = 0;
         mRenderPrecalc.lineNumberGlyphCount = 0;
         mRenderPrecalc.selectionGlyphCount = 0;
         mRenderPrecalc.caretGlyphIndex = 0;
-        mRenderPrecalc.statusBarTextGlyphCount = 0;
-        
+
         // Map the whole buffers
         mSpriteBuffer->use();
         mSpriteBuffer->map();
 
-        // Update the background elements
-        auto backgroundPosition = mDrawingBox.position;
-        auto backgroundSize = mDrawingBox.size;
-        sprite.texture = mCaretPrecalc.texture;
-
-        // Maybe draw the status bar
-        if (drawBit(STATUS_BAR)) {
-            // Upate the background values
-            backgroundPosition.y -= mDimenPrecalc.statusBarHeight / 2.0f;
-            backgroundSize.y -= mDimenPrecalc.statusBarHeight;
-
-            sprite.position.x = backgroundPosition.x;
-            sprite.position.y = bottom - mDimenPrecalc.statusBarHeight / 2.0f;
-            sprite.size.x = backgroundSize.x;
-            sprite.size.y = mDimenPrecalc.statusBarHeight;
-            sprite.tint = mStyle.marginColor;
-            mSpriteBuffer->add(sprite);
-            ++mRenderPrecalc.backgroundGlyphCount;
-
-            // Decrease bottom
-            bottom -= mDimenPrecalc.statusBarHeight;
-        }
-
         // Maybe draw the left margin
         if (drawBit(LEFT_MARGIN)) {
             // Upate the background values
-            backgroundPosition.x += (mDimenPrecalc.marginWidth + mDimenPrecalc.borderWidth) / 2.0f;
-            backgroundSize.x -= mDimenPrecalc.marginWidth + mDimenPrecalc.borderWidth;
-
-            sprite.position.x = left + mDimenPrecalc.marginWidth / 2.0f;
-            sprite.position.y = backgroundPosition.y;
-            sprite.size.x = mDimenPrecalc.marginWidth;
-            sprite.size.y = backgroundSize.y;
-            sprite.tint = mStyle.marginColor;
-            mSpriteBuffer->add(sprite);
+            mSpriteBuffer->add(mMarginSprite);
             ++mRenderPrecalc.backgroundGlyphCount;
 
             // Maybe draw the border
-            if (mStyle.marginBorderWidth > 0) {
-                sprite.position.x = left + mDimenPrecalc.marginWidth + mStyle.marginBorderWidth / 2.0f;
-                sprite.size.x = mStyle.marginBorderWidth;
-                sprite.tint = mStyle.marginBorderColor;
-                mSpriteBuffer->add(sprite);
+            if (mBorderSprite.size.x > 0) {
+                mSpriteBuffer->add(mBorderSprite);
                 ++mRenderPrecalc.backgroundGlyphCount;
             }
-
-            // Increase left start
-            left += mDimenPrecalc.marginWidth + mDimenPrecalc.borderWidth;
         }
 
         // Maybe show the scrollbar
         if (drawBit(SCROLL_BAR) && mStyle.scrollbarWidth > 0) {
-            // Upate the background values
-            backgroundPosition -= mDimenPrecalc.scrollbarWidth / 2.0f;
-            backgroundSize -= mDimenPrecalc.scrollbarWidth;
-
-            auto indicatorWidth = glm::max({ 32.0f, 32.0f }, backgroundSize - mDimenPrecalc.maxScroll);
-            auto indicatorPosition = glm::abs(scroll / mDimenPrecalc.maxScroll) * (backgroundSize - indicatorWidth) + indicatorWidth / 2.0f;
-            auto halfScrollbarWidth = mDimenPrecalc.scrollbarWidth / 2.0f;
-
             // Vertical
-            sprite.position.x = right - halfScrollbarWidth;
-            sprite.position.y = backgroundPosition.y;
-            sprite.size.x = mDimenPrecalc.scrollbarWidth;
-            sprite.size.y = backgroundSize.y;
-            sprite.tint = mStyle.scrollbarColor;
-            mSpriteBuffer->add(sprite);
+            mSpriteBuffer->add(mVScrollSprite);
+            mSpriteBuffer->add(mVScrollIndicatorSprite);
             ++mRenderPrecalc.backgroundGlyphCount;
-
-            sprite.position.y = top + indicatorPosition.y;
-            sprite.size.x = mDimenPrecalc.scrollbarWidth;
-            sprite.size.y = indicatorWidth.y;
-            sprite.tint = mStyle.scrollbarIndicatorColor;
-            mSpriteBuffer->add(sprite);
             ++mRenderPrecalc.backgroundGlyphCount;
 
             // Horizontal
-            sprite.position.x = backgroundPosition.x;
-            sprite.position.y = bottom - halfScrollbarWidth;
-            sprite.size.x = backgroundSize.x;
-            sprite.size.y = mDimenPrecalc.scrollbarWidth;
-            sprite.tint = mStyle.scrollbarColor;
-            mSpriteBuffer->add(sprite);
+            mSpriteBuffer->add(mHScrollSprite);
+            mSpriteBuffer->add(mHScrollIndicatorSprite);
+            ++mRenderPrecalc.backgroundGlyphCount;
             ++mRenderPrecalc.backgroundGlyphCount;
 
-            sprite.position.x = left + indicatorPosition.x;
-            sprite.size.x = indicatorWidth.x;
-            sprite.size.y = mDimenPrecalc.scrollbarWidth;
-            sprite.tint = mStyle.scrollbarIndicatorColor;
-            mSpriteBuffer->add(sprite);
-            ++mRenderPrecalc.backgroundGlyphCount;
-            
             // Bottom right corner
-            sprite.position.x = right - halfScrollbarWidth;
-            sprite.position.y = bottom - halfScrollbarWidth;
-            sprite.size.x = mDimenPrecalc.scrollbarWidth;
-            sprite.size.y = mDimenPrecalc.scrollbarWidth;
-            sprite.tint = mStyle.scrollbarColor;
-            mSpriteBuffer->add(sprite);
+            mSpriteBuffer->add(mCornerSprite);
             ++mRenderPrecalc.backgroundGlyphCount;
-            
-            // Decrease bottom and right
-            bottom -= mDimenPrecalc.scrollbarWidth;
-            right -= mDimenPrecalc.scrollbarWidth;
         }
 
         // Draw the editor background
-        sprite.position.x = backgroundPosition.x;
-        sprite.position.y = backgroundPosition.y;
-        sprite.size.x = backgroundSize.x;
-        sprite.size.y = backgroundSize.y;
-        sprite.tint = mStyle.backgroundColor;
-        mSpriteBuffer->add(sprite);
+        mSpriteBuffer->add(mBackgroundSprite);
         ++mRenderPrecalc.backgroundGlyphCount;
 
         // Calculate scroll amount for the text
-        auto scrollAmount = glm::abs(scroll.y / lineHeightPixel);
-        auto scrollFraction = glm::fract(scrollAmount) * lineHeightPixel;
+        auto scroll = -mScroll;
+        auto scrollAmount = glm::abs(scroll.y / mCaretPrecalc.size.y);
+        auto scrollFraction = glm::fract(scrollAmount) * mCaretPrecalc.size.y;
         auto firstVisibleLine = glm::floor(scrollAmount);
-        auto topText = top + mCaretPrecalc.blockGlyphBearingY - scrollFraction;
+        auto topText = mDrawingBox.viewport.z + mCaretPrecalc.bearingY - scrollFraction;
         auto lastVisibleLine = firstVisibleLine + mDimenPrecalc.visibleLineCount + 2; // one line above and below the visible area must be drawn
         auto visibleText = true;
 
+        // Allows scroll out of view
         if (firstVisibleLine < 0) {
-            // Gap between the first line andtop of the screen
+            // Gap between the first line and the top of the screen
             auto skipCount = glm::abs(firstVisibleLine);
-            topText += (skipCount * lineHeightPixel);
-            if (topText > bottom + lineHeightPixel) {
+            topText += (skipCount * mCaretPrecalc.size.y);
+            if (topText > mDrawingBox.viewport.w + mCaretPrecalc.size.y) {
                 // Below visible area
                 visibleText = false;
             } else {
@@ -357,18 +239,18 @@ void CursorRenderer::update(float time) {
         } else if (firstVisibleLine > mCursor->size()) {
             // Above visible area
             visibleText = false;
-        } 
+        }
 
         if (visibleText) {
             // Maybe draw the text in the margin
             if (drawBit(LEFT_MARGIN)) {
-                auto printAtX = left - mDimenPrecalc.marginWidth - mDimenPrecalc.borderWidth;
+                auto printAtX = mDrawingBox.viewport.x;
                 auto printAtY = topText;
 
                 // Print line number or indicator maybe
                 if (drawBit(LINE_NUMBER_INDICATOR) || drawBit(LINE_NUMBER)) {
                     for (size_t lineIndex = firstVisibleLine; lineIndex < lastVisibleLine; ++lineIndex) {
-                        if (lineIndex >= mCursor->size() || printAtY > bottom + lineHeightPixel + mDimenPrecalc.scrollbarWidth) {
+                        if (lineIndex >= mCursor->size() || printAtY > mDrawingBox.viewport.w + mCaretPrecalc.size.y / 2.0f) {
                             // Stop early if possible
                             break;
                         }
@@ -381,7 +263,6 @@ void CursorRenderer::update(float time) {
                                 sprite.size = tile.size;
                                 sprite.texture = tile.texture;
                                 sprite.tint = mStyle.currentLineNumberColor;
-                                
                                 mSpriteBuffer->add(sprite);
                                 printAtX += tile.advance;
                                 ++mRenderPrecalc.lineNumberGlyphCount;
@@ -406,22 +287,23 @@ void CursorRenderer::update(float time) {
                             }
                         }
 
-                        printAtY += lineHeightPixel;
-                        printAtX = left - mDimenPrecalc.marginWidth - mDimenPrecalc.borderWidth;
+                        printAtY += mCaretPrecalc.size.y;
+                        printAtX = mDrawingBox.viewport.x;
                     }
                 }
             }
 
             // Draw the cursor selection
+            // TODO: clip out of bounds
             auto selection = mCursor->selection();
             if (!selection.empty()) {
+                sprite.texture = mFontTexture->pixelCoordinates();
                 bool selectionStartInViewY = selection.start.y >= firstVisibleLine || selection.start.y < firstVisibleLine + mDimenPrecalc.visibleLineCount;
                 bool selectionEndInViewY = selection.end.y >= firstVisibleLine || selection.end.y < firstVisibleLine + mDimenPrecalc.visibleLineCount;
                 // check if we are in the view area on the y axis
                 if (selectionStartInViewY || selectionEndInViewY) {
-                    sprite.texture = mCaretPrecalc.texture;
                     sprite.tint = mStyle.selectedTextColor;
-                    sprite.size.y = lineHeightPixel;
+                    sprite.size.y = mCaretPrecalc.size.y;
                     if (selection.start.y == selection.end.y) {
                         // Start / end on the same line
                         if (selection.end.x < selection.start.x) {
@@ -429,12 +311,12 @@ void CursorRenderer::update(float time) {
                             std::swap(selection.end.x, selection.start.x);
                         }
                         auto line = mCursor->stringView(selection.start.y);
-                        auto startY = (selection.start.y - firstVisibleLine) * lineHeightPixel;
-                        startY -= mCaretPrecalc.blockGlyphBearingY - lineHeightPixel / 2.0f;
+                        auto startY = (selection.start.y - firstVisibleLine) * mCaretPrecalc.size.y;
+                        startY -= mCaretPrecalc.bearingY - mCaretPrecalc.size.y / 2.0f;
 
                         auto selectionStartX = mFontTexture->measure(line.substr(0, selection.start.x)).x;
                         auto selectionWidthPixel = mFontTexture->measure(line.substr(selection.start.x, selection.end.x - selection.start.x)).x;
-                        sprite.position.x = (backgroundPosition.x - backgroundSize.x / 2.0f) + (selectionStartX + (selectionWidthPixel / 2.0f)) + scroll.x;
+                        sprite.position.x = (mBackgroundSprite.position.x - mBackgroundSprite.size.x / 2.0f) + (selectionStartX + (selectionWidthPixel / 2.0f)) + scroll.x;
                         sprite.position.y = glm::round(topText + startY);
                         sprite.size.x = selectionWidthPixel;
                         mSpriteBuffer->add(sprite);
@@ -447,28 +329,28 @@ void CursorRenderer::update(float time) {
                         }
                         for(auto y = selection.start.y; y<=selection.end.y; ++y) {
                             auto line = mCursor->stringView(y);
-                            auto startY = (y - firstVisibleLine) * lineHeightPixel;
-                            startY -= mCaretPrecalc.blockGlyphBearingY - lineHeightPixel / 2.0f;
+                            auto startY = (y - firstVisibleLine) * mCaretPrecalc.size.y;
+                            startY -= mCaretPrecalc.bearingY - mCaretPrecalc.size.y / 2.0f;
                             if (y == selection.start.y) {
                                 auto selectionStartX = mFontTexture->measure(line.substr(0, selection.start.x)).x;
-                                auto selectionWidthPixel = backgroundSize.x - selectionStartX;
-                                sprite.position.x = (backgroundPosition.x - backgroundSize.x / 2.0f) + (selectionStartX + (selectionWidthPixel / 2.0f)) + scroll.x / 2.0f;
+                                auto selectionWidthPixel = mBackgroundSprite.size.x - selectionStartX;
+                                sprite.position.x = (mBackgroundSprite.position.x - mBackgroundSprite.size.x / 2.0f) + (selectionStartX + (selectionWidthPixel / 2.0f)) + scroll.x / 2.0f;
                                 sprite.position.y = glm::round(topText + startY);
                                 sprite.size.x = selectionWidthPixel - scroll.x;
                                 mSpriteBuffer->add(sprite);
                                 ++mRenderPrecalc.selectionGlyphCount;
                             } else if (y == selection.end.y) {
                                 auto selectionEndX = mFontTexture->measure(line.substr(0, selection.end.x)).x;
-                                sprite.position.x = (backgroundPosition.x - backgroundSize.x / 2.0f) + (selectionEndX / 2.0f) + scroll.x;
+                                sprite.position.x = (mBackgroundSprite.position.x - mBackgroundSprite.size.x / 2.0f) + (selectionEndX / 2.0f) + scroll.x;
                                 sprite.position.y = glm::round(topText + startY);
                                 sprite.size.x = selectionEndX;
                                 mSpriteBuffer->add(sprite);
                                 ++mRenderPrecalc.selectionGlyphCount;
                             } else {
                                 // TODO: merge all lines inbetween start and end
-                                sprite.position.x = backgroundPosition.x;
+                                sprite.position.x = mBackgroundSprite.position.x;
                                 sprite.position.y = glm::round(topText + startY);
-                                sprite.size.x = backgroundSize.x;
+                                sprite.size.x = mBackgroundSprite.size.x;
                                 mSpriteBuffer->add(sprite);
                                 ++mRenderPrecalc.selectionGlyphCount;
                             }
@@ -481,15 +363,15 @@ void CursorRenderer::update(float time) {
             if (drawBit(HIGHTLIGHT_CURRENT_LINE)) {
                 // Check if we are in the view area on the y axis
                 if (caretPosition.y >= firstVisibleLine && caretPosition.y < firstVisibleLine + mDimenPrecalc.visibleLineCount) {
-                    auto positionInView = (caretPosition.y - firstVisibleLine) * lineHeightPixel;
-                    positionInView -= mCaretPrecalc.blockGlyphBearingY - lineHeightPixel / 2.0f;
-                    
-                    sprite.texture = mCaretPrecalc.texture;
-                    sprite.position.x = backgroundPosition.x;
+                    auto positionInView = (caretPosition.y - firstVisibleLine) * mCaretPrecalc.size.y;
+                    positionInView -= mCaretPrecalc.bearingY - mCaretPrecalc.size.y / 2.0f;
+
+                    sprite.position.x = mBackgroundSprite.position.x;
                     sprite.position.y = glm::round(topText + positionInView);
+                    sprite.size.x = mBackgroundSprite.size.x;
+                    sprite.size.y = mCaretPrecalc.size.y;
+                    sprite.texture = mFontTexture->pixelCoordinates();
                     sprite.tint = mStyle.currentLinebackgroundColor;
-                    sprite.size.x = backgroundSize.x;
-                    sprite.size.y = lineHeightPixel;
                     mSpriteBuffer->add(sprite);
                     ++mRenderPrecalc.textGlyphCount;
                 }
@@ -497,9 +379,9 @@ void CursorRenderer::update(float time) {
 
             // Put the caret in the buffer, keep trace of it's position
             sprite.position = mCaretPrecalc.position;
-            sprite.texture = mCaretPrecalc.texture;
             sprite.size.x =  mStyle.caretWidth;
-            sprite.size.y = lineHeightPixel;
+            sprite.size.y = mCaretPrecalc.size.y;
+            sprite.texture = mFontTexture->pixelCoordinates();
             if (mCaretPrecalc.visible) {
                 sprite.tint = mStyle.caretColor;
             } else {
@@ -508,31 +390,38 @@ void CursorRenderer::update(float time) {
             mRenderPrecalc.caretGlyphIndex = mSpriteBuffer->index();
             mSpriteBuffer->add(sprite);
 
-            auto printAtX = left;
+            auto printAtX = mDrawingBox.viewport.x + mMarginSprite.size.x + mBorderSprite.size.x;
             auto printAtY = topText;
             for (size_t lineIndex = firstVisibleLine; lineIndex < lastVisibleLine; ++lineIndex) {
-                if (lineIndex >= mCursor->size() || printAtY > bottom + lineHeightPixel) {
+                if (lineIndex >= mCursor->size() || printAtY > mDrawingBox.viewport.w - mHScrollSprite.size.y + mCaretPrecalc.size.y / 2.0f) {
                     // Stop early if possible
                     break;
                 }
 
                 auto line = mCursor->stringView(lineIndex);
                 for (auto character : line) {
+                    bool stop = false;
                     mFontTexture->get(character, [&](const FontTexture::Tile& tile) {
                         sprite.position.x = glm::floor(printAtX + (tile.bearing.x + tile.size.x / 2.0f) + scroll.x);
                         sprite.position.y = glm::round(printAtY - (tile.bearing.y - tile.size.y / 2.0f));
-                        
+
+                        if (sprite.position.x - tile.size.x / 2.0f >= mDrawingBox.viewport.y - mVScrollSprite.size.x) {
+                            // Out of visible area on the X axis, next line
+                            stop = true;
+                            return;
+                        }
+
                         switch (character) {
                         case u'	':
-                            // non printable but advance the caret
-                            // Take in account the TAB (0x0009) character (= SPACE width * 4)
+                            // Tab
                             printAtX += tile.advance * 4;
-                            break;
+                        break;
+                        case u' ':
+                            // Space
+                            printAtX += tile.advance;
+                        break;
                         default:
-                            if (sprite.position.x - tile.size.x / 2.0f >= right) {
-                                // Out of visible area on the X axis, next line
-                                break;
-                            } else if (sprite.position.x + tile.size.x / 2.0f >= left) {
+                            if (sprite.position.x + tile.size.x / 2.0f >= mDrawingBox.viewport.x + mMarginSprite.size.x + mBorderSprite.size.x) {
                                 // In visible area
                                 sprite.size = tile.size;
                                 sprite.texture = tile.texture;
@@ -541,45 +430,17 @@ void CursorRenderer::update(float time) {
                                 mSpriteBuffer->add(sprite);
                                 ++mRenderPrecalc.textGlyphCount;
                             }
-                        case u' ':
-                            // SPACE is not printable but need to advance the caret as a normal character
                             printAtX += tile.advance;
+                        break;
                         }
                     });
+                    if (stop) {
+                        break;
+                    }
                 }
 
-                printAtY += lineHeightPixel;
-                printAtX = left;
-            }
-
-            // Draw the status bar text 
-            if (drawBit(STATUS_BAR)) {
-                auto printAtX = mDrawingBox.viewport.x + TEXT_MARGIN * 2; // Add a mandatory left margin (TODO: move that elsewhere)
-                auto printAtY = mDrawingBox.viewport.z - mCaretPrecalc.blockGlyphBearingY + mCaretPrecalc.size.y / 2.0f;
-                for (auto character : mRenderPrecalc.statusBarString) {
-                    mFontTexture->get(character, [&](const FontTexture::Tile& tile) {
-                        sprite.position.x = glm::floor(printAtX + (tile.bearing.x + tile.size.x / 2.0f));
-                        sprite.position.y = glm::round(printAtY - (tile.bearing.y - tile.size.y / 2.0f));
-                        
-                        switch (character) {
-                        case u'	':
-                            // non printable but advance the caret
-                            // Take in account the TAB (0x0009) character (= SPACE width * 4)
-                            printAtX += tile.advance * 4;
-                            break;
-                        default:
-                            sprite.size = tile.size;
-                            sprite.texture = tile.texture;
-                            sprite.tint = mStyle.textColor;
-
-                            mSpriteBuffer->add(sprite);
-                            ++mRenderPrecalc.statusBarTextGlyphCount;
-                        case u' ':
-                            // SPACE is not printable but need to advance the caret as a normal character
-                            printAtX += tile.advance;
-                        }
-                    });
-                }
+                printAtY += mCaretPrecalc.size.y;
+                printAtX = mDrawingBox.viewport.x + mMarginSprite.size.x + mBorderSprite.size.x;
             }
         }
         mSpriteBuffer->unmap();
@@ -588,8 +449,8 @@ void CursorRenderer::update(float time) {
     if (!updateBuffer && updateCaret) {
         // If the buffer was not updated, we need to update the caret
         mSpriteBuffer->use();
+        sprite.texture = mFontTexture->pixelCoordinates();
         sprite.position = mCaretPrecalc.position;
-        sprite.texture = mCaretPrecalc.texture;
         sprite.size.x = mStyle.caretWidth;
         sprite.size.y = mCaretPrecalc.size.y;
         if (mCaretPrecalc.visible) {
@@ -611,17 +472,14 @@ void CursorRenderer::render() {
         return;
     }
 
-    glm::ivec2 scissorPosition = { mDrawingBox.viewport.x, (mDrawingBox.parentSize.y - mDrawingBox.viewport.w) - mDrawingBox.size.y };
-    glm::ivec2 scissorSize = { mDrawingBox.size.x, mDrawingBox.size.y };
-    auto drawIndex = 0;
 
+    auto drawIndex = 0;
     glEnable(GL_BLEND);
     glBlendEquation (GL_FUNC_ADD);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_TEXTURE_2D);
-    if (drawBit(SCISSOR)) {
-        glEnable(GL_SCISSOR_TEST);
-        glScissor(scissorPosition.x, scissorPosition.y, scissorSize.x, scissorSize.y);
+    if (!drawBit(SCISSOR)) {
+        glDisable(GL_SCISSOR_TEST);
     }
 
     mFontTexture->use();
@@ -630,17 +488,22 @@ void CursorRenderer::render() {
     mSpriteBuffer->use();
 
     // Render All background shapes
+    glScissor(
+        mDrawingBox.viewport.x,
+        (mDrawingBox.parentSize.y - mDrawingBox.viewport.z) - mDrawingBox.size.y,
+        mDrawingBox.size.x,
+        mDrawingBox.size.y);
+
     mSpriteBuffer->draw(0, mRenderPrecalc.backgroundGlyphCount);
     drawIndex += mRenderPrecalc.backgroundGlyphCount;
-    
+
     // Render margin text
     if (drawBit(LEFT_MARGIN)) {
-        if (drawBit(SCISSOR)) {
-            scissorPosition.y += mDimenPrecalc.statusBarHeight;
-            scissorSize.y -= mDimenPrecalc.statusBarHeight;
-            scissorSize.x = mDimenPrecalc.marginWidth;
-            glScissor(scissorPosition.x, scissorPosition.y, scissorSize.x, scissorSize.y);
-        }
+        glScissor(
+            mDrawingBox.viewport.x,
+            (mDrawingBox.parentSize.y - mDrawingBox.viewport.z) - mDrawingBox.size.y,
+            mMarginSprite.size.x + mBorderSprite.size.x,
+            mDrawingBox.size.y);
 
         if (drawBit(LINE_NUMBER)) {
             mSpriteBuffer->draw(drawIndex, mRenderPrecalc.lineNumberGlyphCount);
@@ -652,13 +515,11 @@ void CursorRenderer::render() {
     }
 
     // Render selection + caret + text
-    if (drawBit(SCISSOR)) {
-        scissorPosition.x += mDimenPrecalc.marginWidth + mDimenPrecalc.borderWidth;
-        scissorSize.x = mDrawingBox.size.x - mDimenPrecalc.marginWidth - mDimenPrecalc.borderWidth - mDimenPrecalc.scrollbarWidth;
-        scissorPosition.y += mDimenPrecalc.scrollbarWidth;
-        scissorSize.y -= mDimenPrecalc.scrollbarWidth;
-        glScissor(scissorPosition.x, scissorPosition.y, scissorSize.x, scissorSize.y);
-    }
+    glScissor(
+        mDrawingBox.viewport.x + mMarginSprite.size.x + mBorderSprite.size.x,
+        mDrawingBox.parentSize.y - mDrawingBox.viewport.z - mDrawingBox.size.y + mHScrollSprite.size.y,
+        mDrawingBox.size.x - mMarginSprite.size.x - mBorderSprite.size.x - mVScrollSprite.size.x,
+        mDrawingBox.size.y - mHScrollSprite.size.y);
 
     if (!mCursor->selectionVisible()) {
         // Maybe skip the selection
@@ -671,24 +532,8 @@ void CursorRenderer::render() {
         drawIndex += mRenderPrecalc.selectionGlyphCount + mRenderPrecalc.textGlyphCount + 1;
     }
 
-    // Render status bar text
-    if (drawBit(STATUS_BAR)) {
-        if (drawBit(SCISSOR)) {
-            scissorPosition.x -= mDimenPrecalc.marginWidth + mDimenPrecalc.borderWidth;
-            scissorSize.x = mDrawingBox.size.x;
-            scissorPosition.y -= mDimenPrecalc.scrollbarWidth + mDimenPrecalc.statusBarHeight;
-            scissorSize.y += mDimenPrecalc.scrollbarWidth;
-            glScissor(scissorPosition.x, scissorPosition.y, scissorSize.x, scissorSize.y);
-        }
-        mSpriteBuffer->draw(drawIndex, mRenderPrecalc.statusBarTextGlyphCount); 
-    }
-
-    glDisable(GL_TEXTURE_2D);
-    glDisable(GL_BLEND);
-    if (drawBit(SCISSOR)) {
-        glScissor(0, 0, mDrawingBox.parentSize.x, mDrawingBox.parentSize.y);
-        glDisable(GL_SCISSOR_TEST);
-    }
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(0, 0, mDrawingBox.parentSize.x, mDrawingBox.parentSize.y);
 
     auto now = std::chrono::steady_clock::now();
     mRenderTime = std::chrono::duration_cast<std::chrono::duration<float>>(now - functionStartTime).count() * 1000;
@@ -699,24 +544,24 @@ void CursorRenderer::style(const CursorRenderer::Style style) {
 
     // Also eventually change other values // trigger dirty bits
     if (mStyle.marginBorderWidth != style.marginBorderWidth) {
-        mDirtyBit |= CALCULATE_MARGIN_WIDTH;
         mDirtyBit |= CALCULATE_MAX_SCROLL;
         mDirtyBit |= CALCULATE_CARET_POSITION;
     }
     if (mStyle.scrollbarWidth != style.scrollbarWidth) {
-        mDirtyBit |= CALCULATE_SCROLLBAR_WIDTH;
         mDirtyBit |= CALCULATE_MAX_SCROLL;
         mDirtyBit |= CALCULATE_CARET_POSITION;
     }
     if (mStyle.lineIndicator != style.lineIndicator) {
-        mDirtyBit |= CALCULATE_LONGUEST_LINE_NUMBER_STR;
-        mDirtyBit |= CALCULATE_MARGIN_WIDTH;
+        mDirtyBit |= CALCULATE_LONGUEST_LINE_NUMBER;
         mDirtyBit |= CALCULATE_MAX_SCROLL;
         mDirtyBit |= CALCULATE_CARET_POSITION;
     }
     if (mStyle.caretWidth != style.caretWidth) {
         mDirtyBit |= CALCULATE_CARET_POSITION;
     }
+
+    mDirtyBit |= INVALIDATE_SPRITES;
+    mDirtyBit |= INVALIDATE_SCROLL_INDICATORS;
 
     mStyle = style;
 }
@@ -731,22 +576,15 @@ void CursorRenderer::enableDrawBit(DrawBit bit) {
     case HIGHTLIGHT_CURRENT_LINE:
         mDirtyBit |= TEXT_CHANGED;
     break;
-    case STATUS_BAR:
-        mDirtyBit |= CALCULATE_MAX_SCROLL;
-        mDirtyBit |= CALCULATE_STATUS_BAR_HEIGHT;
-    break;
     case LINE_NUMBER_INDICATOR:
-        mDirtyBit |= CALCULATE_LONGUEST_LINE_NUMBER_STR;
+        mDirtyBit |= CALCULATE_LONGUEST_LINE_NUMBER;
     case LEFT_MARGIN:
     case LINE_NUMBER:
-        mDirtyBit |= CALCULATE_MARGIN_WIDTH;
-        mDirtyBit |= CALCULATE_CARET_POSITION;
-        mDirtyBit |= CALCULATE_MAX_SCROLL;
-    break;
     case SCROLL_BAR:
-        mDirtyBit |= CALCULATE_SCROLLBAR_WIDTH;
         mDirtyBit |= CALCULATE_CARET_POSITION;
         mDirtyBit |= CALCULATE_MAX_SCROLL;
+        mDirtyBit |= INVALIDATE_SPRITES;
+        mDirtyBit |= INVALIDATE_SCROLL_INDICATORS;
     break;
     default:
     break;
@@ -759,22 +597,15 @@ void CursorRenderer::disableDrawBit(DrawBit bit) {
     case HIGHTLIGHT_CURRENT_LINE:
         mDirtyBit |= TEXT_CHANGED;
     break;
-    case STATUS_BAR:
-        mDirtyBit |= CALCULATE_MAX_SCROLL;
-        mDirtyBit |= CALCULATE_STATUS_BAR_HEIGHT;
-    break;
     case LINE_NUMBER_INDICATOR:
-        mDirtyBit |= CALCULATE_LONGUEST_LINE_NUMBER_STR;
+        mDirtyBit |= CALCULATE_LONGUEST_LINE_NUMBER;
     case LEFT_MARGIN:
     case LINE_NUMBER:
-        mDirtyBit |= CALCULATE_MARGIN_WIDTH;
-        mDirtyBit |= CALCULATE_CARET_POSITION;
-        mDirtyBit |= CALCULATE_MAX_SCROLL;
-    break;
     case SCROLL_BAR:
-        mDirtyBit |= CALCULATE_SCROLLBAR_WIDTH;
         mDirtyBit |= CALCULATE_CARET_POSITION;
         mDirtyBit |= CALCULATE_MAX_SCROLL;
+        mDirtyBit |= INVALIDATE_SPRITES;
+        mDirtyBit |= INVALIDATE_SCROLL_INDICATORS;
     break;
     default:
     break;
@@ -788,13 +619,132 @@ bool CursorRenderer::drawBit(DrawBit bit) const {
 void CursorRenderer::invalidate() {
     mDirtyBit |= CALCULATE_CARET_PRECALC;
     mDirtyBit |= CALCULATE_MAX_SCROLL;
-    mDirtyBit |= CALCULATE_CARET_POSITION;
-    mDirtyBit |= CALCULATE_LONGUEST_LINE_NUMBER_STR;
+    mDirtyBit |= CALCULATE_LONGUEST_LINE_NUMBER;
     mDirtyBit |= CALCULATE_ALL_LINE_WIDTH;
+    mDirtyBit |= CALCULATE_CARET_POSITION;
     mDirtyBit |= CALCULATE_LINE_IN_VIEW;
-    mDirtyBit |= CALCULATE_MARGIN_WIDTH;
-    mDirtyBit |= CALCULATE_STATUS_BAR_HEIGHT;
-    mDirtyBit |= GENERATE_STATUS_BAR_STR;
+    mDirtyBit |= INVALIDATE_SPRITES;
+    mDirtyBit |= INVALIDATE_SCROLL_INDICATORS;
+}
+
+void CursorRenderer::invalidateSpriteTextures() {
+    const auto& pixel = mFontTexture->pixelCoordinates();
+    mMarginSprite.texture = pixel;
+    mBorderSprite.texture = pixel;
+    mBackgroundSprite.texture = pixel;
+    mHScrollSprite.texture = pixel;
+    mHScrollIndicatorSprite.texture = pixel;
+    mVScrollSprite.texture = pixel;
+    mVScrollIndicatorSprite.texture = pixel;
+    mCornerSprite.texture = pixel;
+}
+
+void CursorRenderer::invalidateSprite() {
+    if (drawBit(LEFT_MARGIN)) {
+        // Left margin
+        mMarginSprite.tint = mStyle.marginColor;
+        mMarginSprite.size.x = 0;
+        mMarginSprite.size.y = mDrawingBox.size.y;
+        if (drawBit(LINE_NUMBER)) {
+            mMarginSprite.size.x += mDimenPrecalc.lineNumberWidth;
+        }
+        if (drawBit(LINE_NUMBER_INDICATOR)) {
+            mMarginSprite.size.x += mDimenPrecalc.lineIndicatorWidth;
+        }
+        mMarginSprite.position.x = mDrawingBox.viewport.x + mMarginSprite.size.x / 2.0f;
+        mMarginSprite.position.y = mDrawingBox.viewport.z + mMarginSprite.size.y / 2.0f;
+
+        // Border
+        mBorderSprite.tint = mStyle.marginBorderColor;
+        mBorderSprite.size.x = mStyle.marginBorderWidth;
+        mBorderSprite.size.y = mMarginSprite.size.y;
+        mBorderSprite.position.x = mDrawingBox.viewport.x + mMarginSprite.size.x + mBorderSprite.size.x / 2.0f;
+        mBorderSprite.position.y = mMarginSprite.position.y;
+    } else {
+        mMarginSprite.size.x = 0;
+        mMarginSprite.size.y = 0;
+        mBorderSprite.size.x = 0;
+        mBorderSprite.size.y = 0;
+    }
+
+    if (drawBit(SCROLL_BAR)) {
+        // Horizontal scrollbars
+        mHScrollSprite.tint = mStyle.scrollbarColor;
+        mHScrollSprite.size.x = mDrawingBox.size.x - mStyle.scrollbarWidth;
+        mHScrollSprite.size.y = mStyle.scrollbarWidth;
+        if (drawBit(LEFT_MARGIN)) {
+            mHScrollSprite.size.x -= mMarginSprite.size.x + mBorderSprite.size.x;
+        }
+        mHScrollSprite.position.x = mDrawingBox.viewport.y - mStyle.scrollbarWidth - mHScrollSprite.size.x / 2.0f;
+        mHScrollSprite.position.y = mDrawingBox.viewport.w - mStyle.scrollbarWidth / 2.0f;
+
+        mHScrollIndicatorSprite.size.y = mStyle.scrollbarWidth;
+        mHScrollIndicatorSprite.tint = mStyle.scrollbarIndicatorColor;
+
+        // Vertical scrollbars
+        mVScrollSprite.tint = mStyle.scrollbarColor;
+        mVScrollSprite.size.x = mStyle.scrollbarWidth;
+        mVScrollSprite.size.y = mDrawingBox.size.y - mStyle.scrollbarWidth;
+        mVScrollSprite.position.x = mDrawingBox.viewport.y - mStyle.scrollbarWidth / 2.0f;
+        mVScrollSprite.position.y = mDrawingBox.viewport.z + mVScrollSprite.size.y / 2.0f;
+
+        mVScrollIndicatorSprite.size.x = mStyle.scrollbarWidth;
+        mVScrollIndicatorSprite.tint = mStyle.scrollbarIndicatorColor;
+
+        // Corner
+        mCornerSprite.tint = mStyle.scrollbarColor;
+        mCornerSprite.size.x = mStyle.scrollbarWidth;
+        mCornerSprite.size.y = mStyle.scrollbarWidth;;
+        mCornerSprite.position.x = mDrawingBox.viewport.y - mStyle.scrollbarWidth / 2.0f;
+        mCornerSprite.position.y = mDrawingBox.viewport.w - mStyle.scrollbarWidth / 2.0f;
+    } else {
+        mHScrollSprite.size.x = 0;
+        mHScrollSprite.size.y = 0;
+        mVScrollSprite.size.x = 0;
+        mVScrollSprite.size.y = 0;
+    }
+
+    // Background
+    mBackgroundSprite.tint = mStyle.backgroundColor;
+    mBackgroundSprite.size.x = mDrawingBox.size.x;
+    mBackgroundSprite.size.y = mDrawingBox.size.y;
+    if (drawBit(LEFT_MARGIN)) {
+        mBackgroundSprite.size.x -= mMarginSprite.size.x;
+        if (mBorderSprite.size.x > 0) {
+            mBackgroundSprite.size.x -= mBorderSprite.size.x;
+        }
+    }
+    if (drawBit(SCROLL_BAR)) {
+        mBackgroundSprite.size.x -= mVScrollSprite.size.x;
+        mBackgroundSprite.size.y -= mHScrollSprite.size.y;
+    }
+    mBackgroundSprite.position.x = mDrawingBox.viewport.y - mBackgroundSprite.size.x / 2.0f;
+    mBackgroundSprite.position.y = mDrawingBox.viewport.z + mBackgroundSprite.size.y / 2.0f;
+    if (drawBit(SCROLL_BAR)) {
+        mBackgroundSprite.position.x -= mVScrollSprite.size.x;
+    }
+
+    mDirtyBit &= ~INVALIDATE_SPRITES;
+}
+
+void CursorRenderer::invalidateScrollIndicators() {
+    // Upate the background values
+    auto indicatorWidth = glm::max({ 32.0f, 32.0f }, mBackgroundSprite.size - mDimenPrecalc.maxScroll);
+    auto indicatorPosition = glm::abs(-mScroll / mDimenPrecalc.maxScroll) * (mBackgroundSprite.size - indicatorWidth) + indicatorWidth / 2.0f;
+
+    mVScrollIndicatorSprite.position.x = mVScrollSprite.position.x;
+    mVScrollIndicatorSprite.position.y = (mVScrollSprite.position.y - mVScrollSprite.size.y / 2.0f) + indicatorPosition.y;
+    mVScrollIndicatorSprite.size.x = mVScrollSprite.size.x;
+    mVScrollIndicatorSprite.size.y = indicatorWidth.y;
+    mVScrollIndicatorSprite.tint = mStyle.scrollbarIndicatorColor;
+
+    mHScrollIndicatorSprite.position.y = mHScrollSprite.position.y;
+    mHScrollIndicatorSprite.position.x = (mHScrollSprite.position.x - mHScrollSprite.size.x / 2.0f) + indicatorPosition.x;
+    mHScrollIndicatorSprite.size.x = indicatorWidth.x;
+    mHScrollIndicatorSprite.size.y = mHScrollSprite.size.y;
+    mHScrollIndicatorSprite.tint = mStyle.scrollbarIndicatorColor;
+
+    mDirtyBit &= ~INVALIDATE_SCROLL_INDICATORS;
 }
 
 void CursorRenderer::scrollBy(float x, float y) {
@@ -815,8 +765,10 @@ void CursorRenderer::scrollBy(float x, float y) {
     } else {
         mScroll.y += y;
     }
+
     mDirtyBit |= SCROLL_POSITION_CHANGED;
     mDirtyBit |= CALCULATE_CARET_POSITION;
+    mDirtyBit |= INVALIDATE_SCROLL_INDICATORS;
 }
 
 void CursorRenderer::scrollTo(float x, float y) {
@@ -840,6 +792,7 @@ void CursorRenderer::scrollTo(float x, float y) {
 
     mDirtyBit |= SCROLL_POSITION_CHANGED;
     mDirtyBit |= CALCULATE_CARET_POSITION;
+    mDirtyBit |= INVALIDATE_SCROLL_INDICATORS;
 }
 
 glm::u32vec2 CursorRenderer::scroll() const {
@@ -850,19 +803,19 @@ void CursorRenderer::calculateCaretPrecalc() {
     // Fill some caret precalc data, using the block character
     mFontTexture->get(FULL_BLOCK_CHARACTER, [&](const FontTexture::Tile& tile) {
         mCaretPrecalc.size = tile.size;
-        mCaretPrecalc.blockGlyphBearingY = tile.bearing.y;
+        mCaretPrecalc.bearingY = tile.bearing.y;
     });
     mDirtyBit &= ~CALCULATE_CARET_PRECALC;
 }
 
 void CursorRenderer::calculateLonguestLineNumberPixel() {
     auto lineCount = mCursor->size();
-    mRenderPrecalc.longuestLineNumberString = mRenderPrecalc.converter.from_bytes(std::to_string(lineCount));
-    mDimenPrecalc.longuestLineNumberWidth = mFontTexture->measure(mRenderPrecalc.longuestLineNumberString).x;
+    auto string = mRenderPrecalc.converter.from_bytes(std::to_string(lineCount));
+    mDimenPrecalc.lineNumberWidth = mFontTexture->measure(string).x;
     mFontTexture->get(mStyle.lineIndicator, [&](const FontTexture::Tile& tile) {
         mDimenPrecalc.lineIndicatorWidth = tile.advance;
     });
-    mDirtyBit &= ~CALCULATE_LONGUEST_LINE_NUMBER_STR;
+    mDirtyBit &= ~CALCULATE_LONGUEST_LINE_NUMBER;
 }
 
 void CursorRenderer::calculateAllLineWidthPixels() {
@@ -877,46 +830,22 @@ void CursorRenderer::calculateAllLineWidthPixels() {
     mDirtyBit &= ~CALCULATE_ALL_LINE_WIDTH;
 }
 
-void CursorRenderer::calculateMarginWidth() {
-    if (drawBit(LEFT_MARGIN)) {
-        mDimenPrecalc.marginWidth = TEXT_MARGIN * 2;
-        mDimenPrecalc.marginWidth += drawBit(LINE_NUMBER) ? mDimenPrecalc.longuestLineNumberWidth : 0;
-        mDimenPrecalc.marginWidth += drawBit(LINE_NUMBER_INDICATOR) ? mDimenPrecalc.lineIndicatorWidth : 0;
-        mDimenPrecalc.borderWidth = mStyle.marginBorderWidth;
-    } else {
-        mDimenPrecalc.marginWidth = 0;
-        mDimenPrecalc.borderWidth = 0;
-    }
-
-    mDirtyBit &= ~CALCULATE_MARGIN_WIDTH;
-}
-
-void CursorRenderer::calculateScrollbarWidth() {
-    mDimenPrecalc.scrollbarWidth = drawBit(SCROLL_BAR) ? mStyle.scrollbarWidth : 0;
-    mDirtyBit &= ~CALCULATE_SCROLLBAR_WIDTH;
-}
-
-void CursorRenderer::calculateStatusBarHeight() {
-    mDimenPrecalc.statusBarHeight = drawBit(STATUS_BAR) ? mCaretPrecalc.size.y : 0;
-    mDirtyBit &= ~CALCULATE_STATUS_BAR_HEIGHT;
-}
-
 void CursorRenderer::calculateMaxScroll() {
     // Horizontal
-    auto horizontalVisibleArea = mDrawingBox.size.x - mDimenPrecalc.marginWidth - mDimenPrecalc.borderWidth - mDimenPrecalc.scrollbarWidth;
+    auto horizontalVisibleArea = mDrawingBox.size.x - mMarginSprite.size.x - mBorderSprite.size.x - mVScrollSprite.size.x;
     auto& longuestLineWidthPixel = mDimenPrecalc.lineWidth.back();
 
     if (longuestLineWidthPixel.second > horizontalVisibleArea) {
-        mDimenPrecalc.maxScroll.x = longuestLineWidthPixel.second - horizontalVisibleArea;
+        mDimenPrecalc.maxScroll.x = longuestLineWidthPixel.second + mStyle.caretWidth - horizontalVisibleArea;
     } else {
         mDimenPrecalc.maxScroll.x = 0;
     }
-    
+
     // Vertical
     auto fontHeight = mCaretPrecalc.size.y;
     auto cursorSize = mCursor.get() ? mCursor->size() : 0;
-    auto verticalVisibleArea = mDrawingBox.size.y - mDimenPrecalc.scrollbarWidth - mDimenPrecalc.statusBarHeight;
-    
+    auto verticalVisibleArea = mDrawingBox.size.y - mHScrollSprite.size.y;
+
     mDimenPrecalc.maxScroll.y = cursorSize * fontHeight;
     if (mDimenPrecalc.maxScroll.y > verticalVisibleArea) {
         mDimenPrecalc.maxScroll.y -= verticalVisibleArea;
@@ -936,23 +865,23 @@ void CursorRenderer::calculateMaxScroll() {
 }
 
 void CursorRenderer::calculateCaretPosition() {
-    auto caretPosition = mCursor->position(); 
+    auto caretPosition = mCursor->position();
     auto lineHeight = mCaretPrecalc.size.y;
     auto scroll = -mScroll;
 
     // Calculate Y caret position
-    auto y = mDrawingBox.viewport.w + mCaretPrecalc.blockGlyphBearingY + scroll.y;
-    y -= mCaretPrecalc.blockGlyphBearingY - lineHeight / 2.0f;
+    auto y = mDrawingBox.viewport.z + mCaretPrecalc.bearingY + scroll.y;
+    y -= mCaretPrecalc.bearingY - lineHeight / 2.0f;
     y += caretPosition.y * lineHeight;
 
     // Calculate X carret position
     auto line = mCursor->stringView(caretPosition.y);
-    auto x = mDrawingBox.viewport.x + scroll.x + mDimenPrecalc.marginWidth + mDimenPrecalc.borderWidth;
+    auto x = mDrawingBox.viewport.x + scroll.x + mMarginSprite.size.x + mBorderSprite.size.x;
     x += mFontTexture->measure(line.substr(0, caretPosition.x)).x;
     x += mStyle.caretWidth / 2.0f;
-    
+
     mCaretPrecalc.position.y = glm::round(y);
-    mCaretPrecalc.position.x = glm::ceil(x);
+    mCaretPrecalc.position.x = glm::floor(x);
     mDirtyBit &= ~CALCULATE_CARET_POSITION;
 }
 
@@ -976,14 +905,14 @@ void CursorRenderer::scrollCaretToBorder(uint8_t border) {
     auto doScroll = false;
     auto scrollToPosition = scroll;
     if (border & HORIZONTAL) {
-        auto leftBorder = mDrawingBox.viewport.x + mDimenPrecalc.marginWidth + mDimenPrecalc.borderWidth;
-        auto rightBorder = mDrawingBox.viewport.y - mDimenPrecalc.scrollbarWidth;
+        auto leftBorder = mDrawingBox.viewport.x + mMarginSprite.size.x + mBorderSprite.size.x;
+        auto rightBorder = mDrawingBox.viewport.y - mVScrollSprite.size.x;
 
         if (mCaretPrecalc.position.x - mStyle.caretWidth < leftBorder) {
             auto leftScroll = (mCaretPrecalc.position.x - mStyle.caretWidth) - scroll.x - leftBorder;
             scrollToPosition.x = leftScroll;
             doScroll = true;
-        } 
+        }
         else
         if (mCaretPrecalc.position.x + mStyle.caretWidth > rightBorder) {
             auto rightScroll = (mCaretPrecalc.position.x + mStyle.caretWidth) - scroll.x - rightBorder;
@@ -996,17 +925,17 @@ void CursorRenderer::scrollCaretToBorder(uint8_t border) {
         }
     }
     if (border & VERTICAL) {
-        auto topBorder = mDrawingBox.viewport.w;
-        auto bottomBorder = mDrawingBox.viewport.z - mDimenPrecalc.scrollbarWidth - mDimenPrecalc.statusBarHeight;
+        auto topBorder = mDrawingBox.viewport.z;
+        auto bottomBorder = mDrawingBox.viewport.w - mHScrollSprite.size.y;
 
         if (mCaretPrecalc.position.y - lineHeight / 2.0f < topBorder) {
-            auto topScroll = mCaretPrecalc.position.y - mDrawingBox.viewport.w - scroll.y - lineHeight / 2.0f;
+            auto topScroll = mCaretPrecalc.position.y - mDrawingBox.viewport.z - scroll.y - lineHeight / 2.0f;
             scrollToPosition.y = topScroll;
             doScroll = true;
         }
         else
         if (mCaretPrecalc.position.y + lineHeight / 2.0f > bottomBorder) {
-            auto bottomScroll = mCaretPrecalc.position.y - scroll.y  - mDrawingBox.viewport.z + mDimenPrecalc.scrollbarWidth + mDimenPrecalc.statusBarHeight + lineHeight / 2.0f;
+            auto bottomScroll = mCaretPrecalc.position.y - scroll.y  - mDrawingBox.viewport.w + mHScrollSprite.size.y + lineHeight / 2.0f;
             scrollToPosition.y = bottomScroll;
             doScroll = true;
         }
@@ -1026,7 +955,7 @@ void CursorRenderer::checkLine(size_t index, CheckLine check) {
     std::list<std::pair<size_t, float>>::iterator it;
 
     if (check == DELETED) {
-       // Find the precalculated line width item
+        // Find the precalculated line width item
         it = std::find_if(mDimenPrecalc.lineWidth.begin(), mDimenPrecalc.lineWidth.end(), [&](const std::pair<size_t, float>& pair) {
             return pair.first == index;
         });
@@ -1036,12 +965,19 @@ void CursorRenderer::checkLine(size_t index, CheckLine check) {
            return;
         }
 
-        // Decrease each line number at and after index in the precalc
+        // Decrease each line number after and after index in the precalc
         std::for_each(mDimenPrecalc.lineWidth.begin(), mDimenPrecalc.lineWidth.end(), [&](std::pair<size_t, float>& pair) {
             if (pair.first >= index) {
                 --pair.first;
             }
         });
+
+        // Trigger dirty bits
+        mDirtyBit |= CALCULATE_MAX_SCROLL;
+        mDirtyBit |= INVALIDATE_SCROLL_INDICATORS;
+        mDirtyBit |= CALCULATE_LONGUEST_LINE_NUMBER;
+
+        // Erase the line from the cached list
         mDimenPrecalc.lineWidth.erase(it);
     } else {
         auto changedLine = mCursor->stringView(index);
@@ -1049,7 +985,7 @@ void CursorRenderer::checkLine(size_t index, CheckLine check) {
         auto& longuestLineWidth = mDimenPrecalc.lineWidth.back();
 
         switch (check) {
-        case EDITED:
+        case CHANGED:
             // Find the precalculated line width
             it = std::find_if(mDimenPrecalc.lineWidth.begin(), mDimenPrecalc.lineWidth.end(), [&](const std::pair<size_t, float>& pair) {
                 return pair.first == index;
@@ -1063,10 +999,12 @@ void CursorRenderer::checkLine(size_t index, CheckLine check) {
             it->second = changedLineWidth;
             if (index == longuestLineWidth.first) {
                 // Longuest line change make scroll dirty but not the line width list as we updated the top value
+                mDirtyBit |= INVALIDATE_SCROLL_INDICATORS;
                 mDirtyBit |= CALCULATE_MAX_SCROLL;
             } else {
                 if (changedLineWidth > longuestLineWidth.second) {
                     // The longuest line changed and the max scrolls
+                    mDirtyBit |= INVALIDATE_SCROLL_INDICATORS;
                     mDirtyBit |= CALCULATE_MAX_SCROLL;
                 }
                 // But we don't know were we are in the line width list, we need to sort it
@@ -1089,22 +1027,16 @@ void CursorRenderer::checkLine(size_t index, CheckLine check) {
                 mDimenPrecalc.lineWidth.insert(mDimenPrecalc.lineWidth.begin(), std::make_pair(index, changedLineWidth));
                 mDirtyBit |= REORDER_LINE_WIDTH;
             }
+
+            // Trigger dirty bits
+            mDirtyBit |= CALCULATE_LONGUEST_LINE_NUMBER;
+            mDirtyBit |= INVALIDATE_SCROLL_INDICATORS;
+            mDirtyBit |= CALCULATE_MAX_SCROLL;
         break;
         default: break;
         }
     }
-}
 
-void CursorRenderer::generateCaretPositionString() {
-    auto caretPosition = mCursor->position(); 
-    auto characterNumberText = mRenderPrecalc.converter.from_bytes(std::to_string(caretPosition.x + 1));
-    auto lineNumberText = mRenderPrecalc.converter.from_bytes(std::to_string(caretPosition.y + 1));
-    mRenderPrecalc.caretPositionString = u"L: " + lineNumberText.append(u",").append(characterNumberText);
-    mDirtyBit &= ~GENERATE_CARET_POSITION_STR;
-}
-
-void CursorRenderer::generateStatusBarString() {
-    mRenderPrecalc.statusBarString = std::u16string(u"Lines: ").append(mRenderPrecalc.longuestLineNumberString)
-        .append(u" | ").append(mRenderPrecalc.caretPositionString);
-    mDirtyBit &= ~GENERATE_STATUS_BAR_STR;
+    // TODO check if in visible area before trigger that bit
+    mDirtyBit |= TEXT_CHANGED;
 }

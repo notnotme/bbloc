@@ -133,6 +133,7 @@ int main(int argc, char *argv[]) {
 
     glCullFace(GL_BACK);
     glEnable(GL_CULL_FACE);
+    glEnable(GL_SCISSOR_TEST);
     glDisable(GL_DEPTH_WRITEMASK);
     glDisable(GL_DEPTH_TEST);
     glActiveTexture(GL_TEXTURE0);
@@ -171,6 +172,7 @@ int main(int argc, char *argv[]) {
                     windowSize.y = event.window.data2;
                     renderer->updateWindowSize(windowSize.x, windowSize.y);
                     renderer->updateDrawingBox(windowSize.x / 2.0f, windowSize.y / 2.0f, windowSize.x, windowSize.y);
+                    glScissor(0, 0, windowSize.x, windowSize.y);
                 break;
                 }
             break;

@@ -140,11 +140,6 @@ void Debug::render(SDL_Window* window) {
                         else mCursorRenderer->disableDrawBit(CursorRenderer::DrawBit::LINE_NUMBER_INDICATOR);
                     }
                     ImGui::EndDisabled();
-                    auto showStatusBar = mCursorRenderer->drawBit(CursorRenderer::DrawBit::STATUS_BAR);
-                    if (ImGui::Checkbox("Show status bar", &showStatusBar)) {
-                        if (showStatusBar) mCursorRenderer->enableDrawBit(CursorRenderer::DrawBit::STATUS_BAR);
-                        else mCursorRenderer->disableDrawBit(CursorRenderer::DrawBit::STATUS_BAR);
-                    }
                     ImGui::SeparatorText("Other");
                     bool scissor = mCursorRenderer->drawBit(CursorRenderer::DrawBit::SCISSOR);
                     if (ImGui::Checkbox("Enable scissor", &scissor)) {

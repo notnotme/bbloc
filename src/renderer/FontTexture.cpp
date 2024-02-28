@@ -267,7 +267,7 @@ void FontTexture::createPixel() {
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 1, 1, GL_RED, GL_UNSIGNED_BYTE, &pixel);
 
     // Sample in the center of the pixel
-    auto halfTextel = (1.0f / mTextureSize) / 2.0f;
+    auto halfTextel = 1.0f - (mTextureSize / (mTextureSize - 1.0f));
     mPixelCoordinates.s = halfTextel;
     mPixelCoordinates.t = halfTextel;
     mPixelCoordinates.p = halfTextel;
