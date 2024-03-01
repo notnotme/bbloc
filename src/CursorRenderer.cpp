@@ -77,15 +77,11 @@ void CursorRenderer::update(float time) {
     // Pump and clear the cursor events
     auto caretPosition = mCursor->position();
     auto cursorEvent = mCursor->event();
-    auto lastCaretDirection = 0;
     while (cursorEvent != nullptr) {
         switch (cursorEvent->type) {
         case Cursor::EventType::CARET_MOVED:
             mDirtyBit |= CALCULATE_CARET_POSITION;
             mDirtyBit |= TRY_SCROLL_TO_BORDERS;
-            // Trigger both caret direction to make it visible on screen if it is out of bounds
-            lastCaretDirection |= VERTICAL;
-            lastCaretDirection |= HORIZONTAL;
         break;
         case Cursor::EventType::LINE_CREATED:
         case Cursor::EventType::LINE_CHANGED:
@@ -136,9 +132,11 @@ void CursorRenderer::update(float time) {
         calculateCaretPosition();
         updateCaret = true;
     }
-    if (mDirtyBit & SCROLL_POSITION_CHANGED) {
-        mDirtyBit &= ~SCROLL_POSITION_CHANGED;
-        updateBuffer = true;
+    if (mDirtyBit & TRY_SCROLL_TO_BORDERS) {
+        scrollCaretToBorder();
+        // Passing here indicate that the caret moved, so make it instantly visible
+        mCaretPrecalc.visible = true;
+        mCaretPrecalc.nextBlinkTime = time + mCaretPrecalc.blinkTime;
     }
     if (mDirtyBit & STYLE_CHANGED) {
         mDirtyBit &= ~STYLE_CHANGED;
@@ -148,18 +146,7 @@ void CursorRenderer::update(float time) {
         mDirtyBit &= ~TEXT_CHANGED;
         updateBuffer = true;
     }
-    if (mDirtyBit & TRY_SCROLL_TO_BORDERS) {
-        scrollCaretToBorder(lastCaretDirection);
-        // Passing here indicate that the caret moved, so make it instantly visible
-        mCaretPrecalc.visible = true;
-        mCaretPrecalc.nextBlinkTime = time + mCaretPrecalc.blinkTime;
-        if (lastCaretDirection & VERTICAL) {
-            // Needed to update the indicator position in the margin area
-            updateBuffer = true;
-        } else {
-            updateCaret = true;
-        }
-    }
+
     if (time > mCaretPrecalc.nextBlinkTime) {
         mCaretPrecalc.nextBlinkTime = time + mCaretPrecalc.blinkTime;
         mCaretPrecalc.visible = !mCaretPrecalc.visible;
@@ -473,7 +460,6 @@ void CursorRenderer::render() {
         return;
     }
 
-
     auto drawIndex = 0;
     glEnable(GL_BLEND);
     glBlendEquation (GL_FUNC_ADD);
@@ -773,7 +759,7 @@ void CursorRenderer::scrollBy(float x, float y) {
         mScroll.y += y;
     }
 
-    mDirtyBit |= SCROLL_POSITION_CHANGED;
+    mDirtyBit |= TEXT_CHANGED;
     mDirtyBit |= CALCULATE_CARET_POSITION;
     mDirtyBit |= INVALIDATE_SCROLL_INDICATORS;
 }
@@ -797,7 +783,7 @@ void CursorRenderer::scrollTo(float x, float y) {
         mScroll.y = y;
     }
 
-    mDirtyBit |= SCROLL_POSITION_CHANGED;
+    mDirtyBit |= TEXT_CHANGED;
     mDirtyBit |= CALCULATE_CARET_POSITION;
     mDirtyBit |= INVALIDATE_SCROLL_INDICATORS;
 }
@@ -902,47 +888,47 @@ void CursorRenderer::calculateLineInView() {
     mDirtyBit &= ~CALCULATE_LINE_IN_VIEW;
 }
 
-void CursorRenderer::scrollCaretToBorder(uint8_t border) {
+void CursorRenderer::scrollCaretToBorder() {
     // Calculate drawing area and top text location
     auto lineHeight = mCaretPrecalc.size.y;
 
-    // Keep a copy, because we scroll one axis at a time to avoid zigzag
-    auto doScroll = false;
     auto scrollToPosition = -mScroll;
-    if (border & HORIZONTAL) {
-        if (mCaretPrecalc.position.x - mStyle.caretWidth < mDimenPrecalc.textBounds.x) {
-            auto leftScroll = (mCaretPrecalc.position.x - mStyle.caretWidth) + mScroll.x - mDimenPrecalc.textBounds.x;
-            scrollToPosition.x = leftScroll;
-            doScroll = true;
-        }
-        else
-        if (mCaretPrecalc.position.x + mStyle.caretWidth > mDimenPrecalc.textBounds.z) {
-            auto rightScroll = (mCaretPrecalc.position.x + mStyle.caretWidth) + mScroll.x - mDimenPrecalc.textBounds.z;
-            scrollToPosition.x = rightScroll;
-            doScroll = true;
-        }
-        else {
-            // Revert back original scroll value
-            scrollToPosition.x = -scrollToPosition.x;
-        }
+    auto doScroll = false;
+
+    // Horizontal
+    if (mCaretPrecalc.position.x - mStyle.caretWidth < mDimenPrecalc.textBounds.x) {
+        auto leftScroll = (mCaretPrecalc.position.x - mStyle.caretWidth) + mScroll.x - mDimenPrecalc.textBounds.x;
+        scrollToPosition.x = leftScroll;
+        doScroll = true;
     }
-    if (border & VERTICAL) {
-        if (mCaretPrecalc.position.y - lineHeight / 2.0f < mDimenPrecalc.textBounds.y) {
-            auto topScroll = mCaretPrecalc.position.y - mDimenPrecalc.textBounds.y + mScroll.y - lineHeight / 2.0f;
-            scrollToPosition.y = topScroll;
-            doScroll = true;
-        }
-        else
-        if (mCaretPrecalc.position.y + lineHeight / 2.0f > mDimenPrecalc.textBounds.w) {
-            auto bottomScroll = mCaretPrecalc.position.y - mDimenPrecalc.textBounds.w + mScroll.y + lineHeight / 2.0f;
-            scrollToPosition.y = bottomScroll;
-            doScroll = true;
-        }
-        else {
-            // Revert back original scroll value
-            scrollToPosition.y = -scrollToPosition.y;
-        }
+    else
+    if (mCaretPrecalc.position.x + mStyle.caretWidth > mDimenPrecalc.textBounds.z) {
+        auto rightScroll = (mCaretPrecalc.position.x + mStyle.caretWidth) + mScroll.x - mDimenPrecalc.textBounds.z;
+        scrollToPosition.x = rightScroll;
+        doScroll = true;
     }
+    else {
+        // Revert back original scroll value
+        scrollToPosition.x = -scrollToPosition.x;
+    }
+
+    // Vertical
+    if (mCaretPrecalc.position.y - lineHeight / 2.0f < mDimenPrecalc.textBounds.y) {
+        auto topScroll = mCaretPrecalc.position.y - mDimenPrecalc.textBounds.y + mScroll.y - lineHeight / 2.0f;
+        scrollToPosition.y = topScroll;
+        doScroll = true;
+    }
+    else
+    if (mCaretPrecalc.position.y + lineHeight / 2.0f > mDimenPrecalc.textBounds.w) {
+        auto bottomScroll = mCaretPrecalc.position.y - mDimenPrecalc.textBounds.w + mScroll.y + lineHeight / 2.0f;
+        scrollToPosition.y = bottomScroll;
+        doScroll = true;
+    }
+    else {
+        // Revert back original scroll value
+        scrollToPosition.y = -scrollToPosition.y;
+    }
+
     if (doScroll) {
         scrollTo(scrollToPosition.x, scrollToPosition.y);
     }

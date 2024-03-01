@@ -168,12 +168,6 @@ private:
         DELETED = Cursor::EventType::LINE_DELETED
     };
 
-    /// @brief When the caret move, this is used to define the eventual scroll direction
-    enum CaretBorder : uint8_t {
-        HORIZONTAL  = 1,
-        VERTICAL    = 2
-    };
-
     /// @brief A drawing box containing the display information
     struct DrawingBox {
         /// @brief The position in screen coordinates of the drawing box (origin centered)
@@ -254,16 +248,14 @@ private:
         TRY_SCROLL_TO_BORDERS                   = 64,
         /// @brief The style changed
         STYLE_CHANGED                           = 128,
-        /// @brief The scroll position changed
-        SCROLL_POSITION_CHANGED                 = 256,
         /// @brief The text changed
-        TEXT_CHANGED                            = 512,
+        TEXT_CHANGED                            = 256,
         /// @brief The line width list need to be sorted
-        REORDER_LINE_WIDTH                      = 1024,
+        REORDER_LINE_WIDTH                      = 512,
         /// @brief Invalidate all sprite shape, forcing them to reposition, resize and set color
-        INVALIDATE_SPRITES                      = 2048,
+        INVALIDATE_SPRITES                      = 1024,
         /// @brief Invalidate the scroll indicators
-        INVALIDATE_SCROLL_INDICATORS            = 4096
+        INVALIDATE_SCROLL_INDICATORS            = 2048
     };
 
     /// @brief The SpriteShader used to render the SpriteBuffer
@@ -359,9 +351,8 @@ private:
     /// @brief Calculate the number of visible line in the view
     void calculateLineInView();
 
-    /// @brief Scroll to a border if possible, the caret at the very side of it
-    /// @brief border The border to reach (can be both CaretBorder)
-    void scrollCaretToBorder(uint8_t border);
+    /// @brief Scroll to a border if possible, to follow the caret
+    void scrollCaretToBorder();
 
     /// @brief Check a line inside the cursor and trigger dirty bits if needed
     /// @param index The line number to check
