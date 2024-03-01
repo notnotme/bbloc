@@ -182,7 +182,7 @@ private:
         glm::vec2   size;
         /// @brief The parent size of the drawing box (the window size)
         glm::vec2   parentSize;
-        /// @brief The viewport, left, right, top and bottom coordinates
+        /// @brief The viewport left, top, right, and bottom position
         glm::vec4   viewport;
     };
 
@@ -214,6 +214,8 @@ private:
         float       lineNumberWidth;
         /// @brief The maximum scrolling value possible with the binded cursor
         glm::vec2   maxScroll;
+        /// @brief The main text bounds, left top, right and bottom.
+        glm::vec4   textBounds;
         /// @brief A list containing the pair of line associated with their width in pixels, must always be sorted so the longuest is in the back
         std::list<std::pair<size_t, float>> lineWidth;
     };
@@ -235,7 +237,7 @@ private:
     };
 
     /// @brief Bitfield used to define what changed in the renderer between two frames
-    enum DirtyBit : uint32_t {
+    enum DirtyBit : uint16_t {
         /// @brief The font changed, need to regenerate the caret precalc
         CALCULATE_CARET_PRECALC                 = 1,
         /// @brief Need to update the max scrolling possible position
@@ -322,7 +324,7 @@ private:
     uint8_t mDrawBit;
 
     /// @brief Define what changed in the internal state between two frames
-    uint32_t mDirtyBit;
+    uint16_t mDirtyBit;
 
     /// @brief The time used to update the renderer
     float mUpdateTime;

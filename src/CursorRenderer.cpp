@@ -9,11 +9,11 @@ mSpriteShader(std::make_unique<SpriteShader>()),
 mSpriteBuffer(std::make_unique<SpriteBuffer>(SPRITE_BUFFER_SIZE)),
 mDrawingBox({ { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0, 0, 0} }),
 mRenderPrecalc({ 0, 0, 0, 0, 0, glm::mat4(1) }),
-mDimenPrecalc({ 0, 0, 0, { 0, 0 } }),
+mDimenPrecalc({ 0, 0, 0, { 0, 0 }, { 0, 0, 0, 0 } }),
 mCaretPrecalc({ true, 0.5f, 0, 0, { 2, 0 }, { 0, 0 } }),
 mScroll(0),
 mDrawBit(UINT8_MAX),
-mDirtyBit(UINT32_MAX),
+mDirtyBit(UINT16_MAX),
 mUpdateTime(0),
 mRenderTime(0) {
 }
@@ -43,9 +43,9 @@ void CursorRenderer::updateDrawingBox(float xPixel, float yPixel, float widthPix
     mDrawingBox.size.x = widthPixel;
     mDrawingBox.size.y = heightPixel;
     mDrawingBox.viewport.x = mDrawingBox.position.x - mDrawingBox.size.x / 2.0f;
-    mDrawingBox.viewport.y = mDrawingBox.position.x + mDrawingBox.size.x / 2.0f;
+    mDrawingBox.viewport.y = mDrawingBox.position.y - mDrawingBox.size.y / 2.0f;
+    mDrawingBox.viewport.z = mDrawingBox.position.x + mDrawingBox.size.x / 2.0f;
     mDrawingBox.viewport.w = mDrawingBox.position.y + mDrawingBox.size.y / 2.0f;
-    mDrawingBox.viewport.z = mDrawingBox.position.y - mDrawingBox.size.y / 2.0f;
 
     mDirtyBit |= CALCULATE_MAX_SCROLL;
     mDirtyBit |= CALCULATE_LINE_IN_VIEW;
@@ -219,8 +219,8 @@ void CursorRenderer::update(float time) {
         auto scroll = -mScroll;
         auto scrollAmount = glm::abs(scroll.y / mCaretPrecalc.size.y);
         auto scrollFraction = glm::fract(scrollAmount) * mCaretPrecalc.size.y;
+        auto topText = mDimenPrecalc.textBounds.y + mCaretPrecalc.bearingY - scrollFraction;
         auto firstVisibleLine = glm::floor(scrollAmount);
-        auto topText = mDrawingBox.viewport.z + mCaretPrecalc.bearingY - scrollFraction;
         auto lastVisibleLine = firstVisibleLine + mDimenPrecalc.visibleLineCount + 2; // one line above and below the visible area must be drawn
         auto visibleText = true;
 
@@ -229,7 +229,7 @@ void CursorRenderer::update(float time) {
             // Gap between the first line and the top of the screen
             auto skipCount = glm::abs(firstVisibleLine);
             topText += (skipCount * mCaretPrecalc.size.y);
-            if (topText > mDrawingBox.viewport.w + mCaretPrecalc.size.y) {
+            if (topText > mDimenPrecalc.textBounds.w + mCaretPrecalc.size.y) {
                 // Below visible area
                 visibleText = false;
             } else {
@@ -272,7 +272,7 @@ void CursorRenderer::update(float time) {
                         if (drawBit(LINE_NUMBER)) {
                             // Don't print line 0 but start with 1 instead
                             auto number = std::to_string(lineIndex + 1);
-                            for (auto character : number) {
+                            for (const auto& character : number) {
                                 mFontTexture->get(character, [&](const FontTexture::Tile& tile) {
                                     sprite.position.x = glm::floor(printAtX + (tile.bearing.x + tile.size.x / 2.0f));
                                     sprite.position.y =  glm::round(printAtY - (tile.bearing.y - tile.size.y / 2.0f));
@@ -297,11 +297,11 @@ void CursorRenderer::update(float time) {
             // TODO: clip out of bounds
             auto selection = mCursor->selection();
             if (!selection.empty()) {
-                sprite.texture = mFontTexture->pixelCoordinates();
                 bool selectionStartInViewY = selection.start.y >= firstVisibleLine || selection.start.y < firstVisibleLine + mDimenPrecalc.visibleLineCount;
                 bool selectionEndInViewY = selection.end.y >= firstVisibleLine || selection.end.y < firstVisibleLine + mDimenPrecalc.visibleLineCount;
                 // check if we are in the view area on the y axis
                 if (selectionStartInViewY || selectionEndInViewY) {
+                    sprite.texture = mFontTexture->pixelCoordinates();
                     sprite.tint = mStyle.selectedTextColor;
                     sprite.size.y = mCaretPrecalc.size.y;
                     if (selection.start.y == selection.end.y) {
@@ -310,6 +310,7 @@ void CursorRenderer::update(float time) {
                             // Check if we need to invert X axis
                             std::swap(selection.end.x, selection.start.x);
                         }
+
                         auto line = mCursor->stringView(selection.start.y);
                         auto startY = (selection.start.y - firstVisibleLine) * mCaretPrecalc.size.y;
                         startY -= mCaretPrecalc.bearingY - mCaretPrecalc.size.y / 2.0f;
@@ -347,7 +348,6 @@ void CursorRenderer::update(float time) {
                                 mSpriteBuffer->add(sprite);
                                 ++mRenderPrecalc.selectionGlyphCount;
                             } else {
-                                // TODO: merge all lines inbetween start and end
                                 sprite.position.x = mBackgroundSprite.position.x;
                                 sprite.position.y = glm::round(topText + startY);
                                 sprite.size.x = mBackgroundSprite.size.x;
@@ -390,22 +390,24 @@ void CursorRenderer::update(float time) {
             mRenderPrecalc.caretGlyphIndex = mSpriteBuffer->index();
             mSpriteBuffer->add(sprite);
 
-            auto printAtX = mDrawingBox.viewport.x + mMarginSprite.size.x + mBorderSprite.size.x;
+            auto printAtX = mDimenPrecalc.textBounds.x;
             auto printAtY = topText;
+
+            sprite.tint = mStyle.textColor;
             for (size_t lineIndex = firstVisibleLine; lineIndex < lastVisibleLine; ++lineIndex) {
-                if (lineIndex >= mCursor->size() || printAtY > mDrawingBox.viewport.w - mHScrollSprite.size.y + mCaretPrecalc.size.y / 2.0f) {
+                if (lineIndex >= mCursor->size() || printAtY > mDimenPrecalc.textBounds.w + mCaretPrecalc.size.y / 2.0f) {
                     // Stop early if possible
                     break;
                 }
 
-                auto line = mCursor->stringView(lineIndex);
-                for (auto character : line) {
+                const auto line = mCursor->stringView(lineIndex);
+                for (const auto& character : line) {
                     bool stop = false;
                     mFontTexture->get(character, [&](const FontTexture::Tile& tile) {
                         sprite.position.x = glm::floor(printAtX + (tile.bearing.x + tile.size.x / 2.0f) + scroll.x);
                         sprite.position.y = glm::round(printAtY - (tile.bearing.y - tile.size.y / 2.0f));
 
-                        if (sprite.position.x - tile.size.x / 2.0f >= mDrawingBox.viewport.y - mVScrollSprite.size.x) {
+                        if (sprite.position.x - tile.size.x / 2.0f >= mDrawingBox.viewport.z - mVScrollSprite.size.x) {
                             // Out of visible area on the X axis, next line
                             stop = true;
                             return;
@@ -421,11 +423,10 @@ void CursorRenderer::update(float time) {
                             printAtX += tile.advance;
                         break;
                         default:
-                            if (sprite.position.x + tile.size.x / 2.0f >= mDrawingBox.viewport.x + mMarginSprite.size.x + mBorderSprite.size.x) {
+                            if (sprite.position.x + tile.size.x / 2.0f >= mDimenPrecalc.textBounds.x) {
                                 // In visible area
                                 sprite.size = tile.size;
                                 sprite.texture = tile.texture;
-                                sprite.tint = mStyle.textColor;
 
                                 mSpriteBuffer->add(sprite);
                                 ++mRenderPrecalc.textGlyphCount;
@@ -440,7 +441,7 @@ void CursorRenderer::update(float time) {
                 }
 
                 printAtY += mCaretPrecalc.size.y;
-                printAtX = mDrawingBox.viewport.x + mMarginSprite.size.x + mBorderSprite.size.x;
+                printAtX = mDimenPrecalc.textBounds.x;
             }
         }
         mSpriteBuffer->unmap();
@@ -490,7 +491,7 @@ void CursorRenderer::render() {
     // Render All background shapes
     glScissor(
         mDrawingBox.viewport.x,
-        (mDrawingBox.parentSize.y - mDrawingBox.viewport.z) - mDrawingBox.size.y,
+        (mDrawingBox.parentSize.y - mDrawingBox.viewport.y) - mDrawingBox.size.y,
         mDrawingBox.size.x,
         mDrawingBox.size.y);
 
@@ -501,7 +502,7 @@ void CursorRenderer::render() {
     if (drawBit(LEFT_MARGIN)) {
         glScissor(
             mDrawingBox.viewport.x,
-            (mDrawingBox.parentSize.y - mDrawingBox.viewport.z) - mDrawingBox.size.y,
+            (mDrawingBox.parentSize.y - mDrawingBox.viewport.y) - mDrawingBox.size.y,
             mMarginSprite.size.x + mBorderSprite.size.x,
             mDrawingBox.size.y);
 
@@ -517,7 +518,7 @@ void CursorRenderer::render() {
     // Render selection + caret + text
     glScissor(
         mDrawingBox.viewport.x + mMarginSprite.size.x + mBorderSprite.size.x,
-        mDrawingBox.parentSize.y - mDrawingBox.viewport.z - mDrawingBox.size.y + mHScrollSprite.size.y,
+        mDrawingBox.parentSize.y - mDrawingBox.viewport.y - mDrawingBox.size.y + mHScrollSprite.size.y,
         mDrawingBox.size.x - mMarginSprite.size.x - mBorderSprite.size.x - mVScrollSprite.size.x,
         mDrawingBox.size.y - mHScrollSprite.size.y);
 
@@ -652,7 +653,7 @@ void CursorRenderer::invalidateSprite() {
             mMarginSprite.size.x += mDimenPrecalc.lineIndicatorWidth;
         }
         mMarginSprite.position.x = mDrawingBox.viewport.x + mMarginSprite.size.x / 2.0f;
-        mMarginSprite.position.y = mDrawingBox.viewport.z + mMarginSprite.size.y / 2.0f;
+        mMarginSprite.position.y = mDrawingBox.viewport.y + mMarginSprite.size.y / 2.0f;
 
         // Border
         mBorderSprite.tint = mStyle.marginBorderColor;
@@ -675,7 +676,7 @@ void CursorRenderer::invalidateSprite() {
         if (drawBit(LEFT_MARGIN)) {
             mHScrollSprite.size.x -= mMarginSprite.size.x + mBorderSprite.size.x;
         }
-        mHScrollSprite.position.x = mDrawingBox.viewport.y - mStyle.scrollbarWidth - mHScrollSprite.size.x / 2.0f;
+        mHScrollSprite.position.x = mDrawingBox.viewport.z - mStyle.scrollbarWidth - mHScrollSprite.size.x / 2.0f;
         mHScrollSprite.position.y = mDrawingBox.viewport.w - mStyle.scrollbarWidth / 2.0f;
 
         mHScrollIndicatorSprite.size.y = mStyle.scrollbarWidth;
@@ -685,8 +686,8 @@ void CursorRenderer::invalidateSprite() {
         mVScrollSprite.tint = mStyle.scrollbarColor;
         mVScrollSprite.size.x = mStyle.scrollbarWidth;
         mVScrollSprite.size.y = mDrawingBox.size.y - mStyle.scrollbarWidth;
-        mVScrollSprite.position.x = mDrawingBox.viewport.y - mStyle.scrollbarWidth / 2.0f;
-        mVScrollSprite.position.y = mDrawingBox.viewport.z + mVScrollSprite.size.y / 2.0f;
+        mVScrollSprite.position.x = mDrawingBox.viewport.z - mStyle.scrollbarWidth / 2.0f;
+        mVScrollSprite.position.y = mDrawingBox.viewport.y + mVScrollSprite.size.y / 2.0f;
 
         mVScrollIndicatorSprite.size.x = mStyle.scrollbarWidth;
         mVScrollIndicatorSprite.tint = mStyle.scrollbarIndicatorColor;
@@ -695,7 +696,7 @@ void CursorRenderer::invalidateSprite() {
         mCornerSprite.tint = mStyle.scrollbarColor;
         mCornerSprite.size.x = mStyle.scrollbarWidth;
         mCornerSprite.size.y = mStyle.scrollbarWidth;;
-        mCornerSprite.position.x = mDrawingBox.viewport.y - mStyle.scrollbarWidth / 2.0f;
+        mCornerSprite.position.x = mDrawingBox.viewport.z - mStyle.scrollbarWidth / 2.0f;
         mCornerSprite.position.y = mDrawingBox.viewport.w - mStyle.scrollbarWidth / 2.0f;
     } else {
         mHScrollSprite.size.x = 0;
@@ -718,18 +719,24 @@ void CursorRenderer::invalidateSprite() {
         mBackgroundSprite.size.x -= mVScrollSprite.size.x;
         mBackgroundSprite.size.y -= mHScrollSprite.size.y;
     }
-    mBackgroundSprite.position.x = mDrawingBox.viewport.y - mBackgroundSprite.size.x / 2.0f;
-    mBackgroundSprite.position.y = mDrawingBox.viewport.z + mBackgroundSprite.size.y / 2.0f;
+    mBackgroundSprite.position.x = mDrawingBox.viewport.z - mBackgroundSprite.size.x / 2.0f;
+    mBackgroundSprite.position.y = mDrawingBox.viewport.y + mBackgroundSprite.size.y / 2.0f;
     if (drawBit(SCROLL_BAR)) {
         mBackgroundSprite.position.x -= mVScrollSprite.size.x;
     }
+
+    // Calculate the text bounds
+    mDimenPrecalc.textBounds.x = mDrawingBox.viewport.x + mMarginSprite.size.x + mBorderSprite.size.x;
+    mDimenPrecalc.textBounds.y = mDrawingBox.viewport.y;
+    mDimenPrecalc.textBounds.z = mDrawingBox.viewport.z - mVScrollSprite.size.x;
+    mDimenPrecalc.textBounds.w = mDrawingBox.viewport.w - mHScrollSprite.size.y;
 
     mDirtyBit &= ~INVALIDATE_SPRITES;
 }
 
 void CursorRenderer::invalidateScrollIndicators() {
     // Upate the background values
-    auto indicatorWidth = glm::max({ 32.0f, 32.0f }, mBackgroundSprite.size - mDimenPrecalc.maxScroll);
+    auto indicatorWidth = glm::max({ mHScrollSprite.size.y, mVScrollSprite.size.x }, mBackgroundSprite.size - mDimenPrecalc.maxScroll);
     auto indicatorPosition = glm::abs(-mScroll / mDimenPrecalc.maxScroll) * (mBackgroundSprite.size - indicatorWidth) + indicatorWidth / 2.0f;
 
     mVScrollIndicatorSprite.position.x = mVScrollSprite.position.x;
@@ -832,7 +839,7 @@ void CursorRenderer::calculateAllLineWidthPixels() {
 
 void CursorRenderer::calculateMaxScroll() {
     // Horizontal
-    auto horizontalVisibleArea = mDrawingBox.size.x - mMarginSprite.size.x - mBorderSprite.size.x - mVScrollSprite.size.x;
+    auto horizontalVisibleArea = mDimenPrecalc.textBounds.z - mDimenPrecalc.textBounds.x;
     auto& longuestLineWidthPixel = mDimenPrecalc.lineWidth.back();
 
     if (longuestLineWidthPixel.second > horizontalVisibleArea) {
@@ -844,7 +851,7 @@ void CursorRenderer::calculateMaxScroll() {
     // Vertical
     auto fontHeight = mCaretPrecalc.size.y;
     auto cursorSize = mCursor.get() ? mCursor->size() : 0;
-    auto verticalVisibleArea = mDrawingBox.size.y - mHScrollSprite.size.y;
+    auto verticalVisibleArea = mDimenPrecalc.textBounds.w - mDimenPrecalc.textBounds.y;
 
     mDimenPrecalc.maxScroll.y = cursorSize * fontHeight;
     if (mDimenPrecalc.maxScroll.y > verticalVisibleArea) {
@@ -867,18 +874,17 @@ void CursorRenderer::calculateMaxScroll() {
 void CursorRenderer::calculateCaretPosition() {
     auto caretPosition = mCursor->position();
     auto lineHeight = mCaretPrecalc.size.y;
-    auto scroll = -mScroll;
 
     // Calculate Y caret position
-    auto y = mDrawingBox.viewport.z + mCaretPrecalc.bearingY + scroll.y;
+    auto y = mDrawingBox.viewport.y + mCaretPrecalc.bearingY - mScroll.y;
     y -= mCaretPrecalc.bearingY - lineHeight / 2.0f;
     y += caretPosition.y * lineHeight;
 
     // Calculate X carret position
     auto line = mCursor->stringView(caretPosition.y);
-    auto x = mDrawingBox.viewport.x + scroll.x + mMarginSprite.size.x + mBorderSprite.size.x;
+    auto x = mDimenPrecalc.textBounds.x - mScroll.x;
     x += mFontTexture->measure(line.substr(0, caretPosition.x)).x;
-    x += mStyle.caretWidth / 2.0f;
+    x += glm::ceil(mStyle.caretWidth / 2.0f);
 
     mCaretPrecalc.position.y = glm::round(y);
     mCaretPrecalc.position.x = glm::floor(x);
@@ -899,23 +905,19 @@ void CursorRenderer::calculateLineInView() {
 void CursorRenderer::scrollCaretToBorder(uint8_t border) {
     // Calculate drawing area and top text location
     auto lineHeight = mCaretPrecalc.size.y;
-    auto scroll = -mScroll;
 
     // Keep a copy, because we scroll one axis at a time to avoid zigzag
     auto doScroll = false;
-    auto scrollToPosition = scroll;
+    auto scrollToPosition = -mScroll;
     if (border & HORIZONTAL) {
-        auto leftBorder = mDrawingBox.viewport.x + mMarginSprite.size.x + mBorderSprite.size.x;
-        auto rightBorder = mDrawingBox.viewport.y - mVScrollSprite.size.x;
-
-        if (mCaretPrecalc.position.x - mStyle.caretWidth < leftBorder) {
-            auto leftScroll = (mCaretPrecalc.position.x - mStyle.caretWidth) - scroll.x - leftBorder;
+        if (mCaretPrecalc.position.x - mStyle.caretWidth < mDimenPrecalc.textBounds.x) {
+            auto leftScroll = (mCaretPrecalc.position.x - mStyle.caretWidth) + mScroll.x - mDimenPrecalc.textBounds.x;
             scrollToPosition.x = leftScroll;
             doScroll = true;
         }
         else
-        if (mCaretPrecalc.position.x + mStyle.caretWidth > rightBorder) {
-            auto rightScroll = (mCaretPrecalc.position.x + mStyle.caretWidth) - scroll.x - rightBorder;
+        if (mCaretPrecalc.position.x + mStyle.caretWidth > mDimenPrecalc.textBounds.z) {
+            auto rightScroll = (mCaretPrecalc.position.x + mStyle.caretWidth) + mScroll.x - mDimenPrecalc.textBounds.z;
             scrollToPosition.x = rightScroll;
             doScroll = true;
         }
@@ -925,17 +927,14 @@ void CursorRenderer::scrollCaretToBorder(uint8_t border) {
         }
     }
     if (border & VERTICAL) {
-        auto topBorder = mDrawingBox.viewport.z;
-        auto bottomBorder = mDrawingBox.viewport.w - mHScrollSprite.size.y;
-
-        if (mCaretPrecalc.position.y - lineHeight / 2.0f < topBorder) {
-            auto topScroll = mCaretPrecalc.position.y - mDrawingBox.viewport.z - scroll.y - lineHeight / 2.0f;
+        if (mCaretPrecalc.position.y - lineHeight / 2.0f < mDimenPrecalc.textBounds.y) {
+            auto topScroll = mCaretPrecalc.position.y - mDimenPrecalc.textBounds.y + mScroll.y - lineHeight / 2.0f;
             scrollToPosition.y = topScroll;
             doScroll = true;
         }
         else
-        if (mCaretPrecalc.position.y + lineHeight / 2.0f > bottomBorder) {
-            auto bottomScroll = mCaretPrecalc.position.y - scroll.y  - mDrawingBox.viewport.w + mHScrollSprite.size.y + lineHeight / 2.0f;
+        if (mCaretPrecalc.position.y + lineHeight / 2.0f > mDimenPrecalc.textBounds.w) {
+            auto bottomScroll = mCaretPrecalc.position.y - mDimenPrecalc.textBounds.w + mScroll.y + lineHeight / 2.0f;
             scrollToPosition.y = bottomScroll;
             doScroll = true;
         }
