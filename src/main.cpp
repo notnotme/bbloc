@@ -18,6 +18,13 @@ std::shared_ptr<Controls> controls = std::make_shared<Controls>();
 std::shared_ptr<Debug> debug = std::make_shared<Debug>(cursorManager, renderer);
 
 void bindKeyboardControls() {
+    controls->bindTextInput([](const char* text) {
+        auto cursor = cursorManager->get();
+        if (cursor->selectionVisible()) {
+            cursor->eraseSelection();
+        }
+        cursor->insert(text);
+    });
     controls->bindKey(SDLK_ESCAPE, [](SDL_Keycode keyCode, uint16_t modifier) {
         // TOOD: Save modified cursor(s)
         SDL_Event quitEvent;
@@ -186,12 +193,7 @@ int main(int argc, char *argv[]) {
                 if (debug->visible()) {
                     break;
                 }
-
-                auto cursor = cursorManager->get();
-                if (cursor->selectionVisible()) {
-                    cursor->eraseSelection();
-                }
-                cursor->insert(event.text.text);
+                controls->textInput(event.text.text);
             break;
             }
         }
