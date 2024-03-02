@@ -82,6 +82,9 @@ void CursorRenderer::update(float time) {
         case Cursor::EventType::CARET_MOVED:
             mDirtyBit |= CALCULATE_CARET_POSITION;
             mDirtyBit |= TRY_SCROLL_TO_BORDERS;
+            if (mCursor->selectionVisible()) {
+                mDirtyBit |= TEXT_CHANGED;
+            }
         break;
         case Cursor::EventType::LINE_CREATED:
         case Cursor::EventType::LINE_CHANGED:
