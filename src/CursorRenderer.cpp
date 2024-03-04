@@ -475,6 +475,7 @@ void CursorRenderer::render() {
     mFontTexture->use();
     mSpriteShader->use();
     mSpriteShader->setMatrix(mRenderPrecalc.viewMatrix);
+    mSpriteShader->setTexture(0);
     mSpriteBuffer->use();
 
     // Render All background shapes
