@@ -166,6 +166,7 @@ int main(int argc, char *argv[]) {
     auto frequency = SDL_GetPerformanceFrequency();
     auto loop = true;
     while (loop) {
+        SDL_WaitEventTimeout(nullptr, 50);
         while (SDL_PollEvent(&event)) {
             debug->processEvent(&event);
             switch (event.type) {
@@ -207,9 +208,6 @@ int main(int argc, char *argv[]) {
 
         debug->render(window);
         SDL_GL_SwapWindow(window);
-
-        // Can be used to limit cpu cycles
-        // std::this_thread::sleep_for (std::chrono::milliseconds(1000 / 120));
     }
 
     debug->finalize();
