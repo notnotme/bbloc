@@ -33,4 +33,7 @@
 
 # Project files and executables
 .vscode
+.idea
 bbloc.*
+cmake-build-debug
+cmake-build-release
