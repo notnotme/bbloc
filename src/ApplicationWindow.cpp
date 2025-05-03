@@ -441,8 +441,9 @@ void ApplicationWindow::registerOpenCommand() {
             auto all_line = std::u16string();
             while (getline(ifs, line)) {
                 if (const auto end_it = utf8::find_invalid(line.begin(), line.end()); end_it != line.end()) {
-                    // Invalid sequence: stop reading
-                    return u"Invalid UTF-8 encoding detected at line " + line_count;
+                    // Invalid sequence: stop reading the file
+                    const auto utf16_line_count = utf8::utf8to16(std::to_string(line_count));
+                    return std::u16string(u"Invalid UTF-8 encoding detected at line ").append(utf16_line_count);
                 }
                 // Convert to utf16 then append to the cursor
                 all_line.append(utf8::utf8to16(line));
