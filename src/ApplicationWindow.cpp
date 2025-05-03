@@ -28,8 +28,7 @@ ApplicationWindow::ApplicationWindow()
       m_editor(m_command_manager, m_theme, m_quad_program, m_quad_buffer),
       m_prompt_state(m_max_history),
       m_prompt(m_command_manager, m_theme, m_quad_program, m_quad_buffer),
-      m_orthogonal() {
-}
+      m_orthogonal() {}
 
 void ApplicationWindow::updateOrthogonal(const int32_t width, const int32_t height) {
     const auto right = static_cast<float>(width);
@@ -90,7 +89,7 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     SDL_GL_SetSwapInterval(1);
     gladLoadGL();
 
-    // Create the command manager, theme, and highlighter. todo: use base_path
+    // Create the command manager and register commands
     m_command_manager.create();
     registerOpenCommand();
     registerSaveCommand();
@@ -423,14 +422,15 @@ void ApplicationWindow::registerOpenCommand() {
             }
 
             const auto path = utf8::utf16to8(args[0]);
+            const auto is_regular_file = std::filesystem::is_regular_file(path);
             auto ifs = std::ifstream(path, std::ios::in);
-            if (!ifs || !ifs.is_open() || !std::filesystem::is_regular_file(path)) {
+            if (!ifs || !ifs.is_open() || !is_regular_file) {
                 // That file cannot be opened
                 return u"Could not open " + std::u16string(args[0]) + u".";
             }
 
             // Clear the cursor and read the file line by line
-            const auto edit_clear = cursor.clear();
+            const auto& edit_clear = cursor.clear();
             m_high_lighter.edit(edit_clear);
 
             const auto file_extension = std::filesystem::path(path).extension().string();
@@ -455,7 +455,7 @@ void ApplicationWindow::registerOpenCommand() {
             }
             ifs.close();
 
-            const auto edit_insert = cursor.insert(all_line);
+            const auto& edit_insert = cursor.insert(all_line);
             m_high_lighter.edit(edit_insert);
 
             cursor.setName(path);
@@ -484,7 +484,8 @@ void ApplicationWindow::registerSaveCommand() {
             const auto arg_filename = std::filesystem::path(args.empty() ? "" : utf8::utf16to8(args[0]));
             const auto file_to_save = arg_filename.empty() ? cursor_name : arg_filename;
             const auto file_exists = std::filesystem::exists(file_to_save);
-            if (file_exists && !std::filesystem::is_regular_file(file_to_save)) {
+            const auto is_regular_file = std::filesystem::is_regular_file(file_to_save);
+            if (file_exists && !is_regular_file) {
                 return u"Could not save " + std::u16string(args[0]) + u".";
             }
 

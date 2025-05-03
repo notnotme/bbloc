@@ -215,6 +215,7 @@ bool Prompt::onKeyDown(const HighLighter &highLighter, PromptCursor &cursor, Pro
         case SDLK_TAB: {
             const auto input = cursor.getString();
             const auto tokens = CommandManager::tokenize(input);
+            // Reset the history index if we were browsing
             viewState.clearHistoryIndex();
             if (viewState.getCompletionCount() > 0) {
                 // The viewState completion list is not empty, loop inside
@@ -225,6 +226,7 @@ bool Prompt::onKeyDown(const HighLighter &highLighter, PromptCursor &cursor, Pro
             }
 
             if (const auto& feedback = m_command_manager.getCommandFeedback(); feedback.has_value()) {
+                // If a feedback is active, try to gather arguments
                 m_command_manager.getFeedbackCompletion([&viewState](const std::u16string_view& completion) {
                     viewState.addCompletion(completion);
                 });
@@ -234,7 +236,7 @@ bool Prompt::onKeyDown(const HighLighter &highLighter, PromptCursor &cursor, Pro
                 const auto utf8_argument_to_complete = tokens.size() <= 1 ? "" : utf8::utf16to8(tokens.back());
                 const auto argument_index = std::max(0, static_cast<int32_t>(tokens.size() - 2));
 
-                // Tru to complete commands arguments first, if the command name is incomplete, this will return an empty list
+                // Try to complete commands arguments first, if the command name is incomplete, this will return an empty list
                 m_command_manager.getArgumentsCompletion(utf8_command_name, argument_index, utf8_argument_to_complete,
                     [&](const std::string_view& completion) {
                         const auto completion_str = std::u16string(tokens[0]) + u" " + utf8::utf8to16(completion);
@@ -300,8 +302,9 @@ void Prompt::onTextInput(const HighLighter &highLighter, PromptCursor &cursor, P
     const auto utf16_text = utf8::utf8to16(utf8_text);
     cursor.insert(utf16_text);
 
-    // Reset completions as soon as the user typed a new text
+    // Reset completions and history index as soon as the user typed a new text
     viewState.clearCompletions();
+    viewState.clearHistoryIndex();
 
     //todo: viewState.follow_indicator = true;
 }
