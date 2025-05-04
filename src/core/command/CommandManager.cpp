@@ -11,6 +11,7 @@
 
 void CommandManager::create() {
     registerCvarCommand();
+    registerExecCommand();
 }
 
 void CommandManager::destroy() {

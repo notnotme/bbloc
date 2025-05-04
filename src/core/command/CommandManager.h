@@ -60,7 +60,6 @@ private:
     /** @brief Registers the built-in exec command. */
     void registerExecCommand();
 
-
 public:
     /** @brief Deleted copy constructor. */
     CommandManager(const CommandManager &) = delete;
