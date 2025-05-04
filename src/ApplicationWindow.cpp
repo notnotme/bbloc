@@ -22,7 +22,7 @@ ApplicationWindow::ApplicationWindow()
     : p_sdl_window(nullptr),
       m_sdl_gl_context(nullptr),
       m_max_history(std::make_shared<CVarInt>(MAX_COMMAND_HISTORY)),
-      m_max_frame_time(std::make_shared<CVarFloat>(0.0f, true)),
+      m_render_time(std::make_shared<CVarFloat>(0.0f, true)),
       m_cursor(std::make_unique<VectorBuffer>()),
       m_info_bar(m_command_manager, m_theme, m_quad_program, m_quad_buffer),
       m_editor(m_command_manager, m_theme, m_quad_program, m_quad_buffer),
@@ -91,8 +91,11 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
 
     // Create the command manager and register commands
     m_command_manager.create();
+    registerQuitCommand();
     registerOpenCommand();
     registerSaveCommand();
+    registerRenderTimeCommand();
+    registerMaxHistoryCVar();
 
     // Create the theme and highlighter
     m_theme.create(m_command_manager, "romfs/");
@@ -120,38 +123,6 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
 
     m_prompt.create();
     m_prompt.resizeWindow(width, height);
-
-    // Register quit command
-    m_command_manager.registerCommand("quit",
-        [&](const Cursor& cursor, const std::vector<std::u16string_view>& args) -> std::optional<std::u16string> {
-            (void) cursor;
-            if (!args.empty()) {
-                return u"Expected 0 argument.";
-            }
-
-            SDL_Event event { .type = SDL_QUIT };
-            SDL_PushEvent(&event);
-            return std::nullopt;
-        });
-
-    // Register max_render_time cvar and associated command to reset the value, since we made it read-only
-    m_command_manager.registerCvar("inf_max_frame_time", m_max_frame_time);
-    m_command_manager.registerCommand("reset_max_frame_time",
-        [&](const Cursor& cursor, const std::vector<std::u16string_view>& args) -> std::optional<std::u16string> {
-            (void) cursor;
-            if (!args.empty()) {
-                return u"Expected 0 argument.";
-            }
-
-            m_max_frame_time->m_value = 0.0f;
-            return std::nullopt;
-        });
-
-    // register the max_history cvar
-    m_command_manager.registerCvar("dim_max_history", m_max_history, [&] {
-        // Clamp history so the user cannot enter funny numbers
-        m_max_history->m_value = std::clamp(m_max_history->m_value, 8, 255);
-    });
 
     // Set our default OpenGL states
     glDisable(GL_DEPTH_WRITEMASK);
@@ -375,8 +346,8 @@ void ApplicationWindow::mainLoop() {
 
         // Update max_render_time metrics
         const auto frame_time_elapsed = static_cast<float>(SDL_GetPerformanceCounter() - frame_time) / performanceQuery;
-        if (frame_time_elapsed > m_max_frame_time->m_value) {
-            m_max_frame_time->m_value = frame_time_elapsed;
+        if (frame_time_elapsed > m_render_time->m_value) {
+            m_render_time->m_value = frame_time_elapsed;
         }
 
         SDL_GL_SwapWindow(p_sdl_window);
@@ -534,3 +505,40 @@ void ApplicationWindow::registerSaveCommand() {
        });
 }
 
+void ApplicationWindow::registerRenderTimeCommand() {
+    // Register inf_render_time cvar and associated command to reset the value, since we made it read-only
+    m_command_manager.registerCvar("inf_render_time", m_render_time);
+    m_command_manager.registerCommand("reset_render_time",
+        [&](const Cursor& cursor, const std::vector<std::u16string_view>& args) -> std::optional<std::u16string> {
+            (void) cursor;
+            if (!args.empty()) {
+                return u"Expected 0 argument.";
+            }
+
+            m_render_time->m_value = 0.0f;
+            return std::nullopt;
+        });
+}
+
+void ApplicationWindow::registerQuitCommand() {
+    // Register quit command
+    m_command_manager.registerCommand("quit",
+        [&](const Cursor& cursor, const std::vector<std::u16string_view>& args) -> std::optional<std::u16string> {
+            (void) cursor;
+            if (!args.empty()) {
+                return u"Expected 0 argument.";
+            }
+
+            SDL_Event event { .type = SDL_QUIT };
+            SDL_PushEvent(&event);
+            return std::nullopt;
+        });
+}
+
+void ApplicationWindow::registerMaxHistoryCVar() {
+    // register the max_history cvar
+    m_command_manager.registerCvar("dim_max_history", m_max_history, [&] {
+        // Clamp history so the user cannot enter funny numbers
+        m_max_history->m_value = std::clamp(m_max_history->m_value, 8, 255);
+    });
+}

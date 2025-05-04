@@ -74,7 +74,7 @@ private:
     std::shared_ptr<CVarInt> m_max_history;
 
     /** CVar tracking the maximum frame time (to render, before swapping). */
-    std::shared_ptr<CVarFloat> m_max_frame_time;
+    std::shared_ptr<CVarFloat> m_render_time;
 
     /** The prompt cursor. */
     PromptCursor m_prompt_cursor;
@@ -115,6 +115,15 @@ private:
 
     /** @brief Registers the built-in ":save" command. */
     void registerSaveCommand();
+
+    /** @brief Registers the built-in render time command and cvar. */
+    void registerRenderTimeCommand();
+
+    /** @brief Registers the quit command. */
+    void registerQuitCommand();
+
+    /** @brief Registers the max history CVar, to control history size. */
+    void registerMaxHistoryCVar();
 
 public:
     /** @brief Deleted copy constructor. */
