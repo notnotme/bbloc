@@ -13,7 +13,6 @@ add_executable(bbloc
         src/core/command/cvar/CVarInt.cpp
         src/core/command/cvar/CVarFloat.cpp
         src/core/command/CommandManager.cpp
-        src/core/command/ItemCallback.h
         src/core/cursor/buffer/StringBuffer.cpp
         src/core/cursor/buffer/VectorBuffer.cpp
         src/core/cursor/Cursor.cpp
