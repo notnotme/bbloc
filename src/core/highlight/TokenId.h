@@ -13,8 +13,8 @@ enum class TokenId {
     Preprocessor, ///< A preprocessor directive (e.g., #include, #define).
     String,       ///< A string literal.
     Number,       ///< A numeric literal (integer, float, etc.).
-    Keyword,      ///< A language keyword (e.g., if, class, return).
-    Statement     ///< A structural statement or control flow construct.
+    Keyword,      ///< A language keyword (e.g., class, public, protected, void).
+    Statement     ///< A structural statement or control flow construct (e.g., if, else, switch, return).
 };
 
 

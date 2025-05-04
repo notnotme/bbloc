@@ -11,16 +11,17 @@
 
 
 HighLighter::HighLighter()
-    : p_parser(nullptr),
-      p_tree(nullptr),
-      p_language(nullptr),
+    : p_ts_parser(nullptr),
+      p_ts_tree(nullptr),
       m_input(this, inputCallback, TSInputEncodingUTF16),
       m_high_light(HighLightId::None),
-      m_cb(nullptr) {}
+      p_current_parser(nullptr),
+      m_cb(nullptr) {
+}
 
 void HighLighter::create(CommandManager& commandManager) {
     // Create the tree-sitter parser
-    p_parser = ts_parser_new();
+    p_ts_parser = ts_parser_new();
 
     // Register built-in parsers and a command to change the highlight mode
     registerParsers();
@@ -29,14 +30,14 @@ void HighLighter::create(CommandManager& commandManager) {
 
 void HighLighter::destroy() {
     // Cleanup tree
-    if (p_tree != nullptr) {
-        ts_tree_delete(p_tree);
-        p_tree = nullptr;
+    if (p_ts_tree != nullptr) {
+        ts_tree_delete(p_ts_tree);
+        p_ts_tree = nullptr;
     }
 
     // Cleanup parser
-    ts_parser_delete(p_parser);
-    p_parser = nullptr;
+    ts_parser_delete(p_ts_parser);
+    p_ts_parser = nullptr;
 }
 
 void HighLighter::setMode(const HighLightId highLight) {
@@ -44,17 +45,19 @@ void HighLighter::setMode(const HighLightId highLight) {
 
     if (highLight == HighLightId::None) {
         // There is no need to keep the old mode
-        ts_parser_set_language(p_parser, nullptr);
+        ts_parser_set_language(p_ts_parser, nullptr);
+        p_current_parser = nullptr;
     } else {
         // Set new mode
         const auto& parser = m_parsers.at(highLight);
-        ts_parser_set_language(p_parser, parser.language);
+        ts_parser_set_language(p_ts_parser, parser.language);
+        p_current_parser = &parser;
     }
 
-    if (p_tree != nullptr) {
+    if (p_ts_tree != nullptr) {
         // Delete the old tree, as tree-sitter may need to reparse it from scratch
-        ts_tree_delete(p_tree);
-        p_tree = nullptr;
+        ts_tree_delete(p_ts_tree);
+        p_ts_tree = nullptr;
     }
 }
 
@@ -77,14 +80,14 @@ std::string_view HighLighter::getModeString() const {
         return "TEXT";
     }
 
-    return m_parsers.at(m_high_light).name;
+    return p_current_parser->name;
 }
 
 void HighLighter::setInput(const Cursor& cursor) {
     // Invalidate the old parsed tree as tree-sitter will eventually need to reparse it
-    if (p_tree != nullptr) {
-        ts_tree_delete(p_tree);
-        p_tree = nullptr;
+    if (p_ts_tree != nullptr) {
+        ts_tree_delete(p_ts_tree);
+        p_ts_tree = nullptr;
     }
 
     // Set the input to the cursor content
@@ -110,13 +113,13 @@ void HighLighter::setInput(const Cursor& cursor) {
 }
 
 void HighLighter::parse() {
-    if (p_parser != nullptr && m_cb != nullptr) {
-        p_tree = ts_parser_parse(p_parser, p_tree, m_input);
+    if (p_ts_parser != nullptr && m_cb != nullptr) {
+        p_ts_tree = ts_parser_parse(p_ts_parser, p_ts_tree, m_input);
     }
 }
 
 void HighLighter::edit(const CursorEdit& edit) const {
-    if (p_tree != nullptr) {
+    if (p_ts_tree != nullptr) {
         // This just converts and relays the object coming from the cursor
         const auto ts_edit = TSInputEdit {
             .start_byte = edit.start_byte,
@@ -127,7 +130,7 @@ void HighLighter::edit(const CursorEdit& edit) const {
             .new_end_point = TSPoint(edit.new_end.line, edit.new_end.column * sizeof(char16_t))
         };
 
-        ts_tree_edit(p_tree, &ts_edit);
+        ts_tree_edit(p_ts_tree, &ts_edit);
     }
 }
 
@@ -155,21 +158,24 @@ void HighLighter::getParserNames(const ItemCallback<char>& callback) const {
 }
 
 TokenId HighLighter::getHighLightAtPosition(const int32_t line, const int32_t column) const {
-    if (p_tree == nullptr || m_high_light == HighLightId::None) {
+    if (p_ts_tree == nullptr || m_high_light == HighLightId::None) {
         return TokenId::None;
     }
 
     // Find the node at the line and column position
     const auto& point = TSPoint(line, column * sizeof(char16_t));
-    const auto& root_node = ts_tree_root_node(p_tree);
+    const auto& root_node = ts_tree_root_node(p_ts_tree);
     const auto& target_node = ts_node_descendant_for_point_range(root_node, point, point);
+    if (ts_node_is_null(target_node)) {
+        return TokenId::None;
+    }
 
     // todo: Uncomment for debug purpose
-    // std::cout << "node: " << ts_node_type(target_node) << " " << ts_node_symbol(target_node) << std::endl;
+    // std::cout << "node: " << ts_node_type(target_node) << " " << ts_node_symbol(target_node) << " " << std::endl;
     const auto symbol = ts_node_symbol(target_node);
 
-    // Pick the right language and map the symbol to TokenId
-    return m_parsers.at(m_high_light).mapper_function(symbol);
+    // Return the mapped token
+    return p_current_parser->mapper_function(symbol);
 }
 
 const char* HighLighter::inputCallback(void *payload, const uint32_t byteIndex, const TSPoint position, uint32_t *bytesRead) {
@@ -207,7 +213,7 @@ void HighLighter::registerHlCommand(CommandManager& commandManager) {
             const auto extension = std::string(".").append(utf8::utf16to8(args[0]));
             if (!isSupported(extension)) {
                 return u"Unsupported highlight mode: " + std::u16string(args[0]);
-            };
+            }
 
             setMode(extension);
             return std::nullopt;

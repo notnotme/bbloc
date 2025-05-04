@@ -16,7 +16,26 @@
  */
 inline TokenId mapJsonToken(const uint16_t symbol) {
     switch (symbol) {
-        default: return TokenId::None;
+        case 1:     /* {                    */
+        case 2:     /* ,                    */
+        case 3:     /* }                    */
+        case 4:     /* :                    */
+        case 5:     /* [                    */
+        case 6:     /* ]                    */
+        return TokenId::Keyword;
+        case 7:     /* "                    */
+        case 8:     /* string_content       */
+        return TokenId::String;
+        case 10:    /* number               */
+        return TokenId::Number;
+        case 11:     /* true                 */
+        case 12:     /* false                */
+        case 13:     /* null                 */
+        return TokenId::Statement;
+        case 14:     /* comment              */
+        return TokenId::Comment;
+        default:
+        return TokenId::None;
     }
 }
 
