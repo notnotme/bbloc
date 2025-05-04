@@ -190,8 +190,8 @@ const CursorEdit& Cursor::newLine() {
 
 const CursorEdit& Cursor::eraseLeft() {
     m_last_edit.start_byte = getStartByte(m_line, m_column) - sizeof(char16_t);
-    m_last_edit.old_end_byte = m_last_edit.start_byte;
-    m_last_edit.new_end_byte = m_last_edit.start_byte + sizeof(char16_t);
+    m_last_edit.old_end_byte = m_last_edit.start_byte + sizeof(char16_t);
+    m_last_edit.new_end_byte = m_last_edit.start_byte;
     m_last_edit.start.line = m_line;
     m_last_edit.start.column = m_column;
     m_last_edit.old_end.line = m_line;
