@@ -13,7 +13,7 @@ There are missing key feature but most importantly:
 ### Main components:
 
 - **CommandManager**  
-Commands can be registered to become available in the prompt. There is also a CVars system inspired from game engines. they are shared pointers living in random parts of the code and accessible from the CommandManager. Some variables and theme attributes can be changed at runtime using this system. The command prompt also supports a simple feedback from the user (depth: 1), and eventually displays one message after command execution. It also features auto-completion for commands and arguments and also provides some utilities like strings tokenization.
+Commands can be registered to become available in the prompt. There is also a CVars system inspired from game engines. They are shared pointers living in random parts of the code and accessible from the CommandManager. Some variables and theme attributes can be changed at runtime using this system. The command prompt also supports a simple feedback from the user (depth: 1), and eventually displays one message after command execution. It also features auto-completion for commands and arguments and also provides some utilities like strings tokenization.
 
   Current commands implemented are:  
   |Command|Description|
