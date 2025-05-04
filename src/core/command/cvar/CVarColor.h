@@ -7,7 +7,7 @@
 #include <optional>
 
 #include "Color.h"
-#include "TypedCvar.h"
+#include "TypedCVar.h"
 
 
 /**
@@ -15,7 +15,7 @@
  *
  * Allows storing and modifying a color value through the command system.
  */
-class CVarColor final : public TypedCvar<Color> {
+class CVarColor final : public TypedCVar<Color> {
 private:
     std::optional<std::u16string> setValueFromStrings(const std::vector<std::u16string_view> &args) override;
     [[nodiscard]] std::u16string getStringValue() const override;

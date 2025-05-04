@@ -12,7 +12,7 @@
  * @tparam T The type of the configuration variable.
  */
 template<typename T>
-class TypedCvar : public CVar {
+class TypedCVar : public CVar {
 public:
     /** @brief The current value of the typed CVar. */
     T m_value;
@@ -23,11 +23,11 @@ public:
      * @param value The initial value of this CVar.
      * @param isReadOnly Whether this CVar is read-only.
      */
-    explicit TypedCvar(T value, bool isReadOnly);
+    explicit TypedCVar(T value, bool isReadOnly);
 };
 
 template<typename T>
-TypedCvar<T>::TypedCvar(T value, const bool isReadOnly)
+TypedCVar<T>::TypedCVar(T value, const bool isReadOnly)
     : CVar(isReadOnly),
       m_value(value) {}
 

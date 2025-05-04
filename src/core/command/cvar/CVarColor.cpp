@@ -5,7 +5,7 @@
 
 
 CVarColor::CVarColor(const uint8_t red, const uint8_t green, const uint8_t blue, const uint8_t alpha, const bool isReadOnly)
-    : TypedCvar({red, green, blue, alpha}, isReadOnly) {}
+    : TypedCVar({red, green, blue, alpha}, isReadOnly) {}
 
 std::optional<std::u16string> CVarColor::setValueFromStrings(const std::vector<std::u16string_view> &args) {
     if (args.size() < 3 || args.size() > 4) {

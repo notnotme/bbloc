@@ -5,7 +5,7 @@
 
 
 CVarFloat::CVarFloat(const float value, const bool isReadOnly)
-    : TypedCvar(value, isReadOnly) {}
+    : TypedCVar(value, isReadOnly) {}
 
 std::optional<std::u16string> CVarFloat::setValueFromStrings(const std::vector<std::u16string_view> &args) {
     if (args.size() != 1) {

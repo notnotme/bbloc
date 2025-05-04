@@ -5,7 +5,7 @@
 #include <string_view>
 #include <optional>
 
-#include "TypedCvar.h"
+#include "TypedCVar.h"
 
 
 /**
@@ -13,7 +13,7 @@
  *
  * Allows storing and modifying a float value through the command system.
  */
-class CVarFloat final : public TypedCvar<float> {
+class CVarFloat final : public TypedCVar<float> {
 private:
     std::optional<std::u16string> setValueFromStrings(const std::vector<std::u16string_view> &args) override;
     [[nodiscard]] std::u16string getStringValue() const override;

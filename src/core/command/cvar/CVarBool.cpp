@@ -5,7 +5,7 @@
 
 
 CVarBool::CVarBool(const bool value, const bool isReadOnly)
-    : TypedCvar(value, isReadOnly) {}
+    : TypedCVar(value, isReadOnly) {}
 
 std::optional<std::u16string> CVarBool::setValueFromStrings(const std::vector<std::u16string_view> &args) {
     if (args.size() != 1) {

@@ -5,7 +5,7 @@
 #include <string_view>
 #include <optional>
 
-#include "TypedCvar.h"
+#include "TypedCVar.h"
 
 
 /**
@@ -13,7 +13,7 @@
  *
  * Allows storing and modifying a boolean value through the command system.
  */
-class CVarBool final : public TypedCvar<bool> {
+class CVarBool final : public TypedCVar<bool> {
 private:
     std::optional<std::u16string> setValueFromStrings(const std::vector<std::u16string_view> &args) override;
     [[nodiscard]] std::u16string getStringValue() const override;
