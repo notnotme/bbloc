@@ -239,7 +239,7 @@ bool Prompt::onKeyDown(const HighLighter &highLighter, PromptCursor &cursor, Pro
                 // Try to complete commands arguments first, if the command name is incomplete, this will return an empty list
                 m_command_manager.getArgumentsCompletion(utf8_command_name, argument_index, utf8_argument_to_complete,
                     [&](const std::string_view& completion) {
-                        const auto completion_str = std::u16string(tokens[0]) + u" " + utf8::utf8to16(completion);
+                        const auto completion_str = std::u16string(tokens[0]).append(u" ").append(utf8::utf8to16(completion));
                         viewState.addCompletion(completion_str);
                     });
 

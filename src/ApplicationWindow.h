@@ -33,7 +33,7 @@ private:
     /** Maximum number of renderable quads in the geometry buffer. */
     static constexpr auto MAX_QUADS = 8192;
 
-    /** Maximum number of renderable quads in the geometry buffer. */
+    /** Amount of command history (can be changed at runtime). */
     static constexpr auto MAX_COMMAND_HISTORY = 32;
 
     /** @brief Represents the currently focused input target. */

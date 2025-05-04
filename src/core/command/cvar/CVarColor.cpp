@@ -1,5 +1,6 @@
 #include "../cvar/CVarColor.h"
 
+#include <format>
 #include <string>
 #include <utf8.h>
 
@@ -29,9 +30,9 @@ std::optional<std::u16string> CVarColor::setValueFromStrings(const std::vector<s
 }
 
 std::u16string CVarColor::getStringValue() const {
-    const auto arg_r = utf8::utf8to16(std::to_string(m_value.red));
-    const auto arg_g = utf8::utf8to16(std::to_string(m_value.green));
-    const auto arg_b = utf8::utf8to16(std::to_string(m_value.blue));
-    const auto arg_a = utf8::utf8to16(std::to_string(m_value.alpha));
-    return arg_r + u" " + arg_g + u" " + arg_b + u" " + arg_a;
+    const auto arg_r = std::to_string(m_value.red);
+    const auto arg_g = std::to_string(m_value.green);
+    const auto arg_b = std::to_string(m_value.blue);
+    const auto arg_a = std::to_string(m_value.alpha);
+    return utf8::utf8to16(std::format("{} {} {} {}", arg_r, arg_g, arg_b, arg_a));
 }

@@ -55,7 +55,7 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
 
     // Init SDL
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) != 0) {
-        throw std::runtime_error("Failed to initialize SDL: " + std::string(SDL_GetError()));
+        throw std::runtime_error(std::string("Failed to initialize SDL: ").append(SDL_GetError()));
     }
 
     // Set OpenGL 4.3 Core context and double buffered RGB8 surface
@@ -76,7 +76,7 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     p_sdl_window = SDL_CreateWindow(title.data(), window_position, window_position, width, height, window_flags);
 
     if (p_sdl_window == nullptr) {
-        throw std::runtime_error("Failed to create SDL window: " + std::string(SDL_GetError()));
+        throw std::runtime_error(std::string("Failed to create SDL window: ").append(SDL_GetError()));
     }
 
     // Create OpenGL context
@@ -397,7 +397,7 @@ void ApplicationWindow::registerOpenCommand() {
             auto ifs = std::ifstream(path, std::ios::in);
             if (!ifs || !ifs.is_open() || !is_regular_file) {
                 // That file cannot be opened
-                return u"Could not open " + std::u16string(args[0]) + u".";
+                return std::u16string(u"Could not open ").append(args[0]).append(u".");
             }
 
             // Clear the cursor and read the file line by line
@@ -458,7 +458,7 @@ void ApplicationWindow::registerSaveCommand() {
             const auto file_exists = std::filesystem::exists(file_to_save);
             const auto is_regular_file = std::filesystem::is_regular_file(file_to_save);
             if (file_exists && !is_regular_file) {
-                return u"Could not save " + std::u16string(args[0]) + u".";
+                return std::u16string(u"Could not save ").append(args[0]).append(u".");
             }
 
             if (cursor_name.filename() != file_to_save.filename()
@@ -467,7 +467,7 @@ void ApplicationWindow::registerSaveCommand() {
                 // The file already exists and is not the cursor one, needs user feedback to be able to overwrite it
                 m_command_manager.setCommandFeedback(
                     u"File already exists, overwrite ? [y/N]:",
-                    u"save " + std::u16string(args[0]) + u" -f",
+                    std::u16string(u"save ").append(args[0]).append(u" -f"),
                     {u"n", u"y"},
                     [&](const std::u16string_view answer, const std::u16string_view command) -> std::optional<std::u16string> {
                         if (answer == u"y" || answer == u"Y") {
@@ -480,7 +480,7 @@ void ApplicationWindow::registerSaveCommand() {
 
             auto ofs = std::ofstream(file_to_save, std::ios::out);
             if(!ofs || !ofs.is_open()) {
-                return u"Could not save " + std::u16string(args[0]) + u".";
+                return std::u16string(u"Could not save ").append(args[0]).append(u".");
             }
 
             const auto line_count = cursor.getLineCount();

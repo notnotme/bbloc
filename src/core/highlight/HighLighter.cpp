@@ -212,7 +212,7 @@ void HighLighter::registerHlCommand(CommandManager& commandManager) {
             // Developers are lazy, so let's prepend a dot to make it work flawlessly
             const auto extension = std::string(".").append(utf8::utf16to8(args[0]));
             if (!isSupported(extension)) {
-                return u"Unsupported highlight mode: " + std::u16string(args[0]);
+                return std::u16string(u"Unsupported highlight mode: ").append(args[0]);
             }
 
             setMode(extension);
