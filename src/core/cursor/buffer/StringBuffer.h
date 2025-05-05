@@ -6,6 +6,7 @@
 #include <string_view>
 
 #include "TextBuffer.h"
+#include "BufferEdit.h"
 
 
 /**
@@ -21,8 +22,8 @@ private:
      * Represents a line by its starting index and length within the buffer.
      */
     struct LineData final {
-        int32_t start;   ///< Starting offset of the line in m_buffer.
-        int32_t count;   ///< Number of characters in the line.
+        uint32_t start;   ///< Starting offset of the line in m_buffer.
+        uint32_t count;   ///< Number of characters in the line.
     };
 
     /** Internal contiguous buffer storing all characters. */
@@ -35,11 +36,14 @@ public:
     /** @brief Constructs an empty StringBuffer. */
     explicit StringBuffer();
 
-    [[nodiscard]] std::u16string_view getString(int32_t line) const override;
-    [[nodiscard]] int32_t getStringCount() const override;
-    void insert(int32_t& line, int32_t& column, std::u16string_view characters) override;
-    void erase(int32_t& line, int32_t& column, int32_t lineEnd, int32_t columnEnd) override;
-    void clear() override;
+    [[nodiscard]] std::u16string_view getString(uint32_t line) const override;
+    [[nodiscard]] uint32_t getStringCount() const override;
+    [[nodiscard]] uint32_t getByteOffset(uint32_t line, uint32_t column) const override;
+    [[nodiscard]] uint32_t getByteCount(uint32_t lineStart, uint32_t columnStart, uint32_t lineEnd, uint32_t columnEnd) const override;
+    BufferEdit insert(uint32_t& line, uint32_t& column, std::u16string_view characters) override;
+    BufferEdit erase(uint32_t line, uint32_t column, uint32_t lineEnd, uint32_t columnEnd) override;
+    BufferEdit clear() override;
+
 };
 
 

@@ -92,7 +92,7 @@ void HighLighter::setInput(const Cursor& cursor) {
 
     // Set the input to the cursor content
     // todo: this is not really safe to keep a reference inside the lambda, move it
-    m_cb = [&cursor](const int32_t line, const int32_t column) -> std::optional<std::u16string_view> {
+    m_cb = [&cursor](const uint32_t line, const uint32_t column) -> std::optional<std::u16string_view> {
         // Return the line starting from line, column
         const auto line_count = cursor.getLineCount();
         if (line > line_count) {
@@ -118,7 +118,7 @@ void HighLighter::parse() {
     }
 }
 
-void HighLighter::edit(const CursorEdit& edit) const {
+void HighLighter::edit(const BufferEdit& edit) const {
     if (p_ts_tree != nullptr) {
         // This just converts and relays the object coming from the cursor
         const auto ts_edit = TSInputEdit {
@@ -157,7 +157,7 @@ void HighLighter::getParserNames(const ItemCallback<char>& callback) const {
     }
 }
 
-TokenId HighLighter::getHighLightAtPosition(const int32_t line, const int32_t column) const {
+TokenId HighLighter::getHighLightAtPosition(const uint32_t line, const uint32_t column) const {
     if (p_ts_tree == nullptr || m_high_light == HighLightId::None) {
         return TokenId::None;
     }
@@ -182,21 +182,20 @@ const char* HighLighter::inputCallback(void *payload, const uint32_t byteIndex, 
     // This input callback is working with logical positions, so byteIndex is not needed
     (void) byteIndex;
 
-    // Multiply or divide column according to char size, we are working with char16_t
-    const auto line = static_cast<int32_t>(position.row);
-    const auto column = static_cast<int32_t>(position.column / sizeof(char16_t));
+    // Get the HighLighter instance
     const auto* self = static_cast<HighLighter*>(payload);
 
-    if (const auto optional = self->m_cb(line, column); optional.has_value()) {
+    // Multiply and divide column according to char size, we are working with char16_t (2 bytes)
+    const auto line = position.row;
+    const auto column = position.column / sizeof(char16_t);
+    if (const auto optional_line = self->m_cb(line, column); optional_line.has_value()) {
         // We got some data
-        const auto& value = optional.value();
-
-        *bytesRead = static_cast<uint32_t>(value.length() * sizeof(char16_t));
-        return reinterpret_cast<const char*>(value.data());
+        *bytesRead = optional_line->length() * sizeof(char16_t);
+        return reinterpret_cast<const char*>(optional_line->data());
     }
 
     // Tells tree-sitter there is no more data to process at this location
-    *bytesRead = static_cast<uint32_t>(0);
+    *bytesRead = 0;
     return nullptr;
 }
 

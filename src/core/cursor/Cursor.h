@@ -2,10 +2,12 @@
 #define CURSOR_H
 
 #include <memory>
+#include <optional>
 #include <string_view>
 
 #include "buffer/TextBuffer.h"
-#include "CursorEdit.h"
+#include "buffer/BufferEdit.h"
+#include "TextRange.h"
 
 
 /**
@@ -23,15 +25,29 @@ private:
     std::unique_ptr<TextBuffer> m_buffer;
 
     /** @brief Current column (X) position of the cursor. */
-    int32_t m_column;
+    uint32_t m_column;
 
     /** @brief Current line (Y) position of the cursor. */
-    int32_t m_line;
+    uint32_t m_line;
 
-    /** Holds the last cursor edit */
-    CursorEdit m_last_edit;
+    /** @brief holds the state of the selection (active / not active) */
+    bool m_is_selection_active;
 
-    [[nodiscard]] uint32_t getStartByte(uint32_t line, uint32_t column) const;
+    /** Holds the index of the line where the selection starts. */
+    uint32_t m_selected_line_start;
+
+    /** Holds the index of the column where the selection starts. */
+    uint32_t m_selected_column_start;
+
+    /**
+     * @brief Erase a range of text inside the internal buffer. This does not move the cursor coordinates.
+     * @param lineStart The line index where the range starts.
+     * @param columnStart The column index where the range starts.
+     * @param lineEnd The line index where the range stops.
+     * @param columnEnd The column index where the range stops.
+     * @return Reference to the resulting BufferEdit describing the change.
+     */
+    [[nodiscard]] BufferEdit erase(uint32_t lineStart, uint32_t columnStart, uint32_t lineEnd, uint32_t columnEnd) const;
 
 public:
     /** @brief Deleted copy constructor. */
@@ -47,10 +63,10 @@ public:
     explicit Cursor(std::unique_ptr<TextBuffer> buffer);
 
     /** @brief Scrolls the view up by a number of lines. */
-    void pageUp(int32_t lineCount);
+    void pageUp(uint32_t lineCount);
 
     /** @brief Scrolls the view down by a number of lines. */
-    void pageDown(int32_t lineCount);
+    void pageDown(uint32_t lineCount);
 
     /** @brief Sets the name associated with this cursor. */
     void setName(std::string_view name);
@@ -59,19 +75,22 @@ public:
     [[nodiscard]] std::string_view getName() const;
 
     /** @brief Returns the current column index. */
-    [[nodiscard]] int32_t getColumn() const;
+    [[nodiscard]] uint32_t getColumn() const;
 
     /** @brief Returns the current line index. */
-    [[nodiscard]] int32_t getLine() const;
+    [[nodiscard]] uint32_t getLine() const;
+
+    /** @brief Returns The SelectedRange, if available. Always in the right direction (start -> end). */
+    [[nodiscard]] std::optional<TextRange> getSelectedRange() const;
 
     /**
      * @brief Gets the content of a specific line from the buffer.
      * @param line The index of the line to fetch.
      */
-    [[nodiscard]] std::u16string_view getString(int32_t line) const;
+    [[nodiscard]] std::u16string_view getString(uint32_t line) const;
 
     /** @brief Returns the total number of lines in the buffer. */
-    [[nodiscard]] int32_t getLineCount() const;
+    [[nodiscard]] uint32_t getLineCount() const;
 
     /** @brief Returns the current line at the cursor line position (from column 0). */
     [[nodiscard]] std::u16string_view getString() const;
@@ -101,47 +120,58 @@ public:
     void moveToEndOfFile();
 
     /**
+     * @brief Set the cursor in selection mode. Moves will grow or shrink the selection.
+     * @param active if true, the selection is activated, if false, the selection is deactivated and resets its state.
+     */
+    void activateSelection(bool active);
+
+    /**
      * @brief Sets the new position of the cursor.
      * @param line New line index.
      * @param column New column index.
+     * @throw std::runtime_error If coordinates are out of bounds.
      */
-    void setPosition(int32_t line, int32_t column);
+    void setPosition(uint32_t line, uint32_t column);
 
     /**
       * @brief Inserts UTF-16 text at the current cursor position.
       * Moves the cursor forward by the number of inserted characters.
       * @param characters The UTF-16 string to insert.
-      * @return Reference to the resulting CursorEdit describing the change.
+      * @return The resulting BufferEdit describing the change.
       */
-    const CursorEdit& insert(std::u16string_view characters);
+    BufferEdit insert(std::u16string_view characters);
+
 
     /**
      * @brief Inserts a line break at the current cursor position.
      * Moves the cursor to the beginning of the next line.
-     * @return Reference to the resulting CursorEdit describing the change.
+     * @return The resulting BufferEdit describing the change.
      */
-    const CursorEdit& newLine();
+    BufferEdit newLine();
 
     /**
      * @brief Deletes the character immediately before the cursor.
-     * Has no effect if the cursor is at the beginning of the buffer.
-     * @return Reference to the resulting CursorEdit describing the change.
+     * Move the cursor backward. It has no effect if the cursor is at the beginning of the buffer.
+     * @return An optional BufferEdit describing the change.
      */
-    const CursorEdit& eraseLeft();
+    std::optional<BufferEdit> eraseLeft();
 
     /**
      * @brief Deletes the character immediately after the cursor.
-     * Has no effect if the cursor is at the end of the buffer.
-     * @return Reference to the resulting CursorEdit describing the change.
+     * It has no effect if the cursor is at the end of the buffer.
+     * @return An optional BufferEdit describing the change.
      */
-    const CursorEdit& eraseRight();
+    std::optional<BufferEdit> eraseRight();
+
+    /** @return An optional BufferEdit describing the change. */
+    [[nodiscard]] std::optional<BufferEdit> eraseSelection() const;
 
     /**
      * @brief Clears the entire buffer and resets the cursor to the beginning.
      * After this call, the buffer will be empty and the cursor will be at (0, 0).
-     * @return Reference to the resulting CursorEdit describing the change.
+     * @return The resulting CursorEdit describing the change.
      */
-    const CursorEdit& clear();
+    BufferEdit clear();
 };
 
 

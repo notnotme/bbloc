@@ -39,9 +39,9 @@ void Editor::render(const HighLighter& highLighter, const Cursor& cursor, Editor
     const auto font_descender = m_theme.getFontDescender();
     const auto font_advance = m_theme.getFontAdvance();
 
-    const auto cursor_line = cursor.getLine();
-    const auto cursor_column = cursor.getColumn();
-    const auto cursor_line_count = cursor.getLineCount();
+    const auto cursor_line =  static_cast<int32_t>(cursor.getLine());
+    const auto cursor_column =  static_cast<int32_t>(cursor.getColumn());
+    const auto cursor_line_count = static_cast<int32_t>(cursor.getLineCount());
     const auto cursor_string = cursor.getString();
 
     const auto string_cursor_line_count = utf8::utf8to16(std::to_string(cursor_line_count));
@@ -147,25 +147,68 @@ void Editor::render(const HighLighter& highLighter, const Cursor& cursor, Editor
     // Keep trace of the quads count in the quad buffer
     quads_count_before_text = m_quad_buffer.getCount();
 
-    // begin text with cursor text, starting from line index until the end of the cursor
+    // Begin text with cursor text, starting from line index until the end of the cursor
+    // We will need to check if we draw a selected text
     pen_position_y = line_scroll_offset_y + position_y + line_height + font_descender;
     line_index = first_line_in_viewport;
     while (line_index < cursor_line_count) {
         if (line_index >= 0) {
-            if (line_index == cursor_line) {
+            // Get the string at line_index
+            const auto string = cursor.getString(line_index);
+            const auto string_length = string.length();
+            const auto is_cursor_line = cursor_line == line_index;
+
+            if (is_cursor_line) {
                 // Begin current line bg
                 const auto& line_background_color = m_theme.getColor(ColorId::LineBackground);
                 m_quad_buffer.insert(
                     static_cast<int16_t>(cursor_text_start_x),
                     static_cast<int16_t>(pen_position_y - line_height - font_descender),
                     width, line_height,
-                    line_background_color.red, line_background_color.blue, line_background_color.blue, line_background_color.alpha);
+                    line_background_color.red, line_background_color.green, line_background_color.blue, line_background_color.alpha);
+            }
+
+            if (const auto& selected_range = cursor.getSelectedRange(); selected_range.has_value()) {
+                // Check if the selected range is in the viewport
+                const auto& selected_background_color = m_theme.getColor(ColorId::SelectedTextBackground);
+                if (selected_range->line_start == line_index && selected_range->line_end == line_index) {
+                    // The selection start / end on the same line. Select only a range of text.
+                    const auto selected_text = string.substr(selected_range->column_start, selected_range->column_end - selected_range->column_start);
+                    const auto selected_text_width = m_theme.measure(selected_text, true);
+                    const auto selection_start_x = m_theme.measure(string.substr(0, selected_range->column_start), true);
+                    m_quad_buffer.insert(
+                        static_cast<int16_t>(cursor_text_start_x - scroll_x + selection_start_x),
+                        static_cast<int16_t>(pen_position_y - line_height - font_descender),
+                        selected_text_width, line_height,
+                        selected_background_color.red, selected_background_color.green, selected_background_color.blue, selected_background_color.alpha);
+                } else if (line_index == selected_range->line_start) {
+                    // First line of selected text, the selection starts at column until the end of the text area.
+                    const auto selection_start_x = m_theme.measure(string.substr(0, selected_range->column_start), true);
+                    m_quad_buffer.insert(
+                        static_cast<int16_t>(cursor_text_start_x - scroll_x + selection_start_x),
+                        static_cast<int16_t>(pen_position_y - line_height - font_descender),
+                        width - selection_start_x, line_height,
+                        selected_background_color.red, selected_background_color.green, selected_background_color.blue, selected_background_color.alpha);
+                } else if (line_index == selected_range->line_end) {
+                    // Last line of selected text, the selection starts at the margin border, until the end column.
+                    const auto selected_text = string.substr(0, selected_range->column_end);
+                    const auto selected_text_width = m_theme.measure(selected_text, true);
+                    m_quad_buffer.insert(
+                        static_cast<int16_t>(cursor_text_start_x - scroll_x),
+                        static_cast<int16_t>(pen_position_y - line_height - font_descender),
+                        selected_text_width, line_height,
+                        selected_background_color.red, selected_background_color.green, selected_background_color.blue, selected_background_color.alpha);
+                } else if (line_index > selected_range->line_start && line_index < selected_range->line_end) {
+                    // In between two selected lines, the selection takes the whole width
+                    m_quad_buffer.insert(
+                        static_cast<int16_t>(cursor_text_start_x),
+                        static_cast<int16_t>(pen_position_y - line_height - font_descender),
+                        width, line_height,
+                        selected_background_color.red, selected_background_color.green, selected_background_color.blue, selected_background_color.alpha);
+                }
             }
 
             // Start drawing a new line, starting from the first character visible in the viewport, until the end of the string
-            const auto string = cursor.getString(line_index);
-            const auto string_length = string.length();
-            const auto is_cursor_line = cursor_line == line_index;
             auto cursor_position_x = cursor_text_start_x - scroll_x;
             pen_position_x = cursor_position_x;
 
@@ -253,60 +296,94 @@ bool Editor::onKeyDown(const HighLighter& highLighter, Cursor& cursor, EditorSta
     switch (keyCode) {
         case SDLK_UP:
             viewState.setFollowIndicator(true);
+            cursor.activateSelection(keyModifier & KMOD_SHIFT);
             cursor.moveUp();
-        return true;
+            return true;
         case SDLK_DOWN:
             viewState.setFollowIndicator(true);
+            cursor.activateSelection(keyModifier & KMOD_SHIFT);
             cursor.moveDown();
         return true;
         case SDLK_LEFT:
             viewState.setFollowIndicator(true);
+            cursor.activateSelection(keyModifier & KMOD_SHIFT);
             cursor.moveLeft();
         return true;
         case SDLK_RIGHT:
             viewState.setFollowIndicator(true);
+            cursor.activateSelection(keyModifier & KMOD_SHIFT);
             cursor.moveRight();
         return true;
         case SDLK_HOME:
             viewState.setFollowIndicator(true);
+            cursor.activateSelection(keyModifier & KMOD_SHIFT);
             cursor.moveToStartOfLine();
         return true;
         case SDLK_END:
             viewState.setFollowIndicator(true);
+            cursor.activateSelection(keyModifier & KMOD_SHIFT);
             cursor.moveToEndOfLine();
         return true;
         case SDLK_PAGEUP: {
             viewState.setFollowIndicator(true);
             const auto line_amount = m_theme.getDimension(DimensionId::PageUpDown);
+            cursor.activateSelection(keyModifier & KMOD_SHIFT);
             cursor.pageUp(line_amount);
         }
         return true;
         case SDLK_PAGEDOWN: {
             viewState.setFollowIndicator(true);
             const auto line_amount = m_theme.getDimension(DimensionId::PageUpDown);
+            cursor.activateSelection(keyModifier & KMOD_SHIFT);
             cursor.pageDown(line_amount);
         }
         return true;
         case SDLK_RETURN: {
             viewState.setFollowIndicator(true);
+            if (const auto& edit = cursor.eraseSelection(); edit.has_value()) {
+                // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
+                highLighter.edit(edit.value());
+                cursor.setPosition(edit->new_end.line, edit->new_end.column);
+                cursor.activateSelection(false);
+            }
+
             const auto& edit = cursor.newLine();
             highLighter.edit(edit);
         }
         return true;
         case SDLK_BACKSPACE: {
             viewState.setFollowIndicator(true);
-            const auto& edit = cursor.eraseLeft();
-            highLighter.edit(edit);
+            if (const auto& selection = cursor.eraseSelection(); selection.has_value()) {
+                // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
+                highLighter.edit(selection.value());
+                cursor.setPosition(selection->new_end.line, selection->new_end.column);
+                cursor.activateSelection(false);
+            } else if (const auto& edit = cursor.eraseLeft(); edit.has_value()) {
+                highLighter.edit(edit.value());
+            }
         }
         return true;
         case SDLK_DELETE: {
             viewState.setFollowIndicator(true);
-            const auto& edit = cursor.eraseRight();
-            highLighter.edit(edit);
+            if (const auto& selection = cursor.eraseSelection(); selection.has_value()) {
+                // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
+                highLighter.edit(selection.value());
+                cursor.setPosition(selection->new_end.line, selection->new_end.column);
+                cursor.activateSelection(false);
+            } else if (const auto& edit = cursor.eraseRight(); edit.has_value()) {
+                highLighter.edit(edit.value());
+            }
         }
         return true;
         case SDLK_TAB: {
             viewState.setFollowIndicator(true);
+            if (const auto& selection = cursor.eraseSelection(); selection.has_value()) {
+                // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
+                highLighter.edit(selection.value());
+                cursor.setPosition(selection->new_end.line, selection->new_end.column);
+                cursor.activateSelection(false);
+            }
+
             if (m_is_tab_to_space->m_value) {
                 // We have to replace the tab character by x amount of space character
                 const auto space_amount = m_theme.getDimension(DimensionId::TabToSpace);
@@ -333,6 +410,12 @@ void Editor::onTextInput(const HighLighter& highLighter, Cursor &cursor, EditorS
         utf8_text = utf8::replace_invalid(utf8_text);
     }
 
+    if (const auto& selection = cursor.eraseSelection(); selection.has_value()) {
+        // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
+        highLighter.edit(selection.value());
+        cursor.setPosition(selection->new_end.line, selection->new_end.column);
+        cursor.activateSelection(false);
+    }
 
     const auto utf16_text = utf8::utf8to16(utf8_text);
     const auto& edit = cursor.insert(utf16_text);

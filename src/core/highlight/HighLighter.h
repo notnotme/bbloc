@@ -10,8 +10,8 @@
 #include <tree_sitter/api.h>
 
 #include "../command/CommandManager.h"
+#include "../cursor/buffer/BufferEdit.h"
 #include "../cursor/Cursor.h"
-#include "../cursor/CursorEdit.h"
 #include "HighLightId.h"
 #include "TokenId.h"
 
@@ -56,7 +56,7 @@ private:
     std::unordered_map<HighLightId, Parser> m_parsers;
 
     /** Callback for reading text input. */
-    std::function<std::optional<std::u16string_view>(int32_t, int32_t)> m_cb;
+    std::function<std::optional<std::u16string_view>(uint32_t, uint32_t)> m_cb;
 
 private:
     /** @brief Tree-sitter input callback used to supply source code to the parser. */
@@ -118,7 +118,7 @@ public:
      * @brief Notifies the HighLighter about a range of text edits.
      * @param edit Object describing the modified byte and position ranges. (provided by the Cursor class)
      */
-    void edit(const CursorEdit& edit) const;
+    void edit(const BufferEdit& edit) const;
 
     /**
      * @brief Retrieves all available parser names for use in the prompt.
@@ -139,7 +139,7 @@ public:
      * @param column Column number (zero-based).
      * @return TokenId describing the syntax element at that position.
      */
-    [[nodiscard]] TokenId getHighLightAtPosition(int32_t line, int32_t column) const;
+    [[nodiscard]] TokenId getHighLightAtPosition(uint32_t line, uint32_t column) const;
 
     /** @return The current highlight mode name (e.g., "cpp", "json"). */
     [[nodiscard]] std::string_view getModeString() const;

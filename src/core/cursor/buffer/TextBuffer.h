@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <string_view>
 
+#include "BufferEdit.h"
+
 
 /**
  * @brief Abstract base class for representing a text buffer.
@@ -30,10 +32,28 @@ public:
      * @param line The line number to retrieve.
      * @return The content of the line as std::u16string_view.
      */
-    [[nodiscard]] virtual std::u16string_view getString(int32_t line) const = 0;
+    [[nodiscard]] virtual std::u16string_view getString(uint32_t line) const = 0;
 
     /** @return The total number of lines in the buffer. */
-    [[nodiscard]] virtual int32_t getStringCount() const = 0;
+    [[nodiscard]] virtual uint32_t getStringCount() const = 0;
+
+    /**
+     * @brief Return the offset of a byte inside the buffer, from a line, column coordinates.
+     * @param line The line index of the wanted offset.
+     * @param column The column index of the wanted offset.
+     * @return The byte offset at this position.
+     */
+    [[nodiscard]] virtual uint32_t getByteOffset(uint32_t line, uint32_t column) const = 0;
+
+    /**
+     * @brief Return the byte count of a range of text inside the buffer.
+     * @param lineStart The line index at the beginning of the range.
+     * @param columnStart The column index at the beginning of the range.
+     * @param lineEnd The line index at the end of the range.
+     * @param columnEnd The column index at the end of the range.
+     * @return The bytes count for this range.
+     */
+    [[nodiscard]] virtual uint32_t getByteCount(uint32_t lineStart, uint32_t columnStart, uint32_t lineEnd, uint32_t columnEnd) const = 0;
 
     /**
      * @brief Inserts text at a specified location.
@@ -41,7 +61,7 @@ public:
      * @param column Column index where to insert.
      * @param characters Characters to insert.
      */
-    virtual void insert(int32_t& line, int32_t& column, std::u16string_view characters) = 0;
+    virtual BufferEdit insert(uint32_t& line, uint32_t& column, std::u16string_view characters) = 0;
 
     /**
      * @brief Removes text from the buffer between the given coordinates.
@@ -50,10 +70,10 @@ public:
      * @param lineEnd Ending line index.
      * @param columnEnd Ending column index.
      */
-    virtual void erase(int32_t& lineStart, int32_t& columnStart, int32_t lineEnd, int32_t columnEnd) = 0;
+    virtual BufferEdit erase(uint32_t lineStart, uint32_t columnStart, uint32_t lineEnd, uint32_t columnEnd) = 0;
 
     /** @brief Clears the entire content of the text buffer. */
-    virtual void clear() = 0;
+    virtual BufferEdit clear() = 0;
 };
 
 
