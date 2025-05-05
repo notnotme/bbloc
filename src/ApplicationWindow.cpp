@@ -445,7 +445,7 @@ void ApplicationWindow::registerOpenCommand() {
 }
 
 void ApplicationWindow::registerSaveCommand() {
-    // Add the "save" command to open files and populate Cursor's buffer
+    // Add the "save" command to save files to disk
     m_command_manager.registerCommand("save",
         [&](Cursor& cursor, const std::vector<std::u16string_view>& args) -> std::optional<std::u16string> {
             const auto cursor_name = std::filesystem::path(cursor.getName());
