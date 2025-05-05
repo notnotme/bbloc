@@ -23,7 +23,7 @@ void Theme::create(CommandManager& commandManager, const std::string_view path) 
 
     // Set up the FT library and load theme text font
     FT_Init_FreeType(&m_ft_library);
-    const auto& font_file_path = std::string(path) + FONT_FILE;
+    const auto font_file_path = std::string(path).append(FONT_FILE);
     if (FT_New_Face(m_ft_library, font_file_path.data(), 0, &m_font) != 0) {
         throw std::runtime_error(std::string("Theme::create: FT_New_Face failed: ").append(FONT_FILE));
     }
