@@ -35,11 +35,11 @@ uint32_t StringBuffer::getByteCount(uint32_t lineStart, uint32_t columnStart, ui
     }
 
     // Find the start and end point in the cache, then subtract their offsets.
-    const auto start_byte_offset = (m_line_data[lineStart].start + columnStart) * sizeof(char16_t);
-    const auto end_byte_offset = (m_line_data[lineEnd].start + columnEnd) * sizeof(char16_t);
+    const auto start_byte_offset = (m_line_data[lineStart].start + columnStart);
+    const auto end_byte_offset = (m_line_data[lineEnd].start + columnEnd);
     // Take in account "\n"
-    const auto line_ends = lineEnd - lineStart * sizeof(char16_t); // "\n"
-    return end_byte_offset - start_byte_offset + line_ends;
+    const auto line_ends = lineEnd - lineStart; // "\n"
+    return (end_byte_offset - start_byte_offset + line_ends) * sizeof(char16_t);
 }
 
 BufferEdit StringBuffer::insert(uint32_t& line, uint32_t& column, const std::u16string_view characters) {
