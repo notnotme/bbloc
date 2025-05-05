@@ -220,7 +220,7 @@ void ApplicationWindow::mainLoop() {
                                             // The prompt was validated
                                             const auto command_string = m_prompt_cursor.getString();
                                             if (const auto feedback = m_command_manager.getCommandFeedback(); !feedback.has_value()) {
-                                                // Before command execution we need to know if feedback is available
+                                                // Before command execution, we need to know if feedback is available
                                                 // If we have it, we don't push the answer to the feedback to the history
                                                 m_prompt_state.addHistory(command_string);
                                             }
@@ -231,7 +231,7 @@ void ApplicationWindow::mainLoop() {
                                                 m_prompt_state.setPromptText(message.value());
                                                 focus_target = FocusTarget::Editor;
                                             } else {
-                                                // After command execution we need to know if feedback is available,
+                                                // After command execution, we need to know if feedback is available,
                                                 // so query the feedback again.
                                                 if (const auto feedback = m_command_manager.getCommandFeedback(); feedback.has_value()) {
                                                     // The prompt needs a feedback, so let it running and update the
@@ -259,6 +259,7 @@ void ApplicationWindow::mainLoop() {
                     }
                 break;
                 case SDL_TEXTINPUT: {
+                    // Don't process key input if of these modifiers are held
                     const auto key_modifier = SDL_GetModState();
                     const auto has_modifier = key_modifier & (KMOD_CTRL | KMOD_GUI);
                     if (!has_modifier) {
