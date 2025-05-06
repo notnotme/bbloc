@@ -111,8 +111,8 @@ const AtlasEntry & Theme::getCharacter(const char16_t character) {
         character,
         m_font->glyph->bitmap.width,
         m_font->glyph->bitmap.rows,
-        m_font->glyph->bitmap_left,
-        m_font->glyph->bitmap_top);
+        static_cast<int8_t>(m_font->glyph->bitmap_left),
+        static_cast<int8_t>(m_font->glyph->bitmap_top));
 
     m_quad_texture.blit(
         atlas_entry.texture_s,
