@@ -10,7 +10,7 @@
 
 
 void CommandManager::create() {
-    registerCvarCommand();
+    registerCVarCommand();
     registerExecCommand();
 }
 
@@ -184,7 +184,7 @@ std::vector<std::u16string_view> CommandManager::tokenize(const std::u16string_v
     return tokens;
 }
 
-void CommandManager::registerCvarCommand() {
+void CommandManager::registerCVarCommand() {
     // Register a "cvar" command that prints or set a CVar value
     // This will also call any callback registered with the said CVar
     registerCommand("cvar",

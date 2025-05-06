@@ -55,7 +55,7 @@ private:
     std::optional<CommandFeedback> m_command_feedback;
 
     /** @brief Registers the built-in cvar command. */
-    void registerCvarCommand();
+    void registerCVarCommand();
 
     /** @brief Registers the built-in exec command. */
     void registerExecCommand();

@@ -78,13 +78,13 @@ private:
 
 private:
     /** @brief Registers all UI color CVars with the command manager. */
-    void registerThemeColorCvars(CommandManager& commandManager);
+    void registerThemeColorCVar(CommandManager& commandManager);
 
     /** @brief Registers all syntax highlight color CVars. */
-    void registerHighLightColorCvars(CommandManager& commandManager);
+    void registerHighLightColorCVar(CommandManager& commandManager);
 
     /** @brief Registers dimension CVars used for layout and spacing. */
-    void registerThemeDimensionCvars(CommandManager& commandManager);
+    void registerThemeDimensionCVar(CommandManager& commandManager);
 
 public:
     /** @brief Deleted copy constructor. */

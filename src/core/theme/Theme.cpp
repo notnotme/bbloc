@@ -34,9 +34,9 @@ void Theme::create(CommandManager& commandManager, const std::string_view path) 
     }
 
     setFontSize(DEFAULT_FONT_SIZE);
-    registerThemeColorCvars(commandManager);
-    registerHighLightColorCvars(commandManager);
-    registerThemeDimensionCvars(commandManager);
+    registerThemeColorCVar(commandManager);
+    registerHighLightColorCVar(commandManager);
+    registerThemeDimensionCVar(commandManager);
 }
 
 void Theme::destroy() {
@@ -158,7 +158,7 @@ int32_t Theme::measure(const std::u16string_view text, const bool ignoreTabs) {
     return size;
 }
 
-void Theme::registerThemeColorCvars(CommandManager &commandManager) {
+void Theme::registerThemeColorCVar(CommandManager &commandManager) {
     // Create default colors for the theme
     const auto& cvar_margin_background_color         = m_colors.insert({ColorId::MarginBackground,       std::make_shared<CVarColor>(220, 220, 220, 255)});
     const auto& cvar_info_bar_background_color       = m_colors.insert({ColorId::InfoBarBackground,      std::make_shared<CVarColor>(210, 210, 210, 255)});
@@ -188,7 +188,7 @@ void Theme::registerThemeColorCvars(CommandManager &commandManager) {
     commandManager.registerCvar("col_cursor_indicator",         cvar_cursor_indicator_color.first->second);
 }
 
-void Theme::registerHighLightColorCvars(CommandManager &commandManager) {
+void Theme::registerHighLightColorCVar(CommandManager &commandManager) {
     // Create default highlight colors
     const auto& cvar_hl_text_color           = m_highlight_colors.insert({TokenId::None,         std::make_shared<CVarColor>( 64,  64,  64, 255)});
     const auto& cvar_hl_comment_color        = m_highlight_colors.insert({TokenId::Comment,      std::make_shared<CVarColor>(160, 160, 160, 200)});
@@ -208,7 +208,7 @@ void Theme::registerHighLightColorCvars(CommandManager &commandManager) {
     commandManager.registerCvar("hl_statement",     cvar_hl_statement_color.first->second);
 }
 
-void Theme::registerThemeDimensionCvars(CommandManager &commandManager) {
+void Theme::registerThemeDimensionCVar(CommandManager &commandManager) {
     // Create default dimensions for the theme
     const auto& cvar_padding_width   = m_dimensions.insert({DimensionId::PaddingWidth,   std::make_shared<CVarInt>( 8)});
     const auto& cvar_indicator_width = m_dimensions.insert({DimensionId::IndicatorWidth, std::make_shared<CVarInt>( 2)});
