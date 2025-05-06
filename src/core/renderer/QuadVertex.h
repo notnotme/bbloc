@@ -25,6 +25,7 @@ struct QuadVertex final {
     uint8_t tint_a;          /**< Tint color alpha component. */
 
     uint8_t texture_layer;   /**< Index of the texture layer in the atlas. */
+    uint8_t pad[3];          /**< Helps cache-miss ?, or remove tint_a and go brrr with 16 bytes ! */
 };
 
 
