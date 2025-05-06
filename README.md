@@ -2,18 +2,17 @@
 
 bbloc is a minimalist toy text editor developed in C++ using SDL2, OpenGL, glad, Freetype, utfcpp, and tree-sitter.
 
-
 There are missing key feature but most importantly:
 - copy/paste (must have for developper nowaday!)
 - undo/redo
 - search/replace
-- More, and better syntax highlight (mappers need to be done)
+- More and better syntax highlight (mappers need to be done)
 - Better error handling.
 
 ### Main components:
 
 - **CommandManager**  
-Commands can be registered to become available in the prompt. There is also a CVars system inspired from game engines. They are shared pointers living in random parts of the code and accessible from the CommandManager. Some variables and theme attributes can be changed at runtime using this system. The command prompt also supports a simple feedback from the user (depth: 1), and eventually displays one message after command execution. It also features auto-completion for commands and arguments and also provides some utilities like strings tokenization.
+Commands can be registered to become available in the prompt. There is also a CVar system inspired from game engines. They are shared pointers living in random parts of the code and accessible from the CommandManager. Some variables and theme attributes can be changed at runtime using this system. The command prompt also supports a simple feedback from the user (depth: 1), and eventually displays one message after command execution. It also features auto-completion for commands and arguments and also provides some utilities like strings tokenization.
 
   Current commands implemented are:  
   |Command|Description|
@@ -27,19 +26,18 @@ Commands can be registered to become available in the prompt. There is also a CV
   |**set_hl_mode \<mode\>**|Change highlight mode in the editor. Please do not try to enable color highlight with a gigantic regular text file as the application does not set any timer to stop long parsing operation yet.|
 
   Current available CVar are:
-  |Variable|Description|
-  |-|-|
-  |**inf_render_time**|**Read-only.** Holds the maximum render time in seconds since last reset.|
-  |**tab_to_space**|If true "\t" character is replaced by **dim_tab_to_space** space character(s).|
-  |**col_\***|Holds a theme color attribute.|
-  |**dim_\***|Holds a theme dimension attribute.|
-
+  |Variable|Type|Description|
+  |-|-|-|
+  |**inf_render_time**|1 float|**Read-only.** Holds the maximum render time in seconds since last reset.|
+  |**tab_to_space**|1 boolean|If true "\t" character is replaced by **dim_tab_to_space** space character(s).|
+  |**col_\***|4 byte: R G B A|Holds a theme color attribute.|
+  |**dim_\***|1 int|Holds a theme dimension attribute.|
 
 - **Cursor**  
-The cursor holds a unique pointer to a TextBuffer implementation, which is responsible for storing the text data, insert and delete operation on it. In addition, the Cursor provides the caret location, and move functions, insert and delete functions (which use the TextBuffer implementation), and some utilities. After each operation on the Cursor that changes the underlying text, a TextEdit struct is returned so it can be passed to the highlighter to update its internal parse tree.
+The cursor holds a unique pointer to a TextBuffer implementation, which is responsible for storing the text data, insert and delete operation on it. In addition, the Cursor provides the caret location, and move functions, insert and delete functions (which use the TextBuffer implementation), and some utilities. After each operation on the Cursor that changes the underlying text, a BufferEdit struct is returned (backed by TextBuffer) so it can be passed to the highlighter to update its internal parse tree.
 
 - **HighLighter**  
-This uses tree-sitter for the text highlight feature. Nothing fancy, the most simplistic approach is used: tint character by their symbol representation. This is not ideal (like JSON showing same color for key:value, with strings) but seems to be working for now. The HighLighter is bound to a Cursor so it can read text from it. If the Cursor's text is edited, pass the TextEdit object to the HighLighter so it can re-read the changed part and update the syntax color.
+This uses tree-sitter for the text highlight feature. Nothing fancy, the most simplistic approach is used: tint character by their symbol representation. This is not ideal (like JSON showing same color for key:value, with strings) but seems to be working for now. The HighLighter is bound to a Cursor so it can read text from it. If the Cursor's text is edited, pass the BufferEdit object to the HighLighter so it can re-read the changed part and update the syntax color.
 
 - **Renderer**  
 The renderer use OpenGL and instantiated rendering. The glyph atlas is generated on the fly using the freetype library and populate a texture array used by the OpenGL renderer. One generated vertex in the application results in a textured and tinted quad on screen. It sticks to OpenGL 4.3 to be able to keep the Nintendo Switch support.
@@ -52,8 +50,6 @@ There is no real view system, but a base class that holds common data for the re
 
 - **ApplicationWindow**  
 Manage the application resources, SDL main loop, and pump events to update the views accordingly.
-
-
 
 ### Dependencies
 
@@ -79,8 +75,8 @@ Assuming your using Linux:
 ```
 $ mkdir nx && cd nx
 $ source $DEVKITPRO/switchvars.sh
-$ ccmake -G"Unix Makefiles" -DCMAKE_C_FLAGS="$CFLAGS $CPPFLAGS" -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake ..
-make
+$ cmake -G"Unix Makefiles" -DCMAKE_C_FLAGS="$CFLAGS $CPPFLAGS" -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake ..
+$ make
 ```
 
 Keep in mind that the game controller is not yet supported, so you must connect a keyboard via USB. I only test in portable mode **without** keyboard.
