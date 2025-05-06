@@ -79,7 +79,7 @@ void PromptState::addCompletion(const std::u16string_view item) {
 }
 
 void PromptState::addHistory(const std::u16string_view command) {
-    if (!m_command_history.empty() && m_command_history.size() - 1 > m_max_history->m_value) {
+    if (!m_command_history.empty() && m_command_history.size() > m_max_history->m_value - 1) {
         // The history list is full, pop the front items.
         m_command_history.pop_front();
     }
@@ -125,8 +125,12 @@ void PromptState::registerMaxHistoryCVar() {
         // Clamp history so the user cannot enter funny numbers
         const auto new_size = std::clamp(m_max_history->m_value, 8, 255);
         m_max_history->m_value = new_size;
-        if (!m_command_history.empty() && m_command_history.size() > new_size) {
-            // Resize the container if needed
+
+        if (m_command_history.size() > new_size) {
+            while (m_command_history.size() > new_size) {
+                // Resize the container if needed
+                m_command_history.pop_front();
+            }
             m_command_history.resize(new_size);
         }
     });
