@@ -7,7 +7,6 @@
 #include <SDL.h>
 
 #include "core/command/cvar/CVarFloat.h"
-#include "core/command/cvar/CVarInt.h"
 #include "core/command/CommandManager.h"
 #include "core/cursor/PromptCursor.h"
 #include "core/cursor/Cursor.h"
@@ -32,9 +31,6 @@ class ApplicationWindow final {
 private:
     /** Maximum number of renderable quads in the geometry buffer. */
     static constexpr auto MAX_QUADS = 8192;
-
-    /** Amount of command history (can be changed at runtime). */
-    static constexpr auto MAX_COMMAND_HISTORY = 32;
 
     /** @brief Represents the currently focused input target. */
     enum class FocusTarget {
@@ -69,9 +65,6 @@ private:
 
     /** Geometry buffer for batched quad rendering. */
     QuadBuffer m_quad_buffer;
-
-    /** CVar tracking the max history size of the prompt. */
-    std::shared_ptr<CVarInt> m_max_history;
 
     /** CVar tracking the maximum frame time (to render, before swapping). */
     std::shared_ptr<CVarFloat> m_render_time;
@@ -121,9 +114,6 @@ private:
 
     /** @brief Registers the quit command. */
     void registerQuitCommand();
-
-    /** @brief Registers the max history CVar, to control history size. */
-    void registerMaxHistoryCVar();
 
 public:
     /** @brief Deleted copy constructor. */

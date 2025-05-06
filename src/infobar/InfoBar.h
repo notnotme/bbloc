@@ -32,12 +32,6 @@ public:
      */
     explicit InfoBar(CommandManager& commandManager, Theme& theme, QuadProgram& quadProgram, QuadBuffer& quadBuffer);
 
-    /** @brief Initializes any state or resources needed for the InfoBar. */
-    void create() override;
-
-    /** @brief Destroys resources (no-op for now). */
-    void destroy() override;
-
     /**
      * @brief Renders the InfoBar.
      * @param highLighter Unused in InfoBar but required by base class.

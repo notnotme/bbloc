@@ -61,13 +61,6 @@ public:
      */
     explicit View(CommandManager& commandManager, Theme& theme, QuadProgram& quadProgram, QuadBuffer& quadBuffer);
 
-    /** @brief Initializes the view and its resources. Must be implemented by derived class. */
-    virtual void create() = 0;
-
-    /** @brief Cleans up view resources. Must be implemented by derived class. */
-    virtual void destroy() = 0;
-
-
     /**
      * @brief Renders the view contents.
      * @param highLighter Reference to the highlighter for syntax highlighting.

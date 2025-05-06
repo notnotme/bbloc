@@ -21,12 +21,11 @@
 ApplicationWindow::ApplicationWindow()
     : p_sdl_window(nullptr),
       m_sdl_gl_context(nullptr),
-      m_max_history(std::make_shared<CVarInt>(MAX_COMMAND_HISTORY)),
       m_render_time(std::make_shared<CVarFloat>(0.0f, true)),
       m_cursor(std::make_unique<VectorBuffer>()),
       m_info_bar(m_command_manager, m_theme, m_quad_program, m_quad_buffer),
       m_editor(m_command_manager, m_theme, m_quad_program, m_quad_buffer),
-      m_prompt_state(m_max_history),
+      m_prompt_state(m_command_manager),
       m_prompt(m_command_manager, m_theme, m_quad_program, m_quad_buffer),
       m_orthogonal() {}
 
@@ -95,7 +94,6 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     registerOpenCommand();
     registerSaveCommand();
     registerRenderTimeCommand();
-    registerMaxHistoryCVar();
 
     // Create the theme and highlighter
     m_theme.create(m_command_manager, "romfs/");
@@ -115,13 +113,8 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     m_quad_program.setMatrix(m_orthogonal.data());
 
     // Create the views
-    m_info_bar.create();
     m_info_bar.resizeWindow(width, height);
-
-    m_editor.create();
     m_editor.resizeWindow(width, height);
-
-    m_prompt.create();
     m_prompt.resizeWindow(width, height);
 
     // Set our default OpenGL states
@@ -358,11 +351,6 @@ void ApplicationWindow::mainLoop() {
 }
 
 void ApplicationWindow::destroy() {
-    // Destroy views
-    m_info_bar.destroy();
-    m_editor.destroy();
-    m_prompt.destroy();
-
     // Destroy renderer objects
     m_quad_program.destroy();
     m_quad_buffer.destroy();
@@ -534,12 +522,4 @@ void ApplicationWindow::registerQuitCommand() {
             SDL_PushEvent(&event);
             return std::nullopt;
         });
-}
-
-void ApplicationWindow::registerMaxHistoryCVar() {
-    // register the max_history cvar
-    m_command_manager.registerCvar("dim_max_history", m_max_history, [&] {
-        // Clamp history so the user cannot enter funny numbers
-        m_max_history->m_value = std::clamp(m_max_history->m_value, 8, 255);
-    });
 }

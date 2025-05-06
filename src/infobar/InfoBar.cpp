@@ -10,12 +10,6 @@
 InfoBar::InfoBar(CommandManager& commandManager, Theme& theme, QuadProgram& quadProgram, QuadBuffer& quadBuffer)
     : View(commandManager, theme, quadProgram, quadBuffer) {}
 
-void InfoBar::create() {
-}
-
-void InfoBar::destroy() {
-}
-
 void InfoBar::render(const HighLighter& highLighter, const Cursor& cursor, InfoBarState& viewState, const float dt) {
     const auto position_x = viewState.getPositionX();
     const auto position_y = viewState.getPositionY();

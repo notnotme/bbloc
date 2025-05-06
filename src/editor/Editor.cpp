@@ -11,13 +11,9 @@
 Editor::Editor(CommandManager& commandManager, Theme& theme, QuadProgram& quadProgram, QuadBuffer& quadBuffer)
     : View(commandManager, theme, quadProgram, quadBuffer),
       m_longest_line_cache(0, 0, 0),
-      m_is_tab_to_space(std::make_shared<CVarBool>(true)) {}
-
-void Editor::create() {
-    registerCvars();
-}
-
-void Editor::destroy() {
+      m_is_tab_to_space(std::make_shared<CVarBool>(true)) {
+    // Register cvars
+    registerCVar();
 }
 
 void Editor::render(const HighLighter& highLighter, const Cursor& cursor, EditorState& viewState, const float dt) {
@@ -451,7 +447,7 @@ void Editor::updateLongestLineCache(const Cursor &cursor, const int32_t cursorLi
     }
 }
 
-void Editor::registerCvars() const {
+void Editor::registerCVar() const {
     // Register a cvar to change the font size. It needs a callback.
     m_command_manager.registerCvar("tab_to_space", m_is_tab_to_space);
 }

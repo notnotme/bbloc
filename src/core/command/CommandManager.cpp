@@ -26,16 +26,22 @@ void CommandManager::registerCommand(const std::string_view name, const CommandC
         throw std::runtime_error(std::string("Command already registered: ").append(name));
     }
 
-    m_commands.insert({c_string, { .func = callback, .completion_func = completionCallback}});
+    const auto& [new_entry, success] = m_commands.insert({c_string, { .func = callback, .completion_func = completionCallback}});
+    if (!success) {
+        throw std::runtime_error(std::string("Unable to register command: ").append(name));
+    }
 }
 
 void CommandManager::registerCvar(std::string_view name, std::shared_ptr<CVar> cvar, const CVarCallback& callback) {
     const auto c_string = name.data();
     if (m_cvars.contains(c_string)) {
-        throw std::runtime_error(std::string("Cvar already registered: ").append(name));
+        throw std::runtime_error(std::string("CVar already registered: ").append(name));
     }
 
-    m_cvars.insert({c_string, { .cvar = std::move(cvar), .callback = callback}});
+    const auto& [new_entry, success] = m_cvars.insert({c_string, { .cvar = std::move(cvar), .callback = callback}});
+    if (!success) {
+        throw std::runtime_error(std::string("Unable to register  CVar: ").append(name));
+    }
 }
 
 std::optional<std::u16string> CommandManager::execute(Cursor& cursor, const std::u16string_view input) {

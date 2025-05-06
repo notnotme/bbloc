@@ -2,14 +2,18 @@
 
 #include <algorithm>
 #include <utility>
+#include <oneapi/tbb/task_group.h>
 
 
-PromptState::PromptState(std::shared_ptr<CVarInt> historyMaxSize)
-    : m_prompt_text(PROMPT_READY),
+PromptState::PromptState(CommandManager& commandManager)
+    : m_command_manager(commandManager),
+      m_prompt_text(PROMPT_READY),
       m_completion_index(0),
       m_command_history_index(-1),
-      m_history_max_size(std::move(historyMaxSize)),
+      m_max_history(std::make_shared<CVarInt>(MAX_COMMAND_HISTORY)),
       m_running_state(RunningState::Idle) {
+    // Register cvars
+    registerMaxHistoryCVar();
 }
 
 std::u16string_view PromptState::getPromptText() const {
@@ -75,13 +79,9 @@ void PromptState::addCompletion(const std::u16string_view item) {
 }
 
 void PromptState::addHistory(const std::u16string_view command) {
-    if (!m_command_history.empty()) {
-        while (m_command_history.size() - 1 > m_history_max_size->m_value) {
-            // The history list is full, pop the front items.
-            // Do it in a loop, so if the history is resized at runtime,
-            // this will keep everything on track
-            m_command_history.pop_front();
-        }
+    if (!m_command_history.empty() && m_command_history.size() - 1 > m_max_history->m_value) {
+        // The history list is full, pop the front items.
+        m_command_history.pop_front();
     }
 
     // Does not filter duplicate commands because it can be useful at some point
@@ -117,4 +117,17 @@ std::u16string_view PromptState::previousCompletion() {
 
 void PromptState::setRunningState(const RunningState state) {
     m_running_state = state;
+}
+
+void PromptState::registerMaxHistoryCVar() {
+    // register the max_history cvar
+    m_command_manager.registerCvar("dim_max_history", m_max_history, [&] {
+        // Clamp history so the user cannot enter funny numbers
+        const auto new_size = std::clamp(m_max_history->m_value, 8, 255);
+        m_max_history->m_value = new_size;
+        if (!m_command_history.empty() && m_command_history.size() > new_size) {
+            // Resize the container if needed
+            m_command_history.resize(new_size);
+        }
+    });
 }

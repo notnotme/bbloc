@@ -11,12 +11,6 @@
 Prompt::Prompt(CommandManager& commandManager,Theme& theme, QuadProgram& quadProgram, QuadBuffer& quadBuffer)
     : View(commandManager, theme, quadProgram, quadBuffer) {}
 
-void Prompt::create() {
-}
-
-void Prompt::destroy() {
-}
-
 void Prompt::render(const HighLighter &highLighter, const PromptCursor &cursor, PromptState &viewState, float dt) {
     const auto position_x = viewState.getPositionX();
     const auto position_y = viewState.getPositionY();

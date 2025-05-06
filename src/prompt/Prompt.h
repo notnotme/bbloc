@@ -28,12 +28,6 @@ public:
      */
     explicit Prompt(CommandManager& commandManager, Theme& theme, QuadProgram& quadProgram, QuadBuffer& quadBuffer);
 
-    /** @brief Initializes resources or state used by the prompt. */
-    void create() override;
-
-    /** @brief Releases any allocated resources. */
-    void destroy() override;
-
     /**
      * @brief Renders the command prompt on screen.
      * @param highLighter Reference to the syntax highlighter.

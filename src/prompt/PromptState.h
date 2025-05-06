@@ -9,6 +9,7 @@
 
 #include "../core/ViewState.h"
 #include "../core/command/cvar/CVarInt.h"
+#include "../core/command/CommandManager.h"
 
 /**
  * @brief Stores the layout, input state, and completions of the command prompt view.
@@ -32,7 +33,13 @@ public:
     /** @brief Default prompt label when active. */
     static constexpr auto PROMPT_ACTIVE = u":";
 
+    /** Amount of command history (can be changed at runtime). */
+    static constexpr auto MAX_COMMAND_HISTORY = 32;
+
 private:
+    /** Reference to the command manager (used to register cvars and commands). */
+    CommandManager& m_command_manager;
+
     /** Current label displayed on the prompt line. */
     std::u16string m_prompt_text;
 
@@ -48,11 +55,14 @@ private:
     /** Index used to navigate through the command history. */
     int32_t m_command_history_index;
 
-    /** CVar limiting the maximum history length. */
-    std::shared_ptr<CVarInt> m_history_max_size;
+    /** CVar tracking the max history size of the prompt. */
+    std::shared_ptr<CVarInt> m_max_history;
 
     /** Current operational state of the prompt. */
     RunningState m_running_state;
+
+    /** @brief Registers the max history CVar, to control history size. */
+    void registerMaxHistoryCVar();
 
 public:
     /** @brief Deleted copy constructor. */
@@ -62,7 +72,7 @@ public:
     PromptState &operator=(const PromptState &) = delete;
 
     /** @brief Constructs a PromptState with default values. */
-    explicit PromptState(std::shared_ptr<CVarInt> historyMaxSize);
+    explicit PromptState(CommandManager& commandManager);
 
     /** @brief Gets the current prompt label text. */
     [[nodiscard]] std::u16string_view getPromptText() const;

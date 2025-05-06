@@ -48,7 +48,7 @@ private:
     void updateLongestLineCache(const Cursor& cursor, int32_t cursorLineCount, int32_t cursorLine, std::u16string_view cursorString);
 
     /** @brief Registers editor-specific CVars with the command system. */
-    void registerCvars() const;
+    void registerCVar() const;
 
 public:
     /**
@@ -59,12 +59,6 @@ public:
      * @param quadBuffer Reference to the geometry buffer.
      */
     explicit Editor(CommandManager& commandManager, Theme& theme, QuadProgram& quadProgram, QuadBuffer& quadBuffer);
-
-    /** @brief Initializes the editor. */
-    void create() override;
-
-    /** @brief Cleans up editor resources. */
-    void destroy() override;
 
     /**
      * @brief Renders the text editor to the screen.
