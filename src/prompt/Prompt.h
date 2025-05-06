@@ -18,6 +18,20 @@
  * and offering auto-completions.
  */
 class Prompt final : public View<PromptCursor, PromptState> {
+private:
+    /**
+     * @brief: Draw the background layer of the prompt.
+     * @param viewState A reference to the Prompt view state.
+     */
+    void drawBackground(const PromptState& viewState) const;
+
+    /**
+     * @brief: Draw the text layer of the prompt.
+     * @param cursor A reference to the PromptCursor.
+     * @param viewState A reference to the Prompt view state.
+     */
+    void drawText(const PromptCursor& cursor, const PromptState& viewState) const;
+
 public:
     /**
      * @brief Constructs a Prompt view instance.

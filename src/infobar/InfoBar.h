@@ -21,6 +21,21 @@
  * - ect.
  */
 class InfoBar final : public View<Cursor, InfoBarState> {
+private:
+    /**
+     * @brief: Draw the background layer of the info bar.
+     * @param viewState A reference to the InfoBar view state.
+     */
+    void drawBackground(const InfoBarState& viewState) const;
+
+    /**
+      * @brief: Draw the text layer of the info bar.
+      * @param highLighter A reference to the HighLighter.
+      * @param cursor A reference to the PromptCursor.
+      * @param viewState A reference to the Prompt view state.
+      */
+    void drawText(const HighLighter& highLighter, const Cursor& cursor, const InfoBarState& viewState) const;
+
 public:
     /**
      * @brief Constructs the InfoBar view.

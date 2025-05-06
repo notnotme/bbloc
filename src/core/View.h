@@ -1,6 +1,8 @@
 #ifndef VIEW_H
 #define VIEW_H
 
+#include <cstdint>
+
 #include <SDL.h>
 
 #include "highlight/HighLighter.h"
@@ -41,6 +43,25 @@ protected:
 
     /** Current window height in pixels. */
     int32_t m_window_height;
+
+    /**
+     * @brief Helper to push a new quad into m_quad_buffer.
+     * @param x The x position of the quad.
+     * @param y The y position of the quad.
+     * @param width The width of the quad.
+     * @param height The height of the quad.
+     * @param color Reference to the color to be used by this quad.
+     */
+    void drawQuad(int32_t x, int32_t y, int32_t width, int32_t height, const Color& color) const;
+
+    /**
+     * @brief Helper to push a new character inside m_quad_buffer.
+     * @param x The x position of the character.
+     * @param y The y position of the character.
+     * @param character The character to draw (from AtlasEntry).
+     * @param color The color to be used to draw this character.
+     */
+    void drawCharacter(int32_t x, int32_t y, const AtlasEntry& character, const Color& color) const;
 
 public:
     /** @brief Deleted copy constructor. */
@@ -108,10 +129,30 @@ View<TCursor, TState>::View(CommandManager &commandManager, Theme &theme, QuadPr
       m_window_height(0) {}
 
 template<class TCursor, class TState>
-void View<TCursor, TState>::resizeWindow(int32_t width, int32_t height) {
+void View<TCursor, TState>::resizeWindow(const int32_t width, const int32_t height) {
     m_window_width = width;
     m_window_height = height;
 }
 
+template<class TCursor, class TState>
+void View<TCursor, TState>::drawQuad(const int32_t x, const int32_t y, const int32_t width, const int32_t height, const Color &color) const {
+    m_quad_buffer.insert(
+        static_cast<int16_t>(x),
+        static_cast<int16_t>(y),
+        static_cast<uint16_t>(width),
+        static_cast<uint16_t>(height),
+        color.red, color.green, color.blue, color.alpha);
+}
+
+template<class TCursor, class TState>
+void View<TCursor, TState>::drawCharacter(const int32_t x, const int32_t y, const AtlasEntry& character, const Color &color) const {
+    m_quad_buffer.insert(
+        static_cast<int16_t>(x + character.bearing_x),
+        static_cast<int16_t>(y - character.bearing_y),
+        character.width, character.height,
+        character.texture_s, character.texture_t, character.texture_p, character.texture_q, character.layer,
+        color.red, color.green, color.blue, color.alpha);
+
+}
 
 #endif //VIEW_H

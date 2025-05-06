@@ -29,9 +29,6 @@
  */
 class ApplicationWindow final {
 private:
-    /** Maximum number of renderable quads in the geometry buffer. */
-    static constexpr auto MAX_QUADS = 8192;
-
     /** @brief Represents the currently focused input target. */
     enum class FocusTarget {
         Editor, ///< Editor view is focused.
@@ -43,6 +40,28 @@ private:
         Views  = 1,           ///< UI views need to be redrawn.
         Matrix = Views << 1   ///< Projection matrix needs updating.
     };
+
+public:
+    /** Maximum number of renderable quads in m_quad_buffer. */
+    static constexpr auto MAX_QUADS = 8192;
+
+    /** Start offset of quads in m_quad_buffer in the info bar view */
+    static constexpr auto INFO_BAR_BUFFER_QUAD_OFFSET = 0;
+
+    /** Maximum quads available for the info bar view */
+    static constexpr auto INFO_BAR_BUFFER_QUAD_COUNT = 1024;
+
+    /** Start offset of quads in m_quad_buffer in the prompt view */
+    static constexpr auto PROMPT_BUFFER_QUAD_OFFSET = INFO_BAR_BUFFER_QUAD_COUNT;
+
+    /** Maximum quads available for the prompt view */
+    static constexpr auto PROMPT_BUFFER_QUAD_COUNT = 1024;
+
+    /** Start offset of quads in m_quad_buffer in the editor view */
+    static constexpr auto EDITOR_BUFFER_QUAD_OFFSET = INFO_BAR_BUFFER_QUAD_COUNT + PROMPT_BUFFER_QUAD_COUNT;
+
+    /** Maximum quads available for the editor view */
+    static constexpr auto EDITOR_BUFFER_QUAD_COUNT = 8192 - EDITOR_BUFFER_QUAD_OFFSET;
 
 private:
     /** SDL window handle. */

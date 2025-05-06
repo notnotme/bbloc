@@ -17,19 +17,19 @@
 /**
  * @brief Main text editor view responsible for rendering text and handling input.
  *
- * The Editor view manages rendering the cursor buffer, processing user input,
- * tracking scroll state via EditorState, and try optimizing layout with a longest-line cache.
+ * The Editor view manages the rendering the cursor buffer, processing user input,
+ * tracking scroll state via EditorState, and tries to optimize layout with a longest-line cache.
  */
 class Editor final : public View<Cursor, EditorState> {
 private:
     /**
-     * @brief Internal structure used to cache longest visible line.
+     * @brief Internal structure used to cache the longest visible line.
      * Optimizes horizontal scroll range and avoids remeasuring the longest line every frame.
      */
     struct LongestLineCache {
-        int32_t index; ///< Line index of the longest line.
+        uint32_t index; ///< Line index of the longest line.
+        uint32_t count; ///< Character count in the longest line.
         int32_t width; ///< Width in pixels of the longest line.
-        int32_t count; ///< Character count in the longest line.
     };
 
     /** Cache used for optimizing horizontal scroll and layout. */
@@ -38,17 +38,47 @@ private:
     /** CVar for toggling tab-to-space replacement in input. */
     std::shared_ptr<CVarBool> m_is_tab_to_space;
 
+    /** @brief Registers the tab_to_space cvar into the command manager. */
+    void registerTabToSpaceCVar() const;
+
     /**
      * @brief Recomputes the longest line cache.
      * @param cursor Reference to the text cursor buffer.
-     * @param cursorLineCount Total number of lines.
-     * @param cursorLine Current cursor line index.
-     * @param cursorString Text content of the current line.
      */
-    void updateLongestLineCache(const Cursor& cursor, int32_t cursorLineCount, int32_t cursorLine, std::u16string_view cursorString);
+    void updateLongestLineCache(const Cursor& cursor);
 
-    /** @brief Registers editor-specific CVars with the command system. */
-    void registerCVar() const;
+    /**
+     * @brief: Compute scroll position and max scroll for the horizontal and vertical axis.
+     * @param cursor A reference to the Cursor.
+     * @param viewState A reference to the Editor view state.
+     */
+    void updateScroll(const Cursor& cursor, EditorState& viewState) const;
+
+    /**
+     * @brief: Draw the background layer of the editor.
+     * @param viewState A reference to the Editor view state.
+     * @param marginWidth The width of the margin, without the border size.
+     */
+    void drawBackground(const EditorState& viewState, int32_t marginWidth) const;
+
+    /**
+     * @brief: Draw the text layer in the left margin of the editor.
+     * @param cursor A reference to the Cursor.
+     * @param viewState A reference to the Editor view state.
+     * @param lineCountWidth The width in pixel of the greatest line number.
+     * @param scrollY The editor y scroll offset.
+     */
+    void drawMarginText(const Cursor& cursor, const EditorState& viewState, int32_t lineCountWidth, int32_t scrollY) const;
+
+    /**
+     * @brief: Draw the Cursor the text layer in the of the editor.
+     * @param highLighter A reference to the HighLighter.
+     * @param cursor A reference to the Cursor.
+     * @param viewState A reference to the Editor view state.
+     * @param scrollX The editor x scroll offset.
+     * @param scrollY The editor y scroll offset.
+     */
+    void drawText(const HighLighter& highLighter, const Cursor& cursor, const EditorState& viewState, int32_t scrollX, int32_t scrollY);
 
 public:
     /**
