@@ -14,10 +14,10 @@ struct AtlasEntry final {
     uint8_t texture_p;    ///< Horizontal ending UV coordinate (P).
     uint8_t texture_q;    ///< Vertical ending UV coordinate (Q).
     uint8_t layer;        ///< Layer index within the atlas texture.
-    int32_t width;        ///< Width of the glyph or sprite in pixels.
-    int32_t height;       ///< Height of the glyph or sprite in pixels.
-    int32_t bearing_x;    ///< Horizontal bearing (offset from origin).
-    int32_t bearing_y;    ///< Vertical bearing (offset from baseline).
+    uint8_t width;        ///< Width of the glyph or sprite in pixels.
+    uint8_t height;       ///< Height of the glyph or sprite in pixels.
+    int8_t bearing_x;     ///< Horizontal bearing (offset from origin).
+    int8_t bearing_y;     ///< Vertical bearing (offset from baseline).
 };
 
 

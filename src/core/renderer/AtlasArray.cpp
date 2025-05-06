@@ -6,17 +6,17 @@
 AtlasArray::AtlasArray()
     : m_texture_size(0),
       m_layers(0),
-      m_next_character_x(0),
-      m_next_character_y(0),
       m_max_row_height(0),
-      m_character_layer(0) {}
+      m_character_layer(0),
+      m_next_character_x(0),
+      m_next_character_y(0) {}
 
 void AtlasArray::create(const uint8_t size, const uint8_t layers) {
     m_texture_size = size;
     m_layers = layers;
 }
 
-const AtlasEntry& AtlasArray::insert(const char16_t character, const uint8_t width, const uint8_t height, const int32_t bearingX, const int32_t bearingY) {
+const AtlasEntry& AtlasArray::insert(const char16_t character, const uint8_t width, const uint8_t height, const int8_t bearingX, const int8_t bearingY) {
     if (width > m_texture_size || height > m_texture_size) {
         throw std::runtime_error("AtlasArray::insert Glyph does not fit the texture.");
     }
@@ -52,7 +52,7 @@ const AtlasEntry& AtlasArray::insert(const char16_t character, const uint8_t wid
         .texture_t = static_cast<uint8_t>(m_next_character_y),
         .texture_p = static_cast<uint8_t>(m_next_character_x + width),
         .texture_q = static_cast<uint8_t>(m_next_character_y + height),
-        .layer = static_cast<uint8_t>(m_character_layer),
+        .layer = m_character_layer,
         .width = width,
         .height = height,
         .bearing_x = bearingX,

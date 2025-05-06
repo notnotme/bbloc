@@ -21,17 +21,17 @@ private:
     /** Number of layers in the atlas texture. */
     uint8_t m_layers;
 
+    /** Maximum height of the current row (used for packing). */
+    uint8_t m_max_row_height;
+
+    /** Index of the current layer used for character insertion. */
+    uint8_t m_character_layer;
+
     /** Current horizontal insertion point in the character layer. */
     int32_t m_next_character_x;
 
     /** Current vertical insertion point in the character layer. */
     int32_t m_next_character_y;
-
-    /** Maximum height of the current row (used for packing). */
-    int32_t m_max_row_height;
-
-    /** Index of the current layer used for character insertion. */
-    int32_t m_character_layer;
 
     /** Map storing character entries by codepoint. */
     std::unordered_map<char16_t, AtlasEntry> m_characters;
@@ -66,7 +66,7 @@ public:
      * @return Reference to the inserted AtlasEntry.
      * @throws std::runtime_error if the character already exists or there's no space left.
      */
-    [[nodiscard]] const AtlasEntry& insert(char16_t character, uint8_t width, uint8_t height, int32_t bearingX, int32_t bearingY);
+    [[nodiscard]] const AtlasEntry& insert(char16_t character, uint8_t width, uint8_t height, int8_t bearingX, int8_t bearingY);
 
     /**
      * @brief Retrieves a character entry from the atlas.
