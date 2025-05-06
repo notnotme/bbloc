@@ -80,3 +80,5 @@ $ make
 ```
 
 Keep in mind that the game controller is not yet supported, so you must connect a keyboard via USB. I only test in portable mode **without** keyboard.
+
+![img](./capture.png)
