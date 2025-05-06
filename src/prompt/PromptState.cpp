@@ -1,8 +1,6 @@
 #include "PromptState.h"
 
 #include <algorithm>
-#include <utility>
-#include <oneapi/tbb/task_group.h>
 
 
 PromptState::PromptState(CommandManager& commandManager)
