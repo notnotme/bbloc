@@ -48,6 +48,25 @@ set(OpenGL_GL_PREFERENCE GLVND)
 find_package(OpenGL REQUIRED)
 target_link_libraries(bbloc PUBLIC OpenGL::GL)
 
+# utfcpp
+find_package(utf8cpp REQUIRED)
+target_link_libraries(bbloc PUBLIC utf8::cpp utf8cpp::utf8cpp)
+
+# tree-sitter
+pkg_check_modules(TREE_SITTER REQUIRED tree-sitter)
+target_include_directories(bbloc PRIVATE ${TREE_SITTER_INCLUDE_DIRS})
+target_link_libraries(bbloc PRIVATE ${TREE_SITTER_LIBRARIES})
+
+# tree-sitter cpp languages
+pkg_check_modules(TREE_SITTER_CPP REQUIRED tree-sitter-cpp)
+target_include_directories(bbloc PUBLIC ${TREE_SITTER_CPP_INCLUDE_DIRS})
+target_link_libraries(bbloc PUBLIC ${TREE_SITTER_CPP_LIBRARIES})
+
+# tree-sitter json languages
+pkg_check_modules(TREE_SITTER_JSON REQUIRED tree-sitter-json)
+target_include_directories(bbloc PUBLIC ${TREE_SITTER_JSON_INCLUDE_DIRS})
+target_link_libraries(bbloc PUBLIC ${TREE_SITTER_JSON_LIBRARIES})
+
 # Freetype2
 if (NOT NINTENDO_SWITCH)
     find_package(Freetype REQUIRED)
@@ -57,17 +76,6 @@ else ()
     target_include_directories(bbloc PUBLIC ${FREETYPE2_INCLUDE_DIRS})
     target_link_libraries(bbloc PUBLIC ${FREETYPE2_LIBRARIES})
 endif ()
-
-# tree-sitter
-find_package(unofficial-tree-sitter CONFIG REQUIRED)
-target_link_libraries(bbloc PUBLIC unofficial::tree-sitter::tree-sitter)
-# tree-sitter languages
-target_link_libraries(bbloc PUBLIC tree-sitter-cpp.a)
-target_link_libraries(bbloc PUBLIC tree-sitter-json.a)
-
-# utfcpp
-find_package(utf8cpp REQUIRED)
-target_link_libraries(bbloc PUBLIC utf8::cpp utf8cpp::utf8cpp)
 
 # glad
 if (NOT NINTENDO_SWITCH)

@@ -13,7 +13,7 @@
 HighLighter::HighLighter()
     : p_ts_parser(nullptr),
       p_ts_tree(nullptr),
-      m_input(this, inputCallback, TSInputEncodingUTF16),
+      m_input(this, inputCallback, TSInputEncodingUTF16LE),
       m_high_light(HighLightId::None),
       p_current_parser(nullptr),
       m_cb(nullptr) {
