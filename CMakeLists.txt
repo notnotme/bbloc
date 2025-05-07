@@ -54,8 +54,8 @@ target_link_libraries(bbloc PUBLIC utf8::cpp utf8cpp::utf8cpp)
 
 # tree-sitter
 pkg_check_modules(TREE_SITTER REQUIRED tree-sitter)
-target_include_directories(bbloc PRIVATE ${TREE_SITTER_INCLUDE_DIRS})
-target_link_libraries(bbloc PRIVATE ${TREE_SITTER_LIBRARIES})
+target_include_directories(bbloc PUBLIC ${TREE_SITTER_INCLUDE_DIRS})
+target_link_libraries(bbloc PUBLIC ${TREE_SITTER_LIBRARIES})
 
 # tree-sitter cpp languages
 pkg_check_modules(TREE_SITTER_CPP REQUIRED tree-sitter-cpp)
