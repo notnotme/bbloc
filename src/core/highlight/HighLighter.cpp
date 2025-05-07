@@ -43,9 +43,14 @@ void HighLighter::destroy() {
 void HighLighter::setMode(const HighLightId highLight) {
     m_high_light = highLight;
 
+    auto* old_language = ts_parser_language(p_ts_parser);
+    ts_parser_set_language(p_ts_parser, nullptr);
+    if (old_language != nullptr) {
+        ts_language_delete(old_language);
+    }
+
     if (highLight == HighLightId::None) {
         // There is no need to keep the old mode
-        ts_parser_set_language(p_ts_parser, nullptr);
         p_current_parser = nullptr;
     } else {
         // Set new mode
@@ -95,8 +100,8 @@ void HighLighter::setInput(const Cursor& cursor) {
     m_cb = [&cursor](const uint32_t line, const uint32_t column) -> std::optional<std::u16string_view> {
         // Return the line starting from line, column
         const auto line_count = cursor.getLineCount();
-        if (line > line_count) {
-            // At line_count +1, then there is no more data to process
+        if (line > line_count - 1) {
+            // At line_count -1, then there is no more data to process
             return std::nullopt;
         }
 
@@ -114,7 +119,9 @@ void HighLighter::setInput(const Cursor& cursor) {
 
 void HighLighter::parse() {
     if (p_ts_parser != nullptr && m_cb != nullptr) {
-        p_ts_tree = ts_parser_parse(p_ts_parser, p_ts_tree, m_input);
+        auto* new_tree = ts_parser_parse(p_ts_parser, p_ts_tree, m_input);
+        ts_tree_delete(p_ts_tree);
+        p_ts_tree = new_tree;
     }
 }
 
