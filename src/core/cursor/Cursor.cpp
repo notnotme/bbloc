@@ -17,26 +17,25 @@ void Cursor::pageUp(const uint32_t lineCount) {
         m_line = 0;
     }
 
-    const auto cursor_string = m_buffer->getString(m_line);
-    const auto cursor_string_length = cursor_string.length();
+    const auto cursor_string_length = m_buffer->getString(m_line).length();
     if (m_column > cursor_string_length) {
-        m_column = static_cast<int32_t>(cursor_string_length);
+        m_column = cursor_string_length;
     }
 }
 
 void Cursor::pageDown(const uint32_t lineCount) {
     // Don't go after the end
-    const auto cursor_line_count = m_buffer->getStringCount();
-    if (m_line + lineCount > cursor_line_count - 1) {
-        m_line = cursor_line_count - 1;
+    const auto cursor_line_count = m_buffer->getStringCount() - 1;
+    const auto cursor_new_line = m_line + lineCount;
+    if (cursor_new_line > cursor_line_count) {
+        m_line = cursor_line_count;
     } else {
-        m_line = m_line + lineCount;
+        m_line = cursor_new_line;
     }
 
-    const auto cursor_string = m_buffer->getString(m_line);
-    const auto cursor_string_length = cursor_string.length();
+    const auto cursor_string_length = m_buffer->getString(m_line).length();
     if (m_column > cursor_string_length) {
-        m_column = static_cast<int32_t>(cursor_string_length);
+        m_column = cursor_string_length;
     }
 }
 
@@ -61,31 +60,25 @@ std::optional<TextRange> Cursor::getSelectedRange() const {
         return std::nullopt;
     }
 
-    if (m_selected_line_start > m_line) {
-        // Invert coordinates
-        return TextRange {
-            .line_start = m_line,
-            .column_start = m_column,
-            .line_end = m_selected_line_start,
-            .column_end = m_selected_column_start
-        };
-    }
+    auto start_line = m_selected_line_start;
+    auto start_column = m_selected_column_start;
+    auto end_line = m_line;
+    auto end_column = m_column;
 
-    if (m_selected_line_start == m_line && m_selected_column_start > m_column) {
-        // Invert coordinates
-        return TextRange {
-            .line_start = m_selected_line_start,
-            .column_start = m_column,
-            .line_end = m_selected_line_start,
-            .column_end = m_selected_column_start
-        };
+    if (start_line > end_line) {
+        // Invert coordinates totally
+        std::swap(start_line, end_line);
+        std::swap(start_column, end_column);
+    } else if (start_line == end_line && start_column > end_column) {
+        // Invert column coordinates
+        std::swap(start_column, end_column);
     }
 
     return TextRange {
-        .line_start = m_selected_line_start,
-        .column_start = m_selected_column_start,
-        .line_end = m_line,
-        .column_end = m_column
+        .line_start = start_line,
+        .column_start = start_column,
+        .line_end = end_line,
+        .column_end = end_column
     };
 }
 
@@ -106,9 +99,7 @@ void Cursor::moveLeft() {
         // At the very beginning of a line, the cursor can't go left
         if (m_line > 0) {
             // The cursor can go above instead
-            const auto string_above = m_buffer->getString(m_line - 1);
-            const auto string_above_length = string_above.length();
-            m_column = string_above_length;
+            m_column = m_buffer->getString(m_line - 1).length();
             --m_line;
         }
     } else {
@@ -117,12 +108,9 @@ void Cursor::moveLeft() {
 }
 
 void Cursor::moveRight() {
-    const auto string = m_buffer->getString(m_line);
-    const auto string_length = string.length();
-    if (m_column == string_length) {
+    if (m_column == m_buffer->getString(m_line).length()) {
         // At the very end of a line, the cursor can't go right
-        const auto string_count = m_buffer->getStringCount();
-        if (m_line < string_count - 1) {
+        if (m_line < m_buffer->getStringCount() - 1) {
             // The cursor can go below instead
             m_column = 0;
             ++m_line;
@@ -134,8 +122,7 @@ void Cursor::moveRight() {
 
 void Cursor::moveUp() {
     if (m_line > 0) {
-        const auto string_above = m_buffer->getString(m_line - 1);
-        const auto string_above_length = string_above.length();
+        const auto string_above_length = m_buffer->getString(m_line - 1).length();
         if (m_column > string_above_length) {
             // The cursor can't stay at the same X position, put it at the end of the next line
             m_column = string_above_length;
@@ -147,18 +134,15 @@ void Cursor::moveUp() {
 }
 
 void Cursor::moveDown() {
-    const auto string_count = m_buffer->getStringCount();
-    if (m_line < string_count - 1) {
-        const auto string_below = m_buffer->getString(m_line + 1);
-        const auto string_below_length = string_below.length();
+    if (m_line < m_buffer->getStringCount() - 1) {
+        const auto string_below_length = m_buffer->getString(m_line + 1).length();
         if (m_column > string_below_length) {
             // The cursor can't stay at the same X position, put it at the end of the next line
             m_column = string_below_length;
         }
         ++m_line;
     } else {
-        const auto string = m_buffer->getString(m_line);
-        m_column = string.length();
+        m_column = m_buffer->getString(m_line).length();
     }
 }
 
@@ -167,9 +151,7 @@ void Cursor::moveToStartOfLine() {
 }
 
 void Cursor::moveToEndOfLine() {
-    const auto string = m_buffer->getString(m_line);
-    const auto string_length = string.length();
-    m_column = string_length;
+    m_column = m_buffer->getString(m_line).length();
 }
 
 void Cursor::moveToStartOfFile() {
@@ -178,10 +160,9 @@ void Cursor::moveToStartOfFile() {
 }
 
 void Cursor::moveToEndOfFile() {
-    const auto string_count = m_buffer->getStringCount();
-    const auto string = m_buffer->getString(string_count - 1);
-    const auto string_length = string.length();
-    m_line = string_count - 1;
+    const auto string_count = m_buffer->getStringCount() - 1;
+    const auto string_length = m_buffer->getString(string_count).length();
+    m_line = string_count;
     m_column = string_length;
 }
 
@@ -198,14 +179,11 @@ void Cursor::activateSelection(const bool active) {
 }
 
 void Cursor::setPosition(const uint32_t line, const uint32_t column) {
-    const auto string_count = m_buffer->getStringCount();
-    if (line > string_count - 1) {
+    if (line > m_buffer->getStringCount() - 1) {
         throw std::runtime_error("Cursor::setPosition out of range.");
     }
 
-    const auto string = m_buffer->getString(line);
-    const auto string_length = string.length();
-    if (column > string_length) {
+    if (column > m_buffer->getString(line).length()) {
         throw std::runtime_error("Cursor::setPosition out of range.");
     }
 
@@ -235,8 +213,7 @@ std::optional<BufferEdit> Cursor::eraseLeft() {
 
     if (m_line > 0) {
         // We can't erase left because column = 0, so we move the remainder of this line to the end of the line above
-        const auto string_above = m_buffer->getString(m_line - 1);
-        const auto string_above_length = string_above.length();
+        const auto string_above_length = m_buffer->getString(m_line - 1).length();
         const auto& edit =  m_buffer->erase(m_line, m_column, m_line - 1, string_above_length);
         --m_line;
         m_column = string_above_length;
@@ -247,16 +224,12 @@ std::optional<BufferEdit> Cursor::eraseLeft() {
 }
 
 std::optional<BufferEdit> Cursor::eraseRight() {
-    const auto string = m_buffer->getString(m_line);
-    const auto string_length = string.length();
-    const auto string_count = m_buffer->getStringCount();
-
-    if (m_column < string_length) {
+    if (m_column < m_buffer->getString(m_line).length()) {
         // We can erase on the right since column < string_length
         return  m_buffer->erase(m_line, m_column, m_line, m_column + 1);
     }
 
-    if (m_line < string_count - 1) {
+    if (m_line < m_buffer->getStringCount() - 1) {
         // We can't erase right because column >= string_length, so we move the line below and append it to this line
         return m_buffer->erase(m_line, m_column, m_line + 1, 0);
     }
