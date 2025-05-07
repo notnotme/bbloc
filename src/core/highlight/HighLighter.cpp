@@ -38,6 +38,7 @@ void HighLighter::destroy() {
     // Cleanup parser
     ts_parser_delete(p_ts_parser);
     p_ts_parser = nullptr;
+    p_current_parser = nullptr;
 }
 
 void HighLighter::setMode(const HighLightId highLight) {
@@ -46,6 +47,7 @@ void HighLighter::setMode(const HighLightId highLight) {
     auto* old_language = ts_parser_language(p_ts_parser);
     ts_parser_set_language(p_ts_parser, nullptr);
     if (old_language != nullptr) {
+        // Free dynamic allocation done by the language
         ts_language_delete(old_language);
     }
 
@@ -55,7 +57,10 @@ void HighLighter::setMode(const HighLightId highLight) {
     } else {
         // Set new mode
         const auto& parser = m_parsers.at(highLight);
-        ts_parser_set_language(p_ts_parser, parser.language);
+        if (! ts_parser_set_language(p_ts_parser, parser.language)) {
+            throw std::runtime_error("Could not set language");
+        }
+
         p_current_parser = &parser;
     }
 
@@ -118,7 +123,7 @@ void HighLighter::setInput(const Cursor& cursor) {
 }
 
 void HighLighter::parse() {
-    if (p_ts_parser != nullptr && m_cb != nullptr) {
+    if (p_current_parser != nullptr) {
         auto* new_tree = ts_parser_parse(p_ts_parser, p_ts_tree, m_input);
         ts_tree_delete(p_ts_tree);
         p_ts_tree = new_tree;
