@@ -3,7 +3,6 @@
 bbloc is a minimalist toy text editor developed in C++ using SDL2, OpenGL, glad, Freetype, utfcpp, and tree-sitter.
 
 There are missing key feature but most importantly:
-- copy/paste (must have for developper nowaday!)
 - undo/redo
 - search/replace
 - More and better syntax highlight (mappers need to be done)

@@ -32,6 +32,8 @@ uint32_t StringBuffer::getByteCount(uint32_t lineStart, uint32_t columnStart, ui
     } else if (lineStart == lineEnd && columnStart > columnEnd) {
         // Invert column coordinates
         std::swap(columnStart, columnEnd);
+    } else if (lineStart == lineEnd && columnStart == columnEnd) {
+        return 0;
     }
 
     // Find the start and end point in the cache, then subtract their offsets.
@@ -129,6 +131,8 @@ BufferEdit StringBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd,
     } else if (line == lineEnd && column > columnEnd) {
         // Invert column coordinates
         std::swap(column, columnEnd);
+    } else if (line == lineEnd && column == columnEnd) {
+        return {0,0,0, {0,0}, {0,0}, {0,0}};
     }
 
     // Find start and end byte

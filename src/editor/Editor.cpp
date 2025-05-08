@@ -164,6 +164,40 @@ bool Editor::onKeyDown(const HighLighter& highLighter, Cursor& cursor, EditorSta
             }
         }
         return true;
+        case SDLK_c: {
+            const auto ctrl_pressed  = (keyModifier & KMOD_CTRL) != 0;
+            if (ctrl_pressed) {
+                auto to_clipboard_text = std::u16string();
+                if (const auto& selection = cursor.getSelectedText(); selection.has_value()) {
+                    const auto& all_text = selection.value();
+                    const auto all_text_size = all_text.size();
+                    for (auto i = 0; i < all_text_size; ++i) {
+                        to_clipboard_text = to_clipboard_text.append(all_text[i]);
+                        if (i < all_text_size - 1) {
+                            to_clipboard_text = to_clipboard_text.append(u"\n");
+                        }
+                    }
+                }
+                const auto utf8_clipboard_text = utf8::utf16to8(to_clipboard_text);
+                SDL_SetClipboardText(utf8_clipboard_text.data());
+                return true;
+            }
+        }
+        return false;
+        case SDLK_v: {
+            const auto ctrl_pressed  = (keyModifier & KMOD_CTRL) != 0;
+            if (ctrl_pressed) {
+                const auto clipboard_text = std::string(SDL_GetClipboardText());
+                const auto utf16_clipboard_text = utf8::utf8to16(clipboard_text);
+                if (!utf16_clipboard_text.empty()) {
+                    const auto& edit = cursor.insert(utf16_clipboard_text);
+                    highLighter.edit(edit);
+                    viewState.setFollowIndicator(true);
+                }
+                return true;
+            }
+        }
+        return false;
         default:
         return false;
     }

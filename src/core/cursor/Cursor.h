@@ -4,6 +4,7 @@
 #include <memory>
 #include <optional>
 #include <string_view>
+#include <vector>
 
 #include "buffer/TextBuffer.h"
 #include "buffer/BufferEdit.h"
@@ -94,6 +95,9 @@ public:
 
     /** @brief Returns the current line at the cursor line position (from column 0). */
     [[nodiscard]] std::u16string_view getString() const;
+
+    /** @brief Returns the portion of sleected text, if any. */
+    [[nodiscard]] std::optional<std::vector<std::u16string_view>> getSelectedText() const;
 
     /** @brief Moves the cursor one character to the left. Otherwise, move one line above.  */
     void moveLeft();

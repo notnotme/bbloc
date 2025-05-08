@@ -72,6 +72,8 @@ std::optional<TextRange> Cursor::getSelectedRange() const {
     } else if (start_line == end_line && start_column > end_column) {
         // Invert column coordinates
         std::swap(start_column, end_column);
+    } else if (start_line == end_line && start_column == end_column) {
+        return std::nullopt;
     }
 
     return TextRange {
@@ -92,6 +94,45 @@ uint32_t Cursor::getLineCount() const {
 
 std::u16string_view Cursor::getString() const {
     return m_buffer->getString(m_line);
+}
+
+std::optional<std::vector<std::u16string_view>> Cursor::getSelectedText() const {
+    if (!m_is_selection_active) {
+        return std::nullopt;
+    }
+
+    auto start_line = m_selected_line_start;
+    auto start_column = m_selected_column_start;
+    auto end_line = m_line;
+    auto end_column = m_column;
+
+    if (start_line > end_line) {
+        // Invert coordinates totally
+        std::swap(start_line, end_line);
+        std::swap(start_column, end_column);
+    } else if (start_line == end_line && start_column > end_column) {
+        // Invert column coordinates
+        std::swap(start_column, end_column);
+    } else if (start_line == end_line && start_column == end_column) {
+        return std::nullopt;
+    }
+
+    if (start_line == end_line) {
+        // Results fit in one line
+        return std::vector { m_buffer->getString(start_line).substr(start_column, end_column - start_column) };
+    }
+
+    auto result = std::vector<std::u16string_view>();
+    for (auto line = start_line; line <= end_line; ++line) {
+        if (line == start_line) {
+            result.emplace_back(m_buffer->getString(line).substr(start_column));
+        } else if (line == end_line) {
+            result.emplace_back(m_buffer->getString(line).substr(0, end_column));
+        }else {
+            result.emplace_back(m_buffer->getString(line));
+        }
+    }
+    return result;
 }
 
 void Cursor::moveLeft() {

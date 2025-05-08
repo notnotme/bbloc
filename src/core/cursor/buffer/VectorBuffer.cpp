@@ -35,6 +35,8 @@ uint32_t VectorBuffer::getByteCount(uint32_t lineStart, uint32_t columnStart, ui
     } else if (lineStart == lineEnd && columnStart > columnEnd) {
         // Invert column coordinates
         std::swap(columnStart, columnEnd);
+    } else if (lineStart == lineEnd && columnStart == columnEnd) {
+        return 0;
     }
 
     if (lineStart == lineEnd) {
@@ -66,6 +68,11 @@ uint32_t VectorBuffer::getByteCount(uint32_t lineStart, uint32_t columnStart, ui
 }
 
 BufferEdit VectorBuffer::insert(uint32_t& line, uint32_t& column, const std::u16string_view characters) {
+    [[unlikely]] if (characters.empty()) {
+        // This will likely never happen?
+        return {0,0,0, {0,0}, {0,0}, {0,0}};
+    }
+
     // As we insert into the buffer, we need to fill a BufferEdit
     auto edit = BufferEdit();
 
@@ -137,6 +144,8 @@ BufferEdit VectorBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd,
     } else if (line == lineEnd && column > columnEnd) {
         // Invert column coordinates
         std::swap(column, columnEnd);
+    } else if (line == lineEnd && column == columnEnd) {
+        return {0,0,0, {0,0}, {0,0}, {0,0}};
     }
 
     // Find the start byte and the byte count of the range to delete.
