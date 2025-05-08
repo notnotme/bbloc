@@ -253,8 +253,7 @@ void ApplicationWindow::mainLoop() {
                 break;
                 case SDL_TEXTINPUT: {
                     // Don't process key input if of these modifiers are held
-                    const auto key_modifier = SDL_GetModState();
-                    const auto has_modifier = key_modifier & (KMOD_CTRL | KMOD_GUI);
+                    const auto has_modifier = SDL_GetModState() & (KMOD_CTRL | KMOD_GUI);
                     if (!has_modifier) {
                         dirty_flags |= Views;
                         switch (focus_target) {
@@ -318,7 +317,6 @@ void ApplicationWindow::mainLoop() {
             glClear(GL_COLOR_BUFFER_BIT);
 
             // Render everything on screen.
-            // todo: Only reparse if needed. (even if using incremental parsing)
             m_high_lighter.parse();
             m_info_bar.render(m_high_lighter, m_cursor, m_info_bar_state, dt);
             m_editor.render(m_high_lighter, m_cursor, m_editor_state, dt);
