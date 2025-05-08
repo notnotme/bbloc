@@ -187,13 +187,15 @@ bool Editor::onKeyDown(const HighLighter& highLighter, Cursor& cursor, EditorSta
         case SDLK_v: {
             const auto ctrl_pressed  = (keyModifier & KMOD_CTRL) != 0;
             if (ctrl_pressed) {
-                const auto clipboard_text = std::string(SDL_GetClipboardText());
+                char* sdl_clipboard_text = SDL_GetClipboardText();
+                const auto clipboard_text = std::string(sdl_clipboard_text);
                 const auto utf16_clipboard_text = utf8::utf8to16(clipboard_text);
                 if (!utf16_clipboard_text.empty()) {
                     const auto& edit = cursor.insert(utf16_clipboard_text);
                     highLighter.edit(edit);
                     viewState.setFollowIndicator(true);
                 }
+                SDL_free(sdl_clipboard_text);
                 return true;
             }
         }
