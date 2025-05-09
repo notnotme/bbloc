@@ -289,7 +289,7 @@ std::optional<BufferEdit> Cursor::eraseSelection() {
         return std::nullopt;
     }
 
-    const auto& edit = m_buffer->erase(m_selected_line_start, m_selected_column_start, m_line, m_column);
+    const auto &edit = m_buffer->erase(m_selected_line_start, m_selected_column_start, m_line, m_column);
     m_line = edit.new_end.line;
     m_column = edit.new_end.column;
     return edit;

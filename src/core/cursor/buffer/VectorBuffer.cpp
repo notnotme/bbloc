@@ -47,15 +47,15 @@ uint32_t VectorBuffer::getByteCount(uint32_t lineStart, uint32_t columnStart, ui
     auto byte_count = 0u;
     for (auto current_line = lineStart; current_line <= lineEnd; ++current_line) {
         // Start to count, ! -> "\n" -> +1 length
-        const auto string = m_lines[current_line];
+        const auto &string = m_lines[current_line];
         if (current_line == lineStart) {
             // The first line always contains the line end, and we add only from columnStart
-            const auto remainder = string.substr(columnStart);
+            const auto &remainder = string.substr(columnStart);
             const auto remainder_length = remainder.length();
             byte_count += (remainder_length + 1) * sizeof(char16_t);
         } else if (current_line == lineEnd) {
             // The last line does not contains any line end, we add only from 0 to columnEnd
-            const auto noun = string.substr(0, columnEnd);
+            const auto &noun = string.substr(0, columnEnd);
             const auto noun_length = noun.length();
             byte_count += noun_length * sizeof(char16_t);
         } else {
@@ -100,7 +100,7 @@ BufferEdit VectorBuffer::insert(uint32_t line, uint32_t column, const std::u16st
         column += characters_count;
     } else {
         // Multi line insert, keep the remainder of the first line
-        const auto remainder = current_line->substr(column);
+        const auto &remainder = current_line->substr(column);
         current_line->resize(column);
 
         auto segment_start = 0;
@@ -174,8 +174,8 @@ BufferEdit VectorBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd,
         string->erase(column, columnEnd - column);
     } else {
         // Keep the remainder of the first and last line
-        const auto first_part_to_append = (m_lines.begin() + line)->substr(0, column);
-        const auto last_part_to_append = (m_lines.begin() + lineEnd)->substr(columnEnd);
+        const auto &first_part_to_append = (m_lines.begin() + line)->substr(0, column);
+        const auto &last_part_to_append = (m_lines.begin() + lineEnd)->substr(columnEnd);
 
         // Remove all lines in between start / end.
         m_lines.erase(m_lines.begin() + line, m_lines.begin() + lineEnd + 1);
@@ -192,8 +192,8 @@ BufferEdit VectorBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd,
 
 BufferEdit VectorBuffer::clear() {
     // Clear everything, push one empty line, keep some number in memory before so we can fill the BufferEdit struct.
+    const auto &last_string = m_lines.back();
     const auto line_count = m_lines.size();
-    const auto last_string = m_lines.back();
     const auto last_string_length = last_string.length();
     const auto buffer_size = getByteOffset(line_count - 1, last_string_length);
 
