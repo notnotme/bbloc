@@ -17,15 +17,12 @@ struct QuadVertex final {
     uint16_t height;         /**< Height of the quad in pixels. */
     uint8_t texture_s;       /**< Texture coordinate S (left) */
     uint8_t texture_t;       /**< Texture coordinate T (top). */
-    uint8_t texture_p;       /**< Texture coordinate P (right). */
-    uint8_t texture_q;       /**< Texture coordinate Q (bottom). */
     uint8_t tint_r;          /**< Tint color red component. */
     uint8_t tint_g;          /**< Tint color green component. */
     uint8_t tint_b;          /**< Tint color blue component. */
     uint8_t tint_a;          /**< Tint color alpha component. */
-
     uint8_t texture_layer;   /**< Index of the texture layer in the atlas. */
-    uint8_t pad[3];          /**< Helps cache-miss ?, or remove tint_a and go brrr with 16 bytes ! */
+    uint8_t pad[1];          /**< Helps cache-miss ?, 16 bytes ! */
 };
 
 

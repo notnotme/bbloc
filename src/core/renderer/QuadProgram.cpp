@@ -13,7 +13,7 @@ static constexpr auto VERTEX_SRC = R"text(
 
     layout (location = 0) in vec2 a_translation;
     layout (location = 1) in vec2 a_size;
-    layout (location = 2) in vec4 a_texture;
+    layout (location = 2) in vec2 a_texture;
     layout (location = 3) in vec4 a_tint;
     layout (location = 4) in float a_texture_layer;
 
@@ -27,26 +27,29 @@ static constexpr auto VERTEX_SRC = R"text(
         vec2 position;
         vec2 tex_coord;
 
-        if (gl_VertexID == 0) {
-            position = vec2(1.0, 0.0);
-            tex_coord = vec2(a_texture.z, a_texture.y);
-        } else if (gl_VertexID == 1) {
-            position = vec2(0.0, 0.0);
-            tex_coord = vec2(a_texture.x, a_texture.y);
-        } else if (gl_VertexID == 2) {
-            position = vec2(1.0, 1.0);
-            tex_coord = vec2(a_texture.z, a_texture.w);
-        } else {
-            position = vec2(0.0, 1.0);
-            tex_coord = vec2(a_texture.x, a_texture.w);
+        switch (gl_VertexID) {
+            case 0:
+                position = vec2(1.0, 0.0);
+                tex_coord = vec2(a_texture.x + a_size.x, a_texture.y);
+            break;
+            case 1:
+                position = vec2(0.0, 0.0);
+                tex_coord = vec2(a_texture.x, a_texture.y);
+            break;
+            case 2:
+                position = vec2(1.0, 1.0);
+                tex_coord = vec2(a_texture.x + a_size.x, a_texture.y + a_size.y);
+            break;
+            default:
+                position = vec2(0.0, 1.0);
+                tex_coord = vec2(a_texture.x, a_texture.y + a_size.y);
+            break;
         }
 
-        vec2 scaled_pos = position * a_size + a_translation;
-
         v_tint = a_tint;
-        v_texture = tex_coord;
+        v_texture = tex_coord / 255;
         v_texture_layer = int(a_texture_layer);
-        gl_Position = u_matrix * vec4(scaled_pos, 0.0, 1.0);
+        gl_Position = u_matrix * vec4(position * a_size + a_translation, 0.0, 1.0);
     }
 )text";
 
@@ -118,7 +121,7 @@ void QuadProgram::create() {
     glVertexBindingDivisor(1, 1);
 
     glEnableVertexAttribArray(2);
-    glVertexAttribFormat(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, offsetof(QuadVertex, texture_s));
+    glVertexAttribFormat(2, 2, GL_UNSIGNED_BYTE, GL_FALSE, offsetof(QuadVertex, texture_s));
     glVertexAttribBinding(2, 0);
     glVertexBindingDivisor(2, 1);
 

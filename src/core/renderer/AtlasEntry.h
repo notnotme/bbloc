@@ -11,8 +11,6 @@
 struct AtlasEntry final {
     uint8_t texture_s;    ///< Horizontal starting UV coordinate (S).
     uint8_t texture_t;    ///< Vertical starting UV coordinate (T).
-    uint8_t texture_p;    ///< Horizontal ending UV coordinate (P).
-    uint8_t texture_q;    ///< Vertical ending UV coordinate (Q).
     uint8_t layer;        ///< Layer index within the atlas texture.
     uint8_t width;        ///< Width of the glyph or sprite in pixels.
     uint8_t height;       ///< Height of the glyph or sprite in pixels.

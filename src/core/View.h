@@ -150,7 +150,7 @@ void View<TCursor, TState>::drawCharacter(const int32_t x, const int32_t y, cons
         static_cast<int16_t>(x + character.bearing_x),
         static_cast<int16_t>(y - character.bearing_y),
         character.width, character.height,
-        character.texture_s, character.texture_t, character.texture_p, character.texture_q, character.layer,
+        character.texture_s, character.texture_t, character.layer,
         color.red, color.green, color.blue, color.alpha);
 
 }

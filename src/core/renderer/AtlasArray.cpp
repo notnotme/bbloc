@@ -47,8 +47,6 @@ const AtlasEntry &AtlasArray::insert(const char16_t character, const uint8_t wid
     const auto entry = AtlasEntry {
         .texture_s = static_cast<uint8_t>(m_next_character_x),
         .texture_t = static_cast<uint8_t>(m_next_character_y),
-        .texture_p = static_cast<uint8_t>(m_next_character_x + width),
-        .texture_q = static_cast<uint8_t>(m_next_character_y + height),
         .layer = m_character_layer,
         .width = width,
         .height = height,

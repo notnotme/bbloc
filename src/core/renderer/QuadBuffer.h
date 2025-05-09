@@ -79,13 +79,10 @@ public:
      * @param height Height of the quad.
      * @param texture_s Texture UV coordinate S.
      * @param texture_t Texture UV coordinate T.
-     * @param texture_p Texture UV coordinate P.
-     * @param texture_q Texture UV coordinate Q.
      * @param texture_layer Texture layer index.
      */
     void insert(int16_t x, int16_t y, uint16_t width, uint16_t height,
-                uint8_t texture_s, uint8_t texture_t, uint8_t texture_p, uint8_t texture_q,
-                uint8_t texture_layer);
+                uint8_t texture_s, uint8_t texture_t, uint8_t texture_layer);
 
     /**
      * @brief Inserts a textured and tinted quad into the buffer.
@@ -95,8 +92,6 @@ public:
      * @param height Height of the quad.
      * @param texture_s Texture UV coordinate S.
      * @param texture_t Texture UV coordinate T.
-     * @param texture_p Texture UV coordinate P.
-     * @param texture_q Texture UV coordinate Q.
      * @param texture_layer Texture layer index.
      * @param tint_r Red component of tint color.
      * @param tint_g Green component of tint color.
@@ -104,8 +99,7 @@ public:
      * @param tint_a Alpha component of tint color.
      */
     void insert(int16_t x, int16_t y, uint16_t width, uint16_t height,
-                uint8_t texture_s, uint8_t texture_t, uint8_t texture_p, uint8_t texture_q,
-                uint8_t texture_layer,
+                uint8_t texture_s, uint8_t texture_t, uint8_t texture_layer,
                 uint8_t tint_r, uint8_t tint_g, uint8_t tint_b, uint8_t tint_a);
 
     /** @brief Returns the OpenGL buffer ID. */

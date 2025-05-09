@@ -63,7 +63,7 @@ void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, 
     ++m_count;
 }
 
-void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, const uint16_t height, const uint8_t texture_s, const uint8_t texture_t, const uint8_t texture_p, const uint8_t texture_q, const uint8_t texture_layer) {
+void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, const uint16_t height, const uint8_t texture_s, const uint8_t texture_t, const uint8_t texture_layer) {
     auto &vertex = p_data[m_count];
     vertex.translation_x = x;
     vertex.translation_y = y;
@@ -71,8 +71,6 @@ void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, 
     vertex.height = height;
     vertex.texture_s = texture_s;
     vertex.texture_t = texture_t;
-    vertex.texture_p = texture_p;
-    vertex.texture_q = texture_q;
     vertex.tint_r = 255;
     vertex.tint_g = 255;
     vertex.tint_b = 255;
@@ -82,7 +80,7 @@ void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, 
     ++m_count;
 }
 
-void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, const uint16_t height, const uint8_t texture_s, const uint8_t texture_t, const uint8_t texture_p, const uint8_t texture_q, const uint8_t texture_layer, const uint8_t tint_r, const uint8_t tint_g, const uint8_t tint_b, const uint8_t tint_a) {
+void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, const uint16_t height, const uint8_t texture_s, const uint8_t texture_t, const uint8_t texture_layer, const uint8_t tint_r, const uint8_t tint_g, const uint8_t tint_b, const uint8_t tint_a) {
     auto &vertex = p_data[m_count];
     vertex.translation_x = x;
     vertex.translation_y = y;
@@ -90,8 +88,6 @@ void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, 
     vertex.height = height;
     vertex.texture_s = texture_s;
     vertex.texture_t = texture_t;
-    vertex.texture_p = texture_p;
-    vertex.texture_q = texture_q;
     vertex.tint_r = tint_r;
     vertex.tint_g = tint_g;
     vertex.tint_b = tint_b;
