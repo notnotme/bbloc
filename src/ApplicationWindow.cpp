@@ -126,6 +126,7 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     glEnable(GL_BLEND);
     glCullFace(GL_BACK);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 }
 
 void ApplicationWindow::mainLoop() {

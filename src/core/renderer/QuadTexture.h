@@ -9,13 +9,6 @@
  * This class handles an OpenGL texture array that stores glyph pixel data.
  */
 class QuadTexture final {
-public:
-    /** Maximum size of the texture in width and height (in pixels). */
-    static constexpr auto TEXTURE_SIZE = 255;
-
-    /** Maximum number of texture layers. */
-    static constexpr auto TEXTURE_DEPTH = 16;
-
 private:
     /** OpenGL handle to the texture array. */
     GLuint m_texture;
@@ -30,29 +23,14 @@ public:
     /** @brief Constructs an uninitialized QuadTexture object. */
     explicit QuadTexture();
 
-    /** @brief Creates the OpenGL texture array. */
-    void create();
+    /**
+     * @brief Creates the OpenGL texture array of 256x256x256 pixels and bind it to the OpenGL pipeline.
+     * @param bindUnit The unit to bind the texture to.
+     */
+    void create(uint8_t bindUnit);
 
     /** @brief Releases the OpenGL texture resources. */
     void destroy();
-
-    /**
-     * @brief Binds this texture to a given texture unit in the OpenGL pipeline.
-     * @param unit Texture unit index to bind to.
-     */
-    void bind(uint8_t unit) const;
-
-    /**
-     * @brief Sets the unpack row length (stride) used when uploading texture data.
-     * @param length Number of pixels per row.
-     */
-    void setUnpackRowLength(int32_t length) const;
-
-    /**
-     * @brief Sets the unpack alignment used by glTexSubImage3D.
-     * @param alignment Byte alignment (commonly 1, 4, or 8).
-     */
-    void setUnpackAlignment(int32_t alignment) const;
 
     /**
      * @brief Uploads a region of pixels to the texture.

@@ -15,12 +15,6 @@
  */
 class AtlasArray final {
 private:
-    /** Width and height of the atlas texture (square). */
-    uint8_t m_texture_size;
-
-    /** Number of layers in the atlas texture. */
-    uint8_t m_layers;
-
     /** Maximum height of the current row (used for packing). */
     uint8_t m_max_row_height;
 
@@ -47,11 +41,9 @@ public:
     explicit AtlasArray();
 
     /**
-     * @brief Initializes the atlas with the given size and number of layers.
-     * @param size Width and height of the square texture (in pixels).
-     * @param layers Number of texture layers.
+     * @brief Initializes the atlas array.
      */
-    void create(uint8_t size, uint8_t layers);
+    void create();
 
     /** @brief Destroys the atlas and clears all stored characters. */
     void destroy();

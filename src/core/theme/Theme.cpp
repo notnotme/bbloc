@@ -16,10 +16,8 @@ Theme::Theme()
 
 void Theme::create(CommandManager& commandManager, const std::string_view path) {
     // Create the atlas and texture
-    m_atlas_array.create(QuadTexture::TEXTURE_SIZE, QuadTexture::TEXTURE_DEPTH);
-    m_quad_texture.create();
-    m_quad_texture.bind(0);
-    m_quad_texture.setUnpackAlignment(1);
+    m_atlas_array.create();
+    m_quad_texture.create(0);
 
     // Set up the FT library and load theme text font
     FT_Init_FreeType(&m_ft_library);

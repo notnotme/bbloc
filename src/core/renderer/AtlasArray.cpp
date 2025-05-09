@@ -4,39 +4,36 @@
 
 
 AtlasArray::AtlasArray()
-    : m_texture_size(0),
-      m_layers(0),
-      m_max_row_height(0),
+    : m_max_row_height(0),
       m_character_layer(0),
       m_next_character_x(0),
       m_next_character_y(0) {}
 
-void AtlasArray::create(const uint8_t size, const uint8_t layers) {
-    m_texture_size = size;
-    m_layers = layers;
+void AtlasArray::create() {
+    // No-op
 }
 
 const AtlasEntry& AtlasArray::insert(const char16_t character, const uint8_t width, const uint8_t height, const int8_t bearingX, const int8_t bearingY) {
-    if (width > m_texture_size || height > m_texture_size) {
+    if (width > UINT8_MAX || height > UINT8_MAX) {
         throw std::runtime_error("AtlasArray::insert Glyph does not fit the texture.");
     }
 
     // Use a single-neuron algorythm to see if we have room for this character
-    if (m_next_character_x + width > m_texture_size) {
+    if (m_next_character_x + width > UINT8_MAX) {
         // Does not fit the horizontal axis, increment Y and return to the left
         m_next_character_x = 0;
         m_next_character_y += m_max_row_height;
     }
 
     // Check if fits in vertical axis
-    if (m_next_character_y + height > m_texture_size) {
+    if (m_next_character_y + height > UINT8_MAX) {
         // Does not fit the vertical axis, increment Z and return to the top-left
         m_next_character_x = 0;
         m_next_character_y = 0;
         m_max_row_height = 0;
 
         ++m_character_layer;
-        if (m_character_layer >= m_layers) {
+        if (m_character_layer >= UINT8_MAX) {
             // For now, we just throw an exception.
             // If not lazy, implement this:
             // - reset the atlas with bigger values
@@ -97,8 +94,6 @@ void AtlasArray::destroy() {
     m_characters.clear();
 
     // Default states
-    m_texture_size = 0;
-    m_layers = 0;
     m_character_layer = 0;
     m_next_character_x = 0;
     m_next_character_y = 0;
