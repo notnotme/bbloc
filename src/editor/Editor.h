@@ -45,21 +45,21 @@ private:
      * @brief Recomputes the longest line cache.
      * @param cursor Reference to the text cursor buffer.
      */
-    void updateLongestLineCache(const Cursor& cursor);
+    void updateLongestLineCache(const Cursor &cursor);
 
     /**
      * @brief: Compute scroll position and max scroll for the horizontal and vertical axis.
      * @param cursor A reference to the Cursor.
      * @param viewState A reference to the Editor view state.
      */
-    void updateScroll(const Cursor& cursor, EditorState& viewState) const;
+    void updateScroll(const Cursor &cursor, EditorState &viewState) const;
 
     /**
      * @brief: Draw the background layer of the editor.
      * @param viewState A reference to the Editor view state.
      * @param marginWidth The width of the margin, without the border size.
      */
-    void drawBackground(const EditorState& viewState, int32_t marginWidth) const;
+    void drawBackground(const EditorState &viewState, int32_t marginWidth) const;
 
     /**
      * @brief: Draw the text layer in the left margin of the editor.
@@ -68,7 +68,7 @@ private:
      * @param lineCountWidth The width in pixel of the greatest line number.
      * @param scrollY The editor y scroll offset.
      */
-    void drawMarginText(const Cursor& cursor, const EditorState& viewState, int32_t lineCountWidth, int32_t scrollY) const;
+    void drawMarginText(const Cursor &cursor, const EditorState &viewState, int32_t lineCountWidth, int32_t scrollY) const;
 
     /**
      * @brief: Draw the Cursor the text layer in the of the editor.
@@ -78,7 +78,7 @@ private:
      * @param scrollX The editor x scroll offset.
      * @param scrollY The editor y scroll offset.
      */
-    void drawText(const HighLighter& highLighter, const Cursor& cursor, const EditorState& viewState, int32_t scrollX, int32_t scrollY);
+    void drawText(const HighLighter &highLighter, const Cursor &cursor, const EditorState &viewState, int32_t scrollX, int32_t scrollY);
 
 public:
     /**
@@ -88,7 +88,7 @@ public:
      * @param quadProgram Reference to the QuadProgram shader.
      * @param quadBuffer Reference to the geometry buffer.
      */
-    explicit Editor(CommandManager& commandManager, Theme& theme, QuadProgram& quadProgram, QuadBuffer& quadBuffer);
+    explicit Editor(CommandManager &commandManager, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
 
     /**
      * @brief Renders the text editor to the screen.
@@ -97,7 +97,7 @@ public:
      * @param viewState State of the editor view.
      * @param dt Time delta since the last frame.
      */
-    void render(const HighLighter& highLighter, const Cursor& cursor, EditorState& viewState, float dt) override;
+    void render(const HighLighter &highLighter, const Cursor &cursor, EditorState &viewState, float dt) override;
 
     /**
      * @brief Handles key down events in the editor.
@@ -108,7 +108,7 @@ public:
      * @param keyModifier Modifier bitmask (Shift, Ctrl, etc).
      * @return True if the event was handled.
      */
-    bool onKeyDown(const HighLighter& highLighter, Cursor& cursor, EditorState& viewState, SDL_Keycode keyCode, uint16_t keyModifier) const override;
+    bool onKeyDown(const HighLighter &highLighter, Cursor &cursor, EditorState &viewState, SDL_Keycode keyCode, uint16_t keyModifier) const override;
 
     /**
      * @brief Handles text input events in the editor.
@@ -117,7 +117,7 @@ public:
      * @param viewState State of the editor view.
      * @param text UTF-8 encoded character input from SDL_TEXTINPUT.
      */
-    void onTextInput(const HighLighter& highLighter, Cursor& cursor, EditorState& viewState, const char* text) const override;
+    void onTextInput(const HighLighter &highLighter, Cursor &cursor, EditorState &viewState, const char* text) const override;
 };
 
 

@@ -27,16 +27,16 @@ template <class TCursor, class TState = ViewState>
 class View {
 protected:
     /** Reference to the command manager (used for dynamic runtime controls). */
-    CommandManager& m_command_manager;
+    CommandManager &m_command_manager;
 
     /** Reference to the theme used for rendering (colors, fonts, etc.). */
-    Theme& m_theme;
+    Theme &m_theme;
 
     /** Reference to the shader program for quad rendering. */
-    QuadProgram& m_quad_program;
+    QuadProgram &m_quad_program;
 
     /** Reference to the quad buffer used to build the glyph buffer. */
-    QuadBuffer& m_quad_buffer;
+    QuadBuffer &m_quad_buffer;
 
     /** Current window width in pixels. */
     int32_t m_window_width;
@@ -52,7 +52,7 @@ protected:
      * @param height The height of the quad.
      * @param color Reference to the color to be used by this quad.
      */
-    void drawQuad(int32_t x, int32_t y, int32_t width, int32_t height, const Color& color) const;
+    void drawQuad(int32_t x, int32_t y, int32_t width, int32_t height, const Color &color) const;
 
     /**
      * @brief Helper to push a new character inside m_quad_buffer.
@@ -61,7 +61,7 @@ protected:
      * @param character The character to draw (from AtlasEntry).
      * @param color The color to be used to draw this character.
      */
-    void drawCharacter(int32_t x, int32_t y, const AtlasEntry& character, const Color& color) const;
+    void drawCharacter(int32_t x, int32_t y, const AtlasEntry &character, const Color &color) const;
 
 public:
     /** @brief Deleted copy constructor. */
@@ -80,7 +80,7 @@ public:
      * @param quadProgram Reference to the quad shader program.
      * @param quadBuffer Reference to the quad geometry buffer.
      */
-    explicit View(CommandManager& commandManager, Theme& theme, QuadProgram& quadProgram, QuadBuffer& quadBuffer);
+    explicit View(CommandManager &commandManager, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
 
     /**
      * @brief Renders the view contents.
@@ -89,7 +89,7 @@ public:
      * @param viewState Reference to the view-specific state.
      * @param dt Delta time in seconds (useful for animations or transitions).
      */
-    virtual void render(const HighLighter& highLighter, const TCursor& cursor, TState& viewState, float dt) = 0;
+    virtual void render(const HighLighter &highLighter, const TCursor &cursor, TState &viewState, float dt) = 0;
 
     /**
      * @brief Handles key press events.
@@ -100,7 +100,7 @@ public:
      * @param keyModifier Bitmask of modifier keys (CTRL, ALT, etc.).
      * @return true if the key was handled, false otherwise.
      */
-    virtual bool onKeyDown(const HighLighter& highLighter, TCursor& cursor, TState& viewState, SDL_Keycode keyCode, uint16_t keyModifier) const = 0;
+    virtual bool onKeyDown(const HighLighter &highLighter, TCursor &cursor, TState &viewState, SDL_Keycode keyCode, uint16_t keyModifier) const = 0;
 
     /**
      * @brief Handles UTF-8 text input events (e.g., from typing).
@@ -109,7 +109,7 @@ public:
      * @param viewState Reference to the view state.
      * @param text UTF-8 encoded input text (from SDL_TEXTINPUT).
      */
-    virtual void onTextInput(const HighLighter& highLighter, TCursor& cursor, TState& viewState, const char* text) const = 0;
+    virtual void onTextInput(const HighLighter &highLighter, TCursor &cursor, TState &viewState, const char* text) const = 0;
 
     /**
      * @brief Updates the internal window size for the view (e.g., after a resize event).
@@ -145,7 +145,7 @@ void View<TCursor, TState>::drawQuad(const int32_t x, const int32_t y, const int
 }
 
 template<class TCursor, class TState>
-void View<TCursor, TState>::drawCharacter(const int32_t x, const int32_t y, const AtlasEntry& character, const Color &color) const {
+void View<TCursor, TState>::drawCharacter(const int32_t x, const int32_t y, const AtlasEntry &character, const Color &color) const {
     m_quad_buffer.insert(
         static_cast<int16_t>(x + character.bearing_x),
         static_cast<int16_t>(y - character.bearing_y),

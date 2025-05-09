@@ -20,7 +20,7 @@
  * @return An optional UTF-16 string message (e.g., success/failure message, output).
  */
 using CommandCallback = std::function<
-    std::optional<std::u16string>(Cursor& cursor,const std::vector<std::u16string_view>& args)
+    std::optional<std::u16string>(Cursor &cursor, const std::vector<std::u16string_view> &args)
 >;
 
 

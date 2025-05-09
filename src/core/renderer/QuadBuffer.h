@@ -14,7 +14,7 @@
 class QuadBuffer final {
 private:
     /** Pointer to the CPU-side mapped vertex data. */
-    QuadVertex* p_data;
+    QuadVertex *p_data;
 
     /** Handle to the OpenGL vertex buffer object. */
     GLuint m_vertex_buffer;

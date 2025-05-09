@@ -26,7 +26,7 @@ private:
      * @brief: Draw the background layer of the info bar.
      * @param viewState A reference to the InfoBar view state.
      */
-    void drawBackground(const InfoBarState& viewState) const;
+    void drawBackground(const InfoBarState &viewState) const;
 
     /**
       * @brief: Draw the text layer of the info bar.
@@ -34,7 +34,7 @@ private:
       * @param cursor A reference to the PromptCursor.
       * @param viewState A reference to the Prompt view state.
       */
-    void drawText(const HighLighter& highLighter, const Cursor& cursor, const InfoBarState& viewState) const;
+    void drawText(const HighLighter &highLighter, const Cursor &cursor, const InfoBarState &viewState) const;
 
 public:
     /**
@@ -45,7 +45,7 @@ public:
      * @param quadProgram Reference to the quad shader program.
      * @param quadBuffer Reference to the quad buffer.
      */
-    explicit InfoBar(CommandManager& commandManager, Theme& theme, QuadProgram& quadProgram, QuadBuffer& quadBuffer);
+    explicit InfoBar(CommandManager &commandManager, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
 
     /**
      * @brief Renders the InfoBar.
@@ -54,16 +54,16 @@ public:
      * @param viewState The InfoBarState of this view.
      * @param dt Time delta since the last frame.
      */
-    void render(const HighLighter& highLighter, const Cursor& cursor, InfoBarState& viewState, float dt) override;
+    void render(const HighLighter &highLighter, const Cursor &cursor, InfoBarState &viewState, float dt) override;
 
     /**
      * @brief InfoBar does not handle key input.
      * @return Always returns false.
      */
-    bool onKeyDown(const HighLighter& highLighter, Cursor& cursor, InfoBarState& viewState, SDL_Keycode keyCode, uint16_t keyModifier) const override;
+    bool onKeyDown(const HighLighter &highLighter, Cursor &cursor, InfoBarState &viewState, SDL_Keycode keyCode, uint16_t keyModifier) const override;
 
     /** @brief InfoBar does not handle text input. */
-    void onTextInput(const HighLighter& highLighter, Cursor& cursor, InfoBarState& viewState, const char* text) const override;
+    void onTextInput(const HighLighter &highLighter, Cursor &cursor, InfoBarState &viewState, const char* text) const override;
 };
 
 

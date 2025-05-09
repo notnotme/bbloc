@@ -28,7 +28,7 @@ private:
      * @param args The parsed arguments list.
      * @return An optional message string in return.
      */
-    virtual std::optional<std::u16string> setValueFromStrings(const std::vector<std::u16string_view>& args) = 0;
+    virtual std::optional<std::u16string> setValueFromStrings(const std::vector<std::u16string_view> &args) = 0;
 
     /** @return The current value as a UTF-16 string. */
     [[nodiscard]] virtual std::u16string getStringValue() const = 0;

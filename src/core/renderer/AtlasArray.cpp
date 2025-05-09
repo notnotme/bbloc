@@ -13,7 +13,7 @@ void AtlasArray::create() {
     // No-op
 }
 
-const AtlasEntry& AtlasArray::insert(const char16_t character, const uint8_t width, const uint8_t height, const int8_t bearingX, const int8_t bearingY) {
+const AtlasEntry &AtlasArray::insert(const char16_t character, const uint8_t width, const uint8_t height, const int8_t bearingX, const int8_t bearingY) {
     if (width > UINT8_MAX || height > UINT8_MAX) {
         throw std::runtime_error("AtlasArray::insert Glyph does not fit the texture.");
     }
@@ -61,7 +61,7 @@ const AtlasEntry& AtlasArray::insert(const char16_t character, const uint8_t wid
         m_max_row_height = height;
     }
 
-    const auto&[new_entry, success] = m_characters.insert({character, entry});
+    const auto &[new_entry, success] = m_characters.insert({character, entry});
     if (!success) {
         throw std::runtime_error("AtlasArray::insert: failed.");
     }

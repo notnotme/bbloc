@@ -23,14 +23,14 @@ private:
      * @brief: Draw the background layer of the prompt.
      * @param viewState A reference to the Prompt view state.
      */
-    void drawBackground(const PromptState& viewState) const;
+    void drawBackground(const PromptState &viewState) const;
 
     /**
      * @brief: Draw the text layer of the prompt.
      * @param cursor A reference to the PromptCursor.
      * @param viewState A reference to the Prompt view state.
      */
-    void drawText(const PromptCursor& cursor, const PromptState& viewState) const;
+    void drawText(const PromptCursor &cursor, const PromptState &viewState) const;
 
 public:
     /**
@@ -40,7 +40,7 @@ public:
      * @param quadProgram Reference to the QuadProgram for rendering.
      * @param quadBuffer Reference to the QuadBuffer for geometry submission.
      */
-    explicit Prompt(CommandManager& commandManager, Theme& theme, QuadProgram& quadProgram, QuadBuffer& quadBuffer);
+    explicit Prompt(CommandManager &commandManager, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
 
     /**
      * @brief Renders the command prompt on screen.
@@ -49,7 +49,7 @@ public:
      * @param viewState The associated PromptState for layout/input data.
      * @param dt Time delta since the last frame.
      */
-    void render(const HighLighter& highLighter, const PromptCursor& cursor, PromptState& viewState, float dt) override;
+    void render(const HighLighter &highLighter, const PromptCursor &cursor, PromptState &viewState, float dt) override;
 
     /**
      * @brief Handles key events while the prompt is active.
@@ -60,7 +60,7 @@ public:
      * @param keyModifier Key modifier mask.
      * @return True if input was handled.
      */
-    bool onKeyDown(const HighLighter& highLighter, PromptCursor& cursor, PromptState& viewState, SDL_Keycode keyCode, uint16_t keyModifier) const override;
+    bool onKeyDown(const HighLighter &highLighter, PromptCursor &cursor, PromptState &viewState, SDL_Keycode keyCode, uint16_t keyModifier) const override;
 
     /**
      * @brief Handles raw text input for the prompt.
@@ -69,7 +69,7 @@ public:
      * @param viewState The prompt's view state.
      * @param text UTF-8 encoded character input.
      */
-    void onTextInput(const HighLighter& highLighter, PromptCursor& cursor, PromptState& viewState, const char* text) const override;
+    void onTextInput(const HighLighter &highLighter, PromptCursor &cursor, PromptState &viewState, const char* text) const override;
 };
 
 

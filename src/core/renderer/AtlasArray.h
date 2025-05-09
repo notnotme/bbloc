@@ -58,14 +58,14 @@ public:
      * @return Reference to the inserted AtlasEntry.
      * @throws std::runtime_error if the character already exists or there's no space left.
      */
-    [[nodiscard]] const AtlasEntry& insert(char16_t character, uint8_t width, uint8_t height, int8_t bearingX, int8_t bearingY);
+    [[nodiscard]] const AtlasEntry &insert(char16_t character, uint8_t width, uint8_t height, int8_t bearingX, int8_t bearingY);
 
     /**
      * @brief Retrieves a character entry from the atlas.
      * @param character The Unicode codepoint.
      * @return Pointer to the corresponding AtlasEntry, or nullptr if not found.
      */
-    [[nodiscard]] const AtlasEntry* get(char16_t character) const;
+    [[nodiscard]] const AtlasEntry *get(char16_t character) const;
 
     /** @brief Gets the current layer index used for character insertion. */
     [[nodiscard]] uint8_t getCurrentLayer() const;

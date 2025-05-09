@@ -8,8 +8,8 @@ StringBuffer::StringBuffer() {
 
 std::u16string_view StringBuffer::getString(const uint32_t line) const {
     // Find the offset of that line in the cache first
-    const auto& line_start = m_buffer.data() + m_line_data[line].start;
-    const auto& line_end = line_start + m_line_data[line].count;
+    const auto &line_start = m_buffer.data() + m_line_data[line].start;
+    const auto &line_end = line_start + m_line_data[line].count;
     return std::u16string_view {line_start, line_end};
 }
 
@@ -44,7 +44,7 @@ uint32_t StringBuffer::getByteCount(uint32_t lineStart, uint32_t columnStart, ui
     return (end_byte_offset - start_byte_offset + line_ends) * sizeof(char16_t);
 }
 
-BufferEdit StringBuffer::insert(uint32_t& line, uint32_t& column, const std::u16string_view characters) {
+BufferEdit StringBuffer::insert(uint32_t &line, uint32_t &column, const std::u16string_view characters) {
     // As we insert into the buffer, we need to fill a BufferEdit
     auto edit = BufferEdit();
 

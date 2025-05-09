@@ -9,7 +9,7 @@
 #include "../core/theme/DimensionId.h"
 
 
-Prompt::Prompt(CommandManager& commandManager,Theme& theme, QuadProgram& quadProgram, QuadBuffer& quadBuffer)
+Prompt::Prompt(CommandManager &commandManager, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
     : View(commandManager, theme, quadProgram, quadBuffer) {}
 
 void Prompt::render(const HighLighter &highLighter, const PromptCursor &cursor, PromptState &viewState, float dt) {
@@ -95,7 +95,7 @@ bool Prompt::onKeyDown(const HighLighter &highLighter, PromptCursor &cursor, Pro
 
             if (m_command_manager.isCommandFeedbackPresent()) {
                 // If a feedback is active, try to gather arguments
-                m_command_manager.getFeedbackCompletion([&viewState](const std::u16string_view& completion) {
+                m_command_manager.getFeedbackCompletion([&viewState](const std::u16string_view completion) {
                     viewState.addCompletion(completion);
                 });
             } else {
@@ -106,7 +106,7 @@ bool Prompt::onKeyDown(const HighLighter &highLighter, PromptCursor &cursor, Pro
 
                 // Try to complete commands arguments first, if the command name is incomplete, this will return an empty list
                 m_command_manager.getArgumentsCompletion(utf8_command_name, argument_index, utf8_argument_to_complete,
-                    [&](const std::string_view& completion) {
+                    [&](const std::string_view completion) {
                         const auto completion_str = std::u16string(tokens[0]).append(u" ").append(utf8::utf8to16(completion));
                         viewState.addCompletion(completion_str);
                     });
@@ -114,7 +114,7 @@ bool Prompt::onKeyDown(const HighLighter &highLighter, PromptCursor &cursor, Pro
                 if (viewState.getCompletionCount() == 0 && tokens.size() <= 1) {
                     // Auto-complete commands names
                     m_command_manager.getCommandCompletions(utf8_command_name,
-                        [&](const std::string_view& completion) {
+                        [&](const std::string_view completion) {
                             viewState.addCompletion(utf8::utf8to16(completion));
                         });
                 }
@@ -185,8 +185,8 @@ void Prompt::drawBackground(const PromptState &viewState) const {
     const auto height = viewState.getHeight();
 
     // Need some variables
-    const auto& border_color = m_theme.getColor(ColorId::Border);
-    const auto& background_color = m_theme.getColor(ColorId::InfoBarBackground);
+    const auto &border_color = m_theme.getColor(ColorId::Border);
+    const auto &background_color = m_theme.getColor(ColorId::InfoBarBackground);
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
 
     drawQuad(position_x, position_y + border_size, width, height - border_size, background_color);
@@ -200,7 +200,7 @@ void Prompt::drawText(const PromptCursor &cursor, const PromptState &viewState) 
     const auto width = viewState.getWidth();
 
     // Keep some variable that frequently needed
-    const auto& prompt_text_color = m_theme.getColor(ColorId::PromptText);
+    const auto &prompt_text_color = m_theme.getColor(ColorId::PromptText);
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
     const auto tab_to_space = m_theme.getDimension(DimensionId::TabToSpace);
     const auto padding_width = m_theme.getDimension(DimensionId::PaddingWidth);
@@ -227,7 +227,7 @@ void Prompt::drawText(const PromptCursor &cursor, const PromptState &viewState) 
                 pen_position_x += font_advance * tab_to_space;
             break;
             default:
-                const auto& character = m_theme.getCharacter(c);
+                const auto &character = m_theme.getCharacter(c);
                 drawCharacter(pen_position_x, pen_position_y, character, prompt_text_color);
                 pen_position_x += font_advance;
                 ++quad_in_buffer;
@@ -241,7 +241,7 @@ void Prompt::drawText(const PromptCursor &cursor, const PromptState &viewState) 
     }
 
     // Draw the prompt cursor text
-    const auto& input_text_color = m_theme.getColor(ColorId::PromptInputText);
+    const auto &input_text_color = m_theme.getColor(ColorId::PromptInputText);
     const auto string = cursor.getString();
     const auto string_length = string.length();
     const auto cursor_column = cursor.getColumn();
@@ -261,7 +261,7 @@ void Prompt::drawText(const PromptCursor &cursor, const PromptState &viewState) 
                 pen_position_x += font_advance * tab_to_space;
             break;
             default:
-                const auto& character = m_theme.getCharacter(c);
+                const auto &character = m_theme.getCharacter(c);
                 drawCharacter(pen_position_x, pen_position_y, character, input_text_color);
                 pen_position_x += font_advance;
                 ++quad_in_buffer;
@@ -286,7 +286,7 @@ void Prompt::drawText(const PromptCursor &cursor, const PromptState &viewState) 
         }
         ++quad_in_buffer;
 
-        const auto& indicator_color = m_theme.getColor(ColorId::CursorIndicator);
+        const auto &indicator_color = m_theme.getColor(ColorId::CursorIndicator);
         const auto indicator_width = m_theme.getDimension(DimensionId::IndicatorWidth);
         drawQuad(cursor_position_x, pen_position_y - line_height - font_descender, indicator_width, line_height, indicator_color);
     }
@@ -305,7 +305,7 @@ void Prompt::drawText(const PromptCursor &cursor, const PromptState &viewState) 
             }
             ++quad_in_buffer;
 
-            const auto& character = m_theme.getCharacter(c);
+            const auto &character = m_theme.getCharacter(c);
             drawCharacter(pen_position_x, pen_position_y, character, prompt_text_color);
             pen_position_x += font_advance;
         }

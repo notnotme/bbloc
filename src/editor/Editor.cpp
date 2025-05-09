@@ -9,7 +9,7 @@
 #include "../core/theme/DimensionId.h"
 
 
-Editor::Editor(CommandManager& commandManager, Theme& theme, QuadProgram& quadProgram, QuadBuffer& quadBuffer)
+Editor::Editor(CommandManager &commandManager, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
     : View(commandManager, theme, quadProgram, quadBuffer),
       m_longest_line_cache(0, 0, 0),
       m_is_tab_to_space(std::make_shared<CVarBool>(true)) {
@@ -17,7 +17,7 @@ Editor::Editor(CommandManager& commandManager, Theme& theme, QuadProgram& quadPr
     registerTabToSpaceCVar();
 }
 
-void Editor::render(const HighLighter& highLighter, const Cursor& cursor, EditorState& viewState, const float dt) {
+void Editor::render(const HighLighter &highLighter, const Cursor &cursor, EditorState &viewState, const float dt) {
     // Need some variable
     const auto padding_width = m_theme.getDimension(DimensionId::PaddingWidth);
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
@@ -60,7 +60,7 @@ void Editor::render(const HighLighter& highLighter, const Cursor& cursor, Editor
     m_quad_program.draw(draw_offset, m_quad_buffer.getCount() - quads_count_before_text);
 }
 
-bool Editor::onKeyDown(const HighLighter& highLighter, Cursor& cursor, EditorState& viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
+bool Editor::onKeyDown(const HighLighter &highLighter, Cursor &cursor, EditorState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
     (void) keyModifier;
     switch (keyCode) {
         case SDLK_UP:
@@ -109,44 +109,44 @@ bool Editor::onKeyDown(const HighLighter& highLighter, Cursor& cursor, EditorSta
         return true;
         case SDLK_RETURN: {
             viewState.setFollowIndicator(true);
-            if (const auto& edit = cursor.eraseSelection()) {
+            if (const auto &edit = cursor.eraseSelection()) {
                 // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
                 highLighter.edit(edit.value());
                 cursor.setPosition(edit->new_end.line, edit->new_end.column);
                 cursor.activateSelection(false);
             }
 
-            const auto& edit = cursor.newLine();
+            const auto &edit = cursor.newLine();
             highLighter.edit(edit);
         }
         return true;
         case SDLK_BACKSPACE: {
             viewState.setFollowIndicator(true);
-            if (const auto& selection = cursor.eraseSelection()) {
+            if (const auto &selection = cursor.eraseSelection()) {
                 // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
                 highLighter.edit(selection.value());
                 cursor.setPosition(selection->new_end.line, selection->new_end.column);
                 cursor.activateSelection(false);
-            } else if (const auto& edit = cursor.eraseLeft()) {
+            } else if (const auto &edit = cursor.eraseLeft()) {
                 highLighter.edit(edit.value());
             }
         }
         return true;
         case SDLK_DELETE: {
             viewState.setFollowIndicator(true);
-            if (const auto& selection = cursor.eraseSelection()) {
+            if (const auto &selection = cursor.eraseSelection()) {
                 // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
                 highLighter.edit(selection.value());
                 cursor.setPosition(selection->new_end.line, selection->new_end.column);
                 cursor.activateSelection(false);
-            } else if (const auto& edit = cursor.eraseRight()) {
+            } else if (const auto &edit = cursor.eraseRight()) {
                 highLighter.edit(edit.value());
             }
         }
         return true;
         case SDLK_TAB: {
             viewState.setFollowIndicator(true);
-            if (const auto& selection = cursor.eraseSelection()) {
+            if (const auto &selection = cursor.eraseSelection()) {
                 // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
                 highLighter.edit(selection.value());
                 cursor.setPosition(selection->new_end.line, selection->new_end.column);
@@ -156,10 +156,10 @@ bool Editor::onKeyDown(const HighLighter& highLighter, Cursor& cursor, EditorSta
             if (m_is_tab_to_space->m_value) {
                 // We have to replace the tab character by x amount of space character
                 const auto space_amount = m_theme.getDimension(DimensionId::TabToSpace);
-                const auto& edit = cursor.insert(std::u16string(space_amount, u' '));
+                const auto &edit = cursor.insert(std::u16string(space_amount, u' '));
                 highLighter.edit(edit);
             } else {
-                const auto& edit = cursor.insert(u"\t");
+                const auto &edit = cursor.insert(u"\t");
                 highLighter.edit(edit);
             }
         }
@@ -168,8 +168,8 @@ bool Editor::onKeyDown(const HighLighter& highLighter, Cursor& cursor, EditorSta
             const auto ctrl_pressed  = (keyModifier & KMOD_CTRL) != 0;
             if (ctrl_pressed) {
                 auto to_clipboard_text = std::u16string();
-                if (const auto& selection = cursor.getSelectedText()) {
-                    const auto& all_text = selection.value();
+                if (const auto &selection = cursor.getSelectedText()) {
+                    const auto &all_text = selection.value();
                     const auto all_text_size = all_text.size();
                     for (auto i = 0; i < all_text_size; ++i) {
                         to_clipboard_text = to_clipboard_text.append(all_text[i]);
@@ -187,13 +187,13 @@ bool Editor::onKeyDown(const HighLighter& highLighter, Cursor& cursor, EditorSta
         case SDLK_x: {
             const auto ctrl_pressed  = (keyModifier & KMOD_CTRL) != 0;
             if (ctrl_pressed) {
-                const auto& selection = cursor.getSelectedText();
+                const auto &selection = cursor.getSelectedText();
                 if (!selection) {
                     return false;
                 }
 
                 auto to_clipboard_text = std::u16string();
-                const auto& all_text = selection.value();
+                const auto &all_text = selection.value();
                 const auto all_text_size = all_text.size();
                 for (auto i = 0; i < all_text_size; ++i) {
                     to_clipboard_text = to_clipboard_text.append(all_text[i]);
@@ -202,7 +202,7 @@ bool Editor::onKeyDown(const HighLighter& highLighter, Cursor& cursor, EditorSta
                     }
                 }
 
-                if (const auto& edit = cursor.eraseSelection()) {
+                if (const auto &edit = cursor.eraseSelection()) {
                     highLighter.edit(edit.value());
                     cursor.activateSelection(false);
                 }
@@ -220,7 +220,7 @@ bool Editor::onKeyDown(const HighLighter& highLighter, Cursor& cursor, EditorSta
                 const auto clipboard_text = std::string(sdl_clipboard_text);
                 const auto utf16_clipboard_text = utf8::utf8to16(clipboard_text);
                 if (!utf16_clipboard_text.empty()) {
-                    const auto& edit = cursor.insert(utf16_clipboard_text);
+                    const auto &edit = cursor.insert(utf16_clipboard_text);
                     highLighter.edit(edit);
                     viewState.setFollowIndicator(true);
                 }
@@ -244,7 +244,7 @@ void Editor::onTextInput(const HighLighter& highLighter, Cursor &cursor, EditorS
         utf8_text = utf8::replace_invalid(utf8_text);
     }
 
-    if (const auto& selection = cursor.eraseSelection()) {
+    if (const auto &selection = cursor.eraseSelection()) {
         // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
         highLighter.edit(selection.value());
         cursor.setPosition(selection->new_end.line, selection->new_end.column);
@@ -252,7 +252,7 @@ void Editor::onTextInput(const HighLighter& highLighter, Cursor &cursor, EditorS
     }
 
     const auto utf16_text = utf8::utf8to16(utf8_text);
-    const auto& edit = cursor.insert(utf16_text);
+    const auto &edit = cursor.insert(utf16_text);
     highLighter.edit(edit);
     viewState.setFollowIndicator(true);
 }
@@ -345,9 +345,9 @@ void Editor::drawBackground(const EditorState &viewState, const int32_t marginWi
     const auto height = viewState.getHeight();
 
     // Need some variables
-    const auto& border_color = m_theme.getColor(ColorId::Border);
-    const auto& background_color = m_theme.getColor(ColorId::EditorBackground);
-    const auto& margin_color = m_theme.getColor(ColorId::MarginBackground);
+    const auto &border_color = m_theme.getColor(ColorId::Border);
+    const auto &background_color = m_theme.getColor(ColorId::EditorBackground);
+    const auto &margin_color = m_theme.getColor(ColorId::MarginBackground);
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
 
     // Draw left background margin, right border and editor background -> 3 quads
@@ -363,7 +363,7 @@ void Editor::drawMarginText(const Cursor& cursor, const EditorState& viewState, 
     const auto height = viewState.getHeight();
 
     // Need some variables
-    const auto& line_number_color = m_theme.getColor(ColorId::LineNumber);
+    const auto &line_number_color = m_theme.getColor(ColorId::LineNumber);
     const auto padding_width = m_theme.getDimension(DimensionId::PaddingWidth);
     const auto line_height = m_theme.getLineHeight();
     const auto font_descender = m_theme.getFontDescender();
@@ -389,7 +389,7 @@ void Editor::drawMarginText(const Cursor& cursor, const EditorState& viewState, 
                     throw std::runtime_error("Not enough quad allowed to render the prompt.");
                 }
 
-                const auto& character = m_theme.getCharacter(c);
+                const auto &character = m_theme.getCharacter(c);
                 drawCharacter(pen_position_x, pen_position_y, character, line_number_color);
                 pen_position_x += font_advance;
                 ++quad_in_buffer;
@@ -454,17 +454,17 @@ void Editor::drawText(const HighLighter& highLighter, const Cursor& cursor, cons
                 ++quad_in_buffer;
 
                 // Begin current line bg
-                const auto& line_background_color = m_theme.getColor(ColorId::LineBackground);
+                const auto &line_background_color = m_theme.getColor(ColorId::LineBackground);
                 drawQuad(cursor_text_start_x, pen_position_y - line_height - font_descender, width, line_height, line_background_color);
             }
 
-            if (const auto& selected_range = cursor.getSelectedRange()) {
+            if (const auto &selected_range = cursor.getSelectedRange()) {
                 if (quad_in_buffer > ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT) {
                     throw std::runtime_error("Not enough quad allowed to render the prompt.");
                 }
 
                 // Check if the selected range is in the viewport
-                const auto& selected_background_color = m_theme.getColor(ColorId::SelectedTextBackground);
+                const auto &selected_background_color = m_theme.getColor(ColorId::SelectedTextBackground);
                 if (selected_range->line_start == line_index && selected_range->line_end == line_index) {
                     ++quad_in_buffer;
                     // The selection start / end on the same line. Select only a range of text.
@@ -505,7 +505,7 @@ void Editor::drawText(const HighLighter& highLighter, const Cursor& cursor, cons
                 }
 
                 const auto token_id = highLighter.getHighLightAtPosition(line_index, character_column);
-                const auto& character_color = m_theme.getColor(token_id);
+                const auto &character_color = m_theme.getColor(token_id);
                 switch (const auto c = string[character_column]) {
                     case ' ':
                         pen_position_x += font_advance;
@@ -516,7 +516,7 @@ void Editor::drawText(const HighLighter& highLighter, const Cursor& cursor, cons
                     default:
                         if (pen_position_x + font_advance >= position_x) {
                             // Only fetch characters and insert if it could be visible
-                            const auto& character = m_theme.getCharacter(c);
+                            const auto &character = m_theme.getCharacter(c);
                             drawCharacter(pen_position_x, pen_position_y, character, character_color);
                         }
                         pen_position_x += font_advance;
@@ -536,7 +536,7 @@ void Editor::drawText(const HighLighter& highLighter, const Cursor& cursor, cons
                 ++quad_in_buffer;
 
                 // begin indicator
-                const auto& indicator_color = m_theme.getColor(ColorId::CursorIndicator);
+                const auto &indicator_color = m_theme.getColor(ColorId::CursorIndicator);
                 drawQuad(cursor_position_x, pen_position_y - line_height - font_descender, indicator_width, line_height, indicator_color);
             }
         }

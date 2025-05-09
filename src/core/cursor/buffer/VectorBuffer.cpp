@@ -21,7 +21,7 @@ uint32_t VectorBuffer::getByteOffset(const uint32_t line, const uint32_t column)
     // to compute their size in byte. ! -> "\n" -> +1 length
     auto start_byte = column * sizeof(char16_t);
     for (auto current_line = 0; current_line < line; ++current_line) {
-        const auto& string = m_lines[current_line];
+        const auto &string = m_lines[current_line];
         start_byte += (string.length() + 1) * sizeof(char16_t);
     }
     return start_byte;
@@ -67,7 +67,7 @@ uint32_t VectorBuffer::getByteCount(uint32_t lineStart, uint32_t columnStart, ui
     return byte_count;
 }
 
-BufferEdit VectorBuffer::insert(uint32_t& line, uint32_t& column, const std::u16string_view characters) {
+BufferEdit VectorBuffer::insert(uint32_t &line, uint32_t &column, const std::u16string_view characters) {
     [[unlikely]] if (characters.empty()) {
         // This will likely never happen?
         return {0,0,0, {0,0}, {0,0}, {0,0}};

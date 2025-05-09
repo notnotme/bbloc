@@ -19,7 +19,7 @@ HighLighter::HighLighter()
       m_cb(nullptr) {
 }
 
-void HighLighter::create(CommandManager& commandManager) {
+void HighLighter::create(CommandManager &commandManager) {
     // Create the tree-sitter parser
     p_ts_parser = ts_parser_new();
 
@@ -44,7 +44,7 @@ void HighLighter::destroy() {
 void HighLighter::setMode(const HighLightId highLight) {
     m_high_light = highLight;
 
-    auto* old_language = ts_parser_language(p_ts_parser);
+    auto *old_language = ts_parser_language(p_ts_parser);
     ts_parser_set_language(p_ts_parser, nullptr);
     if (old_language != nullptr) {
         // Free dynamic allocation done by the language
@@ -56,7 +56,7 @@ void HighLighter::setMode(const HighLightId highLight) {
         p_current_parser = nullptr;
     } else {
         // Set new mode
-        const auto& parser = m_parsers.at(highLight);
+        const auto &parser = m_parsers.at(highLight);
         if (! ts_parser_set_language(p_ts_parser, parser.language)) {
             throw std::runtime_error("Could not set language");
         }
@@ -72,7 +72,7 @@ void HighLighter::setMode(const HighLightId highLight) {
 }
 
 void HighLighter::setMode(const std::string_view extension) {
-    for (const auto& [id, parser] : m_parsers) {
+    for (const auto &[id, parser] : m_parsers) {
         if (parser.files_format.contains(extension.data())) {
             // Found a match!
             setMode(id);
@@ -93,7 +93,7 @@ std::string_view HighLighter::getModeString() const {
     return p_current_parser->name;
 }
 
-void HighLighter::setInput(const Cursor& cursor) {
+void HighLighter::setInput(const Cursor &cursor) {
     // Invalidate the old parsed tree as tree-sitter will eventually need to reparse it
     if (p_ts_tree != nullptr) {
         ts_tree_delete(p_ts_tree);
@@ -124,13 +124,13 @@ void HighLighter::setInput(const Cursor& cursor) {
 
 void HighLighter::parse() {
     if (p_current_parser != nullptr) {
-        auto* new_tree = ts_parser_parse(p_ts_parser, p_ts_tree, m_input);
+        auto *new_tree = ts_parser_parse(p_ts_parser, p_ts_tree, m_input);
         ts_tree_delete(p_ts_tree);
         p_ts_tree = new_tree;
     }
 }
 
-void HighLighter::edit(const BufferEdit& edit) const {
+void HighLighter::edit(const BufferEdit &edit) const {
     if (p_ts_tree != nullptr) {
         // This just converts and relays the object coming from the cursor
         const auto ts_edit = TSInputEdit {
@@ -161,7 +161,7 @@ bool HighLighter::isSupported(const std::string_view extension) const {
     return false;
 }
 
-void HighLighter::getParserNames(const ItemCallback<char>& callback) const {
+void HighLighter::getParserNames(const ItemCallback<char> &callback) const {
     // Add a "txt" item, for HighLightId::None
     callback("txt");
     for (const auto &parser: std::views::values(m_parsers)) {
@@ -175,9 +175,9 @@ TokenId HighLighter::getHighLightAtPosition(const uint32_t line, const uint32_t 
     }
 
     // Find the node at the line and column position
-    const auto& point = TSPoint(line, column * sizeof(char16_t));
-    const auto& root_node = ts_tree_root_node(p_ts_tree);
-    const auto& target_node = ts_node_descendant_for_point_range(root_node, point, point);
+    const auto &point = TSPoint(line, column * sizeof(char16_t));
+    const auto &root_node = ts_tree_root_node(p_ts_tree);
+    const auto &target_node = ts_node_descendant_for_point_range(root_node, point, point);
     if (ts_node_is_null(target_node)) {
         return TokenId::None;
     }
@@ -195,12 +195,12 @@ const char* HighLighter::inputCallback(void *payload, const uint32_t byteIndex, 
     (void) byteIndex;
 
     // Get the HighLighter instance
-    const auto* self = static_cast<HighLighter*>(payload);
+    const auto *self = static_cast<HighLighter *>(payload);
 
     // Multiply and divide column according to char size, we are working with char16_t (2 bytes)
     const auto line = position.row;
     const auto column = position.column / sizeof(char16_t);
-    if (const auto& optional_line = self->m_cb(line, column)) {
+    if (const auto &optional_line = self->m_cb(line, column)) {
         // We got some data
         *bytesRead = optional_line->length() * sizeof(char16_t);
         return reinterpret_cast<const char*>(optional_line->data());
@@ -211,10 +211,10 @@ const char* HighLighter::inputCallback(void *payload, const uint32_t byteIndex, 
     return nullptr;
 }
 
-void HighLighter::registerHlCommand(CommandManager& commandManager) {
+void HighLighter::registerHlCommand(CommandManager &commandManager) {
     // Register a command to change the highlight mode
     commandManager.registerCommand("set_hl_mode",
-        [&](const Cursor& cursor, const std::vector<std::u16string_view>& args) -> std::optional<std::u16string> {
+        [&](const Cursor &cursor, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             (void) cursor;
             if (args.size() != 1) {
                 return u"Usage: set_hl_mode <mode>";
@@ -229,7 +229,7 @@ void HighLighter::registerHlCommand(CommandManager& commandManager) {
             setMode(extension);
             return std::nullopt;
         },
-        [&](const int32_t argumentIndex, const std::string_view input, const ItemCallback<char>& itemCallback) {
+        [&](const int32_t argumentIndex, const std::string_view input, const ItemCallback<char> &itemCallback) {
             // Ignore input
             (void) input;
             if (argumentIndex != 0) {

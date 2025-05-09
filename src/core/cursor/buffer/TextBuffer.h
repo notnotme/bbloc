@@ -61,7 +61,7 @@ public:
      * @param column Column index where to insert.
      * @param characters Characters to insert.
      */
-    virtual BufferEdit insert(uint32_t& line, uint32_t& column, std::u16string_view characters) = 0;
+    virtual BufferEdit insert(uint32_t &line, uint32_t &column, std::u16string_view characters) = 0;
 
     /**
      * @brief Removes text from the buffer between the given coordinates.

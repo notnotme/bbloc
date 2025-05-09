@@ -19,7 +19,7 @@
  * @param itemCallback A callback to be invoked with each completion suggestion.
  */
 using CompletionCallback = std::function<
-    void(int32_t argumentIndex, std::string_view input, const ItemCallback<char>& itemCallback)
+    void(int32_t argumentIndex, std::string_view input, const ItemCallback<char> &itemCallback)
 >;
 
 

@@ -38,7 +38,7 @@ public:
 
 private:
     /** Reference to the command manager (used to register cvars and commands). */
-    CommandManager& m_command_manager;
+    CommandManager &m_command_manager;
 
     /** Current label displayed on the prompt line. */
     std::u16string m_prompt_text;
@@ -72,7 +72,7 @@ public:
     PromptState &operator=(const PromptState &) = delete;
 
     /** @brief Constructs a PromptState with default values. */
-    explicit PromptState(CommandManager& commandManager);
+    explicit PromptState(CommandManager &commandManager);
 
     /** @brief Gets the current prompt label text. */
     [[nodiscard]] std::u16string_view getPromptText() const;

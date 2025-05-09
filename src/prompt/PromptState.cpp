@@ -3,7 +3,7 @@
 #include <algorithm>
 
 
-PromptState::PromptState(CommandManager& commandManager)
+PromptState::PromptState(CommandManager &commandManager)
     : m_command_manager(commandManager),
       m_prompt_text(PROMPT_READY),
       m_completion_index(0),

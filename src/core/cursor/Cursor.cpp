@@ -247,7 +247,7 @@ BufferEdit Cursor::newLine() {
 std::optional<BufferEdit> Cursor::eraseLeft() {
     if (m_column > 0) {
         // We can erase on the left since column > 0
-        const auto& edit = m_buffer->erase(m_line, m_column, m_line, m_column - 1);
+        const auto &edit = m_buffer->erase(m_line, m_column, m_line, m_column - 1);
         --m_column;
         return edit;
     }
@@ -255,7 +255,7 @@ std::optional<BufferEdit> Cursor::eraseLeft() {
     if (m_line > 0) {
         // We can't erase left because column = 0, so we move the remainder of this line to the end of the line above
         const auto string_above_length = m_buffer->getString(m_line - 1).length();
-        const auto& edit =  m_buffer->erase(m_line, m_column, m_line - 1, string_above_length);
+        const auto &edit =  m_buffer->erase(m_line, m_column, m_line - 1, string_above_length);
         --m_line;
         m_column = string_above_length;
         return edit;

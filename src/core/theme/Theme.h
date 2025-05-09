@@ -78,13 +78,13 @@ private:
 
 private:
     /** @brief Registers all UI color CVars with the command manager. */
-    void registerThemeColorCVar(CommandManager& commandManager);
+    void registerThemeColorCVar(CommandManager &commandManager);
 
     /** @brief Registers all syntax highlight color CVars. */
-    void registerHighLightColorCVar(CommandManager& commandManager);
+    void registerHighLightColorCVar(CommandManager &commandManager);
 
     /** @brief Registers dimension CVars used for layout and spacing. */
-    void registerThemeDimensionCVar(CommandManager& commandManager);
+    void registerThemeDimensionCVar(CommandManager &commandManager);
 
 public:
     /** @brief Deleted copy constructor. */
@@ -102,7 +102,7 @@ public:
      * @param commandManager The CommandManager to register CVars with.
      * @param path Filesystem path to the theme folder (must contain FONT_FILE).
      */
-    void create(CommandManager& commandManager, std::string_view path);
+    void create(CommandManager &commandManager, std::string_view path);
 
     /** @brief Releases all internal resources. */
     void destroy();
@@ -122,7 +122,7 @@ public:
      * @return The associated ThemeColor.
      * @throws std::runtime_error if not found.
      */
-    [[nodiscard]] const Color& getColor(ColorId id) const;
+    [[nodiscard]] const Color &getColor(ColorId id) const;
 
     /**
      * @brief Retrieves a syntax highlight color by token type.
@@ -130,7 +130,7 @@ public:
      * @return Reference to the color.
      * @throws std::runtime_error if not found.
      */
-    [[nodiscard]] const Color& getColor(TokenId id) const;
+    [[nodiscard]] const Color &getColor(TokenId id) const;
 
     /**
      * @brief Returns glyph metadata for the given character.
@@ -138,7 +138,7 @@ public:
      * @return Reference to the glyph's atlas entry.
      * @throws std::runtime_error if not found.
      */
-    [[nodiscard]] const AtlasEntry& getCharacter(char16_t character);
+    [[nodiscard]] const AtlasEntry &getCharacter(char16_t character);
 
     /**
      * @brief Retrieves a dimension value by its identifier.

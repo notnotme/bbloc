@@ -219,7 +219,7 @@ void ApplicationWindow::mainLoop() {
                                                 m_prompt_state.addHistory(command_string);
                                             }
 
-                                            if (const auto& message = m_command_manager.execute(m_cursor, command_string)) {
+                                            if (const auto &message = m_command_manager.execute(m_cursor, command_string)) {
                                                 // Show the error message in the prompt, if any
                                                 m_prompt_state.setRunningState(PromptState::RunningState::Message);
                                                 m_prompt_state.setPromptText(message.value());
@@ -227,7 +227,7 @@ void ApplicationWindow::mainLoop() {
                                             } else {
                                                 // After command execution, we need to know if feedback is available,
                                                 // so query the feedback again.
-                                                if (const auto& feedback = m_command_manager.getCommandFeedback()) {
+                                                if (const auto &feedback = m_command_manager.getCommandFeedback()) {
                                                     // The prompt needs a feedback, so let it running and update the
                                                     // prompt text with the feedback
                                                     m_prompt_state.setRunningState(PromptState::RunningState::Running);
@@ -375,7 +375,7 @@ void ApplicationWindow::destroy() {
 void ApplicationWindow::registerOpenCommand() {
     // Add the "open" command to open files and populate Cursor's buffer
     m_command_manager.registerCommand("open",
-        [&](Cursor& cursor, const std::vector<std::u16string_view>& args) -> std::optional<std::u16string> {
+        [&](Cursor& cursor, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             if (args.size() != 1) {
                 return u"Usage: open <filename>";
             }
@@ -389,7 +389,7 @@ void ApplicationWindow::registerOpenCommand() {
             }
 
             // Clear the cursor and read the file line by line
-            const auto& edit_clear = cursor.clear();
+            const auto &edit_clear = cursor.clear();
             m_high_lighter.edit(edit_clear);
 
             const auto file_extension = std::filesystem::path(path).extension().string();
@@ -399,7 +399,7 @@ void ApplicationWindow::registerOpenCommand() {
             auto line = std::string();
             auto all_line = std::u16string();
             while (getline(ifs, line)) {
-                if (const auto& end_it = utf8::find_invalid(line.begin(), line.end()); end_it != line.end()) {
+                if (const auto &end_it = utf8::find_invalid(line.begin(), line.end()); end_it != line.end()) {
                     // Invalid sequence: stop reading the file
                     const auto utf16_line_count = utf8::utf8to16(std::to_string(line_count));
                     return std::u16string(u"Invalid UTF-8 encoding detected at line ").append(utf16_line_count);
@@ -415,7 +415,7 @@ void ApplicationWindow::registerOpenCommand() {
             }
             ifs.close();
 
-            const auto& edit_insert = cursor.insert(all_line);
+            const auto &edit_insert = cursor.insert(all_line);
             m_high_lighter.edit(edit_insert);
 
             cursor.setName(path);
@@ -423,7 +423,7 @@ void ApplicationWindow::registerOpenCommand() {
             m_editor_state.setFollowIndicator(true);
             return std::nullopt;
         },
-        [&](const int32_t argumentIndex, const std::string_view input, const ItemCallback<char>& itemCallback) {
+        [&](const int32_t argumentIndex, const std::string_view input, const ItemCallback<char> &itemCallback) {
             if (argumentIndex != 0) {
                 // Only auto-complete the first argument (path)
                 return;
@@ -435,7 +435,7 @@ void ApplicationWindow::registerOpenCommand() {
 void ApplicationWindow::registerSaveCommand() {
     // Add the "save" command to save files to disk
     m_command_manager.registerCommand("save",
-        [&](Cursor& cursor, const std::vector<std::u16string_view>& args) -> std::optional<std::u16string> {
+        [&](Cursor& cursor, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             const auto cursor_name = std::filesystem::path(cursor.getName());
             if (cursor_name.empty() && (args.empty() || (args.size() >= 2 && args[1] != u"-f"))) {
                 return u"Usage: save <filename> [-f]";
@@ -484,7 +484,7 @@ void ApplicationWindow::registerSaveCommand() {
             cursor.setName(file_to_save.string());
             return std::nullopt;
         },
-        [&](const int32_t argumentIndex, const std::string_view input, const ItemCallback<char>& itemCallback) {
+        [&](const int32_t argumentIndex, const std::string_view input, const ItemCallback<char> &itemCallback) {
            if (argumentIndex != 0) {
                // Only auto-complete the first argument (path)
                return;
@@ -497,7 +497,7 @@ void ApplicationWindow::registerRenderTimeCommand() {
     // Register inf_render_time cvar and associated command to reset the value, since we made it read-only
     m_command_manager.registerCvar("inf_render_time", m_render_time);
     m_command_manager.registerCommand("reset_render_time",
-        [&](const Cursor& cursor, const std::vector<std::u16string_view>& args) -> std::optional<std::u16string> {
+        [&](const Cursor& cursor, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             (void) cursor;
             if (!args.empty()) {
                 return u"Expected 0 argument.";
@@ -511,7 +511,7 @@ void ApplicationWindow::registerRenderTimeCommand() {
 void ApplicationWindow::registerQuitCommand() {
     // Register quit command
     m_command_manager.registerCommand("quit",
-        [&](const Cursor& cursor, const std::vector<std::u16string_view>& args) -> std::optional<std::u16string> {
+        [&](const Cursor& cursor, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             (void) cursor;
             if (!args.empty()) {
                 return u"Expected 0 argument.";

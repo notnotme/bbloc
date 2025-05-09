@@ -82,7 +82,7 @@ public:
      * @param callback Function executed when the command is called.
      * @param completionCallback Optional function for argument auto-completion.
      */
-    void registerCommand(std::string_view name, const CommandCallback& callback, const CompletionCallback& completionCallback = nullptr);
+    void registerCommand(std::string_view name, const CommandCallback &callback, const CompletionCallback &completionCallback = nullptr);
 
     /**
      * @brief Registers a new configuration variable (CVar).
@@ -90,7 +90,7 @@ public:
      * @param cvar Shared pointer to the CVar instance.
      * @param callback Optional callback invoked when the variable is modified.
      */
-    void registerCvar(std::string_view name, std::shared_ptr<CVar> cvar, const CVarCallback& callback = nullptr);
+    void registerCvar(std::string_view name, std::shared_ptr<CVar> cvar, const CVarCallback &callback = nullptr);
 
     /**
      * @brief Executes a command string.
@@ -98,7 +98,7 @@ public:
      * @param input UTF-16 input string containing the command and arguments.
      * @return An optional result string for displaying messages in the prompt.
      */
-    std::optional<std::u16string> execute(Cursor& cursor,std::u16string_view input);
+    std::optional<std::u16string> execute(Cursor &cursor,std::u16string_view input);
 
     /**
      * @brief Initiates a feedback command. Displays a prompt to the user and waits for confirmation or selection.
@@ -107,21 +107,21 @@ public:
      * @param completions A list of valid responses (e.g., {"yes", "no"}).
      * @param callback Callback invoked with the user's feedback.
      */
-    void setCommandFeedback(std::u16string_view prompt, std::u16string_view command, const std::vector<std::u16string_view>& completions, const FeedbackCallback& callback);
+    void setCommandFeedback(std::u16string_view prompt, std::u16string_view command, const std::vector<std::u16string_view> &completions, const FeedbackCallback &callback);
 
     /**
      * @brief Gathers auto-completion suggestions for CVars.
      * @param input The current input string.
      * @param itemCallback Callback to receive each CVar name suggestion.
      */
-    void getCVarCompletions(std::string_view input, const ItemCallback<char>& itemCallback);
+    void getCVarCompletions(std::string_view input, const ItemCallback<char> &itemCallback);
 
     /**
      * @brief Gathers auto-completion suggestions for command names.
      * @param input Current user input string.
      * @param itemCallback Callback to receive command name suggestions.
      */
-    void getCommandCompletions(std::string_view input, const ItemCallback<char>& itemCallback);
+    void getCommandCompletions(std::string_view input, const ItemCallback<char> &itemCallback);
 
     /**
      * @brief Provides auto-completions for command arguments.
@@ -130,13 +130,13 @@ public:
      * @param input Current user input string.
      * @param itemCallback Callback to receive argument name suggestions.
      */
-    void getArgumentsCompletion(std::string_view command, int32_t argumentIndex, std::string_view input, const ItemCallback<char>& itemCallback);
+    void getArgumentsCompletion(std::string_view command, int32_t argumentIndex, std::string_view input, const ItemCallback<char> &itemCallback);
 
     /**
       * @brief Provides completions for interactive feedback input.
       * @param itemCallback Callback receiving feedback suggestions.
       */
-    void getFeedbackCompletion(const ItemCallback<char16_t>& itemCallback) const;
+    void getFeedbackCompletion(const ItemCallback<char16_t> &itemCallback) const;
 
     /** @brief Clears any pending feedback prompt. */
     void clearCommandFeedback();
@@ -161,7 +161,7 @@ public:
      * @param foldersOnly If true, only folder names will be returned.
      * @param itemCallback Callback to receive each path suggestion.
      */
-    static void getPathCompletions(std::string_view input, bool foldersOnly, const ItemCallback<char>& itemCallback);
+    static void getPathCompletions(std::string_view input, bool foldersOnly, const ItemCallback<char> &itemCallback);
 };
 
 

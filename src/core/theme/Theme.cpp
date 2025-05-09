@@ -14,7 +14,7 @@ Theme::Theme()
       m_font_advance(0),
       m_font_descender(0) {}
 
-void Theme::create(CommandManager& commandManager, const std::string_view path) {
+void Theme::create(CommandManager &commandManager, const std::string_view path) {
     // Create the atlas and texture
     m_atlas_array.create();
     m_quad_texture.create(0);
@@ -77,7 +77,7 @@ int32_t Theme::getFontSize() const {
     return m_font_size->m_value;
 }
 
-const Color& Theme::getColor(const ColorId id) const {
+const Color &Theme::getColor(const ColorId id) const {
     if (!m_colors.contains(id)) {
         throw std::runtime_error("Theme::getColor color does not exists.");
     }
@@ -85,7 +85,7 @@ const Color& Theme::getColor(const ColorId id) const {
     return m_colors.at(id)->m_value;
 }
 
-const Color & Theme::getColor(const TokenId id) const {
+const Color &Theme::getColor(const TokenId id) const {
     if (!m_highlight_colors.contains(id)) {
         throw std::runtime_error("Theme::getColor color does not exists.");
     }
@@ -93,9 +93,9 @@ const Color & Theme::getColor(const TokenId id) const {
     return m_highlight_colors.at(id)->m_value;
 }
 
-const AtlasEntry & Theme::getCharacter(const char16_t character) {
+const AtlasEntry &Theme::getCharacter(const char16_t character) {
     // If we already generated the character, we return it
-    if (const auto& entry = m_atlas_array.get(character); entry != nullptr) {
+    if (const auto &entry = m_atlas_array.get(character); entry != nullptr) {
         return *entry;
     }
 
@@ -105,7 +105,7 @@ const AtlasEntry & Theme::getCharacter(const char16_t character) {
     }
 
     // Insert the character into the atlas
-    const auto& atlas_entry = m_atlas_array.insert(
+    const auto &atlas_entry = m_atlas_array.insert(
         character,
         m_font->glyph->bitmap.width,
         m_font->glyph->bitmap.rows,
@@ -158,18 +158,18 @@ int32_t Theme::measure(const std::u16string_view text, const bool ignoreTabs) {
 
 void Theme::registerThemeColorCVar(CommandManager &commandManager) {
     // Create default colors for the theme
-    const auto& cvar_margin_background_color         = m_colors.insert({ColorId::MarginBackground,       std::make_shared<CVarColor>(220, 220, 220, 255)});
-    const auto& cvar_info_bar_background_color       = m_colors.insert({ColorId::InfoBarBackground,      std::make_shared<CVarColor>(210, 210, 210, 255)});
-    const auto& cvar_editor_background_color         = m_colors.insert({ColorId::EditorBackground,       std::make_shared<CVarColor>(250, 250, 250, 255)});
-    const auto& cvar_prompt_background_color         = m_colors.insert({ColorId::PromptBackground,       std::make_shared<CVarColor>(210, 210, 210, 255)});
-    const auto& cvar_current_line_background_color   = m_colors.insert({ColorId::LineBackground,         std::make_shared<CVarColor>(  0,   0,   0,  12)});
-    const auto& cvar_selected_text_background_color  = m_colors.insert({ColorId::SelectedTextBackground, std::make_shared<CVarColor>(  0, 200, 255,  32)});
-    const auto& cvar_line_number_color               = m_colors.insert({ColorId::LineNumber,             std::make_shared<CVarColor>(  0,   0,   0, 220)});
-    const auto& cvar_info_bar_text_color             = m_colors.insert({ColorId::InfoBarText,            std::make_shared<CVarColor>(  0,   0,   0, 220)});
-    const auto& cvar_prompt_text_color               = m_colors.insert({ColorId::PromptText,             std::make_shared<CVarColor>(  0,   0,   0, 220)});
-    const auto& cvar_prompt_input_text_color         = m_colors.insert({ColorId::PromptInputText,        std::make_shared<CVarColor>(  0,   0,   0, 220)});
-    const auto& cvar_border_color                    = m_colors.insert({ColorId::Border,                 std::make_shared<CVarColor>(150, 150, 150, 255)});
-    const auto& cvar_cursor_indicator_color          = m_colors.insert({ColorId::CursorIndicator,        std::make_shared<CVarColor>(  0,   0,   0, 255)});
+    const auto &cvar_margin_background_color         = m_colors.insert({ColorId::MarginBackground,       std::make_shared<CVarColor>(220, 220, 220, 255)});
+    const auto &cvar_info_bar_background_color       = m_colors.insert({ColorId::InfoBarBackground,      std::make_shared<CVarColor>(210, 210, 210, 255)});
+    const auto &cvar_editor_background_color         = m_colors.insert({ColorId::EditorBackground,       std::make_shared<CVarColor>(250, 250, 250, 255)});
+    const auto &cvar_prompt_background_color         = m_colors.insert({ColorId::PromptBackground,       std::make_shared<CVarColor>(210, 210, 210, 255)});
+    const auto &cvar_current_line_background_color   = m_colors.insert({ColorId::LineBackground,         std::make_shared<CVarColor>(  0,   0,   0,  12)});
+    const auto &cvar_selected_text_background_color  = m_colors.insert({ColorId::SelectedTextBackground, std::make_shared<CVarColor>(  0, 200, 255,  32)});
+    const auto &cvar_line_number_color               = m_colors.insert({ColorId::LineNumber,             std::make_shared<CVarColor>(  0,   0,   0, 220)});
+    const auto &cvar_info_bar_text_color             = m_colors.insert({ColorId::InfoBarText,            std::make_shared<CVarColor>(  0,   0,   0, 220)});
+    const auto &cvar_prompt_text_color               = m_colors.insert({ColorId::PromptText,             std::make_shared<CVarColor>(  0,   0,   0, 220)});
+    const auto &cvar_prompt_input_text_color         = m_colors.insert({ColorId::PromptInputText,        std::make_shared<CVarColor>(  0,   0,   0, 220)});
+    const auto &cvar_border_color                    = m_colors.insert({ColorId::Border,                 std::make_shared<CVarColor>(150, 150, 150, 255)});
+    const auto &cvar_cursor_indicator_color          = m_colors.insert({ColorId::CursorIndicator,        std::make_shared<CVarColor>(  0,   0,   0, 255)});
 
     // Make colors accessible from the console
     commandManager.registerCvar("col_margin_background",        cvar_margin_background_color.first->second);
@@ -188,13 +188,13 @@ void Theme::registerThemeColorCVar(CommandManager &commandManager) {
 
 void Theme::registerHighLightColorCVar(CommandManager &commandManager) {
     // Create default highlight colors
-    const auto& cvar_hl_text_color           = m_highlight_colors.insert({TokenId::None,         std::make_shared<CVarColor>( 64,  64,  64, 255)});
-    const auto& cvar_hl_comment_color        = m_highlight_colors.insert({TokenId::Comment,      std::make_shared<CVarColor>(160, 160, 160, 200)});
-    const auto& cvar_hl_string_color         = m_highlight_colors.insert({TokenId::String,       std::make_shared<CVarColor>(  0, 150,   0, 255)});
-    const auto& cvar_hl_preprocessor_color   = m_highlight_colors.insert({TokenId::Preprocessor, std::make_shared<CVarColor>(150, 150,  64, 255)});
-    const auto& cvar_hl_number_color         = m_highlight_colors.insert({TokenId::Number,       std::make_shared<CVarColor>(  0, 200, 200, 255)});
-    const auto& cvar_hl_keyword_color        = m_highlight_colors.insert({TokenId::Keyword,      std::make_shared<CVarColor>(  0,   0, 200, 255)});
-    const auto& cvar_hl_statement_color      = m_highlight_colors.insert({TokenId::Statement,    std::make_shared<CVarColor>(200,   0, 200, 255)});
+    const auto &cvar_hl_text_color           = m_highlight_colors.insert({TokenId::None,         std::make_shared<CVarColor>( 64,  64,  64, 255)});
+    const auto &cvar_hl_comment_color        = m_highlight_colors.insert({TokenId::Comment,      std::make_shared<CVarColor>(160, 160, 160, 200)});
+    const auto &cvar_hl_string_color         = m_highlight_colors.insert({TokenId::String,       std::make_shared<CVarColor>(  0, 150,   0, 255)});
+    const auto &cvar_hl_preprocessor_color   = m_highlight_colors.insert({TokenId::Preprocessor, std::make_shared<CVarColor>(150, 150,  64, 255)});
+    const auto &cvar_hl_number_color         = m_highlight_colors.insert({TokenId::Number,       std::make_shared<CVarColor>(  0, 200, 200, 255)});
+    const auto &cvar_hl_keyword_color        = m_highlight_colors.insert({TokenId::Keyword,      std::make_shared<CVarColor>(  0,   0, 200, 255)});
+    const auto &cvar_hl_statement_color      = m_highlight_colors.insert({TokenId::Statement,    std::make_shared<CVarColor>(200,   0, 200, 255)});
 
     // Make highlight colors accessible from the console
     commandManager.registerCvar("hl_text",          cvar_hl_text_color.first->second);
@@ -208,11 +208,11 @@ void Theme::registerHighLightColorCVar(CommandManager &commandManager) {
 
 void Theme::registerThemeDimensionCVar(CommandManager &commandManager) {
     // Create default dimensions for the theme
-    const auto& cvar_padding_width   = m_dimensions.insert({DimensionId::PaddingWidth,   std::make_shared<CVarInt>( 8)});
-    const auto& cvar_indicator_width = m_dimensions.insert({DimensionId::IndicatorWidth, std::make_shared<CVarInt>( 2)});
-    const auto& cvar_border_size     = m_dimensions.insert({DimensionId::BorderSize,     std::make_shared<CVarInt>( 1)});
-    const auto& cvar_tab_to_space    = m_dimensions.insert({DimensionId::TabToSpace,     std::make_shared<CVarInt>( 4)});
-    const auto& cvar_page_up_down    = m_dimensions.insert({DimensionId::PageUpDown,     std::make_shared<CVarInt>(10)});
+    const auto &cvar_padding_width   = m_dimensions.insert({DimensionId::PaddingWidth,   std::make_shared<CVarInt>( 8)});
+    const auto &cvar_indicator_width = m_dimensions.insert({DimensionId::IndicatorWidth, std::make_shared<CVarInt>( 2)});
+    const auto &cvar_border_size     = m_dimensions.insert({DimensionId::BorderSize,     std::make_shared<CVarInt>( 1)});
+    const auto &cvar_tab_to_space    = m_dimensions.insert({DimensionId::TabToSpace,     std::make_shared<CVarInt>( 4)});
+    const auto &cvar_page_up_down    = m_dimensions.insert({DimensionId::PageUpDown,     std::make_shared<CVarInt>(10)});
 
     // Make dimensions accessible from the console
     commandManager.registerCvar("dim_padding_width",    cvar_padding_width.first->second);

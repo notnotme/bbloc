@@ -8,10 +8,10 @@
 #include "../core/theme/DimensionId.h"
 
 
-InfoBar::InfoBar(CommandManager& commandManager, Theme& theme, QuadProgram& quadProgram, QuadBuffer& quadBuffer)
+InfoBar::InfoBar(CommandManager &commandManager, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
     : View(commandManager, theme, quadProgram, quadBuffer) {}
 
-void InfoBar::render(const HighLighter& highLighter, const Cursor& cursor, InfoBarState& viewState, const float dt) {
+void InfoBar::render(const HighLighter &highLighter, const Cursor &cursor, InfoBarState &viewState, const float dt) {
     m_quad_buffer.map(ApplicationWindow::INFO_BAR_BUFFER_QUAD_OFFSET, ApplicationWindow::INFO_BAR_BUFFER_QUAD_COUNT);
     drawBackground(viewState);
     drawText(highLighter, cursor, viewState);
@@ -37,7 +37,7 @@ void InfoBar::onTextInput(const HighLighter &highLighter, Cursor &cursor, InfoBa
     // No-op
 }
 
-void InfoBar::drawBackground(const InfoBarState& viewState) const {
+void InfoBar::drawBackground(const InfoBarState &viewState) const {
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
     const auto position_y = viewState.getPositionY();
@@ -45,28 +45,28 @@ void InfoBar::drawBackground(const InfoBarState& viewState) const {
     const auto height = viewState.getHeight();
 
     // Need some variables
-    const auto& border_color = m_theme.getColor(ColorId::Border);
-    const auto& background_color = m_theme.getColor(ColorId::InfoBarBackground);
+    const auto &border_color = m_theme.getColor(ColorId::Border);
+    const auto &background_color = m_theme.getColor(ColorId::InfoBarBackground);
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
 
     drawQuad(position_x, position_y, width, height - border_size, background_color);
     drawQuad(position_x, position_y + height - border_size, width, border_size, border_color);
 }
 
-void InfoBar::drawText(const HighLighter& highLighter, const Cursor& cursor, const InfoBarState& viewState) const {
+void InfoBar::drawText(const HighLighter &highLighter, const Cursor &cursor, const InfoBarState &viewState) const {
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
     const auto position_y = viewState.getPositionY();
     const auto width = viewState.getWidth();
 
     // Need some variables
+    const auto &text_color = m_theme.getColor(ColorId::InfoBarText);
     const auto line_height = m_theme.getLineHeight();
     const auto font_size = m_theme.getFontSize();
     const auto font_descender = m_theme.getFontDescender();
     const auto font_advance = m_theme.getFontAdvance();
     const auto tab_to_space = m_theme.getDimension(DimensionId::TabToSpace);
     const auto padding_width = m_theme.getDimension(DimensionId::PaddingWidth);
-    const auto& text_color = m_theme.getColor(ColorId::InfoBarText);
     const auto cursor_line = cursor.getLine();
     const auto cursor_column = cursor.getColumn();
     const auto cursor_line_count = cursor.getLineCount();
@@ -85,7 +85,7 @@ void InfoBar::drawText(const HighLighter& highLighter, const Cursor& cursor, con
 
     auto quad_in_buffer = m_quad_buffer.getCount();
     const auto pen_position_y = position_y + line_height + font_descender;
-    for (const auto&[x_offset, string] : strings) {
+    for (const auto &[x_offset, string] : strings) {
         if (quad_in_buffer == ApplicationWindow::INFO_BAR_BUFFER_QUAD_COUNT) {
             throw std::runtime_error("Not enough quad allowed to render the prompt.");
         }
@@ -100,7 +100,7 @@ void InfoBar::drawText(const HighLighter& highLighter, const Cursor& cursor, con
                     pen_position_x += font_advance * tab_to_space;
                 break;
                 default:
-                    const auto& character = m_theme.getCharacter(c);
+                    const auto &character = m_theme.getCharacter(c);
                     drawCharacter(pen_position_x, pen_position_y, character, text_color);
                     pen_position_x += font_advance;
                     ++quad_in_buffer;

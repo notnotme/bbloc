@@ -66,7 +66,7 @@ private:
      * @brief Registers the console command for setting the highlighting mode.
      * @param commandManager Reference to the command manager.
      */
-    void registerHlCommand(CommandManager& commandManager);
+    void registerHlCommand(CommandManager &commandManager);
 
     /** @brief Registers all available language parsers. */
     void registerParsers();
@@ -85,7 +85,7 @@ public:
      * @brief Initializes the HighLighter, registering commands and parsers.
      * @param commandManager Reference to the command manager.
      */
-    void create(CommandManager& commandManager);
+    void create(CommandManager &commandManager);
 
     /** @brief Cleans up and releases all internal resources. */
     void destroy();
@@ -107,7 +107,7 @@ public:
      * @brief Binds a Cursor so that the HighLighter can read source code from it.
      * @param cursor Reference to the source Cursor.
      */
-    void setInput(const Cursor& cursor);
+    void setInput(const Cursor &cursor);
 
     /**
      * @brief Parses or reparses the current input buffer.
@@ -118,13 +118,13 @@ public:
      * @brief Notifies the HighLighter about a range of text edits.
      * @param edit Object describing the modified byte and position ranges. (provided by the Cursor class)
      */
-    void edit(const BufferEdit& edit) const;
+    void edit(const BufferEdit &edit) const;
 
     /**
      * @brief Retrieves all available parser names for use in the prompt.
      * @param callback Callback that receives each parser name.
      */
-    void getParserNames(const ItemCallback<char>& callback) const;
+    void getParserNames(const ItemCallback<char> &callback) const;
 
     /**
      * @brief Checks whether a given file extension is supported.
