@@ -200,7 +200,7 @@ const char* HighLighter::inputCallback(void *payload, const uint32_t byteIndex, 
     // Multiply and divide column according to char size, we are working with char16_t (2 bytes)
     const auto line = position.row;
     const auto column = position.column / sizeof(char16_t);
-    if (const auto optional_line = self->m_cb(line, column); optional_line.has_value()) {
+    if (const auto& optional_line = self->m_cb(line, column)) {
         // We got some data
         *bytesRead = optional_line->length() * sizeof(char16_t);
         return reinterpret_cast<const char*>(optional_line->data());

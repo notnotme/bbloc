@@ -213,13 +213,13 @@ void ApplicationWindow::mainLoop() {
                                         case PromptState::RunningState::Validated: {
                                             // The prompt was validated
                                             const auto command_string = m_prompt_cursor.getString();
-                                            if (const auto feedback = m_command_manager.getCommandFeedback(); !feedback.has_value()) {
+                                            if (!m_command_manager.isCommandFeedbackPresent()) {
                                                 // Before command execution, we need to know if feedback is available
                                                 // If we have it, we don't push the answer to the feedback to the history
                                                 m_prompt_state.addHistory(command_string);
                                             }
 
-                                            if (const auto message = m_command_manager.execute(m_cursor, command_string)) {
+                                            if (const auto& message = m_command_manager.execute(m_cursor, command_string)) {
                                                 // Show the error message in the prompt, if any
                                                 m_prompt_state.setRunningState(PromptState::RunningState::Message);
                                                 m_prompt_state.setPromptText(message.value());
@@ -227,7 +227,7 @@ void ApplicationWindow::mainLoop() {
                                             } else {
                                                 // After command execution, we need to know if feedback is available,
                                                 // so query the feedback again.
-                                                if (const auto feedback = m_command_manager.getCommandFeedback(); feedback.has_value()) {
+                                                if (const auto& feedback = m_command_manager.getCommandFeedback()) {
                                                     // The prompt needs a feedback, so let it running and update the
                                                     // prompt text with the feedback
                                                     m_prompt_state.setRunningState(PromptState::RunningState::Running);
@@ -399,7 +399,7 @@ void ApplicationWindow::registerOpenCommand() {
             auto line = std::string();
             auto all_line = std::u16string();
             while (getline(ifs, line)) {
-                if (const auto end_it = utf8::find_invalid(line.begin(), line.end()); end_it != line.end()) {
+                if (const auto& end_it = utf8::find_invalid(line.begin(), line.end()); end_it != line.end()) {
                     // Invalid sequence: stop reading the file
                     const auto utf16_line_count = utf8::utf8to16(std::to_string(line_count));
                     return std::u16string(u"Invalid UTF-8 encoding detected at line ").append(utf16_line_count);

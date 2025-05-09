@@ -109,7 +109,7 @@ bool Editor::onKeyDown(const HighLighter& highLighter, Cursor& cursor, EditorSta
         return true;
         case SDLK_RETURN: {
             viewState.setFollowIndicator(true);
-            if (const auto& edit = cursor.eraseSelection(); edit.has_value()) {
+            if (const auto& edit = cursor.eraseSelection()) {
                 // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
                 highLighter.edit(edit.value());
                 cursor.setPosition(edit->new_end.line, edit->new_end.column);
@@ -122,31 +122,31 @@ bool Editor::onKeyDown(const HighLighter& highLighter, Cursor& cursor, EditorSta
         return true;
         case SDLK_BACKSPACE: {
             viewState.setFollowIndicator(true);
-            if (const auto& selection = cursor.eraseSelection(); selection.has_value()) {
+            if (const auto& selection = cursor.eraseSelection()) {
                 // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
                 highLighter.edit(selection.value());
                 cursor.setPosition(selection->new_end.line, selection->new_end.column);
                 cursor.activateSelection(false);
-            } else if (const auto& edit = cursor.eraseLeft(); edit.has_value()) {
+            } else if (const auto& edit = cursor.eraseLeft()) {
                 highLighter.edit(edit.value());
             }
         }
         return true;
         case SDLK_DELETE: {
             viewState.setFollowIndicator(true);
-            if (const auto& selection = cursor.eraseSelection(); selection.has_value()) {
+            if (const auto& selection = cursor.eraseSelection()) {
                 // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
                 highLighter.edit(selection.value());
                 cursor.setPosition(selection->new_end.line, selection->new_end.column);
                 cursor.activateSelection(false);
-            } else if (const auto& edit = cursor.eraseRight(); edit.has_value()) {
+            } else if (const auto& edit = cursor.eraseRight()) {
                 highLighter.edit(edit.value());
             }
         }
         return true;
         case SDLK_TAB: {
             viewState.setFollowIndicator(true);
-            if (const auto& selection = cursor.eraseSelection(); selection.has_value()) {
+            if (const auto& selection = cursor.eraseSelection()) {
                 // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
                 highLighter.edit(selection.value());
                 cursor.setPosition(selection->new_end.line, selection->new_end.column);
@@ -168,7 +168,7 @@ bool Editor::onKeyDown(const HighLighter& highLighter, Cursor& cursor, EditorSta
             const auto ctrl_pressed  = (keyModifier & KMOD_CTRL) != 0;
             if (ctrl_pressed) {
                 auto to_clipboard_text = std::u16string();
-                if (const auto& selection = cursor.getSelectedText(); selection.has_value()) {
+                if (const auto& selection = cursor.getSelectedText()) {
                     const auto& all_text = selection.value();
                     const auto all_text_size = all_text.size();
                     for (auto i = 0; i < all_text_size; ++i) {
@@ -178,6 +178,35 @@ bool Editor::onKeyDown(const HighLighter& highLighter, Cursor& cursor, EditorSta
                         }
                     }
                 }
+                const auto utf8_clipboard_text = utf8::utf16to8(to_clipboard_text);
+                SDL_SetClipboardText(utf8_clipboard_text.data());
+                return true;
+            }
+        }
+        return false;
+        case SDLK_x: {
+            const auto ctrl_pressed  = (keyModifier & KMOD_CTRL) != 0;
+            if (ctrl_pressed) {
+                const auto& selection = cursor.getSelectedText();
+                if (!selection) {
+                    return false;
+                }
+
+                auto to_clipboard_text = std::u16string();
+                const auto& all_text = selection.value();
+                const auto all_text_size = all_text.size();
+                for (auto i = 0; i < all_text_size; ++i) {
+                    to_clipboard_text = to_clipboard_text.append(all_text[i]);
+                    if (i < all_text_size - 1) {
+                        to_clipboard_text = to_clipboard_text.append(u"\n");
+                    }
+                }
+
+                if (const auto& edit = cursor.eraseSelection()) {
+                    highLighter.edit(edit.value());
+                    cursor.activateSelection(false);
+                }
+
                 const auto utf8_clipboard_text = utf8::utf16to8(to_clipboard_text);
                 SDL_SetClipboardText(utf8_clipboard_text.data());
                 return true;
@@ -215,7 +244,7 @@ void Editor::onTextInput(const HighLighter& highLighter, Cursor &cursor, EditorS
         utf8_text = utf8::replace_invalid(utf8_text);
     }
 
-    if (const auto& selection = cursor.eraseSelection(); selection.has_value()) {
+    if (const auto& selection = cursor.eraseSelection()) {
         // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
         highLighter.edit(selection.value());
         cursor.setPosition(selection->new_end.line, selection->new_end.column);
@@ -429,7 +458,7 @@ void Editor::drawText(const HighLighter& highLighter, const Cursor& cursor, cons
                 drawQuad(cursor_text_start_x, pen_position_y - line_height - font_descender, width, line_height, line_background_color);
             }
 
-            if (const auto& selected_range = cursor.getSelectedRange(); selected_range.has_value()) {
+            if (const auto& selected_range = cursor.getSelectedRange()) {
                 if (quad_in_buffer > ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT) {
                     throw std::runtime_error("Not enough quad allowed to render the prompt.");
                 }

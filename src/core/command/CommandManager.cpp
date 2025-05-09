@@ -51,9 +51,9 @@ std::optional<std::u16string> CommandManager::execute(Cursor& cursor, const std:
         return std::nullopt;
     }
 
-    if (m_command_feedback.has_value()) {
+    if (m_command_feedback) {
         // Before executing the command, check if we have a feedback to run
-        const auto feedback = m_command_feedback.value();
+        const auto& feedback = m_command_feedback.value();
         if (tokens.size() == 1) {
             m_command_feedback.reset();
             return feedback.on_validate_callback(tokens[0], feedback.command);
@@ -64,7 +64,7 @@ std::optional<std::u16string> CommandManager::execute(Cursor& cursor, const std:
     }
 
     const auto command = utf8::utf16to8(tokens[0]);
-    if (const auto cmd = m_commands.find(command); cmd != m_commands.end()) {
+    if (const auto& cmd = m_commands.find(command); cmd != m_commands.end()) {
         // Skip the first item in the tokens, as it is the command name and we don't need it
         return cmd->second.func(cursor, {tokens.begin() + 1, tokens.end()});
     }
@@ -82,10 +82,14 @@ void CommandManager::setCommandFeedback(std::u16string_view prompt, std::u16stri
 }
 
 std::optional<std::u16string_view> CommandManager::getCommandFeedback() const {
-    if (m_command_feedback.has_value()) {
+    if (m_command_feedback) {
         return m_command_feedback->prompt;
     }
     return std::nullopt;
+}
+
+bool CommandManager::isCommandFeedbackPresent() const {
+    return m_command_feedback.has_value();
 }
 
 void CommandManager::clearCommandFeedback() {
@@ -93,7 +97,7 @@ void CommandManager::clearCommandFeedback() {
 }
 
 void CommandManager::getFeedbackCompletion(const ItemCallback<char16_t>& itemCallback) const {
-    if (m_command_feedback.has_value()) {
+    if (m_command_feedback) {
         for (const auto& completion : m_command_feedback->completions) {
             itemCallback(completion);
         }
@@ -121,7 +125,7 @@ void CommandManager::getCVarCompletions(const std::string_view input, const Item
 }
 
 void CommandManager::getArgumentsCompletion(const std::string_view command, const int32_t argumentIndex, const std::string_view input, const ItemCallback<char>& itemCallback) {
-    if (const auto cmd = m_commands.find(command.data()); cmd != m_commands.end()) {
+    if (const auto& cmd = m_commands.find(command.data()); cmd != m_commands.end()) {
         if (cmd->second.completion_func != nullptr) {
             cmd->second.completion_func(argumentIndex, input, itemCallback);
         }
@@ -218,13 +222,13 @@ void CommandManager::registerCVarCommand() {
                 return std::u16string(u"CVar is read-only: ").append(args[0]);
             }
 
-            if (const auto error = cvar->setValueFromStrings({args.begin() + 1, args.end()})) {
+            if (const auto& error = cvar->setValueFromStrings({args.begin() + 1, args.end()})) {
                 // Something wrong happened
                 return std::u16string(args[0]).append(u": ").append(error.value());
             }
 
             // Eventually invoke the associated callback
-            if (const auto callback = cvar_entry.callback) {
+            if (const auto& callback = cvar_entry.callback) {
                 callback();
             }
 
@@ -260,7 +264,7 @@ void CommandManager::registerExecCommand() {
             auto line_count = 1;
             auto line = std::string();
             while (getline(ifs, line)) {
-                if (const auto end_it = utf8::find_invalid(line.begin(), line.end()); end_it != line.end()) {
+                if (const auto& end_it = utf8::find_invalid(line.begin(), line.end()); end_it != line.end()) {
                     // Invalid sequence: stop the command list
                     const auto utf16_line_count = utf8::utf8to16(std::to_string(line_count));
                     return std::u16string(u"Invalid UTF-8 encoding detected at line ").append(utf16_line_count);
@@ -277,7 +281,7 @@ void CommandManager::registerExecCommand() {
                 // fixme?: At this point, any feedback needed will interrupt the command list execution
                 // fixme?: autoexec does not show in history
                 // todo: take in account "#" as comment and don't execute the line
-                if (const auto result = execute(cursor, command); result.has_value()) {
+                if (const auto& result = execute(cursor, command)) {
                     return result.value();
                 }
             }

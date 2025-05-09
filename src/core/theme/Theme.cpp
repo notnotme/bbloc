@@ -95,7 +95,7 @@ const Color & Theme::getColor(const TokenId id) const {
 
 const AtlasEntry & Theme::getCharacter(const char16_t character) {
     // If we already generated the character, we return it
-    if (const auto entry = m_atlas_array.get(character); entry != nullptr) {
+    if (const auto& entry = m_atlas_array.get(character); entry != nullptr) {
         return *entry;
     }
 

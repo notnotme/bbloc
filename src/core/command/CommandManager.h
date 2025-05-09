@@ -144,6 +144,9 @@ public:
     /** return Optional prompt string to display to the user. */
     [[nodiscard]] std::optional<std::u16string_view> getCommandFeedback() const;
 
+    /** return true if the feedback is present. */
+    [[nodiscard]] bool isCommandFeedbackPresent() const;
+
     /**
      * @brief Tokenizes a UTF-16 input string for command parsing. Splits the input into a list of arguments.
      * Quoted arguments are preserved as single tokens.

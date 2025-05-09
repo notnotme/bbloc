@@ -93,7 +93,7 @@ bool Prompt::onKeyDown(const HighLighter &highLighter, PromptCursor &cursor, Pro
                 return true;
             }
 
-            if (const auto& feedback = m_command_manager.getCommandFeedback(); feedback.has_value()) {
+            if (m_command_manager.isCommandFeedbackPresent()) {
                 // If a feedback is active, try to gather arguments
                 m_command_manager.getFeedbackCompletion([&viewState](const std::u16string_view& completion) {
                     viewState.addCompletion(completion);
