@@ -44,7 +44,7 @@ uint32_t StringBuffer::getByteCount(uint32_t lineStart, uint32_t columnStart, ui
     return (end_byte_offset - start_byte_offset + line_ends) * sizeof(char16_t);
 }
 
-BufferEdit StringBuffer::insert(uint32_t &line, uint32_t &column, const std::u16string_view characters) {
+BufferEdit StringBuffer::insert(uint32_t line, uint32_t column, const std::u16string_view characters) {
     // As we insert into the buffer, we need to fill a BufferEdit
     auto edit = BufferEdit();
 

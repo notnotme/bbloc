@@ -168,7 +168,7 @@ public:
     std::optional<BufferEdit> eraseRight();
 
     /** @return An optional BufferEdit describing the change. */
-    [[nodiscard]] std::optional<BufferEdit> eraseSelection() const;
+    [[nodiscard]] std::optional<BufferEdit> eraseSelection();
 
     /**
      * @brief Clears the entire buffer and resets the cursor to the beginning.

@@ -40,7 +40,7 @@ public:
     [[nodiscard]] uint32_t getStringCount() const override;
     [[nodiscard]] uint32_t getByteOffset(uint32_t line, uint32_t column) const override;
     [[nodiscard]] uint32_t getByteCount(uint32_t lineStart, uint32_t columnStart, uint32_t lineEnd, uint32_t columnEnd) const override;
-    BufferEdit insert(uint32_t &line, uint32_t &column, std::u16string_view characters) override;
+    BufferEdit insert(uint32_t line, uint32_t column, std::u16string_view characters) override;
     BufferEdit erase(uint32_t line, uint32_t column, uint32_t lineEnd, uint32_t columnEnd) override;
     BufferEdit clear() override;
 

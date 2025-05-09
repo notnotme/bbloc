@@ -233,7 +233,10 @@ void Cursor::setPosition(const uint32_t line, const uint32_t column) {
 }
 
 BufferEdit Cursor::insert(const std::u16string_view characters) {
-    return m_buffer->insert(m_line, m_column, characters);
+    const auto &edit = m_buffer->insert(m_line, m_column, characters);
+    m_line = edit.new_end.line;
+    m_column = edit.new_end.column;
+    return edit;
 }
 
 BufferEdit Cursor::erase(const uint32_t lineStart, const uint32_t columnStart, const uint32_t lineEnd, const uint32_t columnEnd) const {
@@ -241,14 +244,17 @@ BufferEdit Cursor::erase(const uint32_t lineStart, const uint32_t columnStart, c
 }
 
 BufferEdit Cursor::newLine() {
-    return m_buffer->insert(m_line, m_column, u"\n");
+    const auto &edit = m_buffer->insert(m_line, m_column, u"\n");
+    m_line = edit.new_end.line;
+    m_column = edit.new_end.column;
+    return edit;
 }
 
 std::optional<BufferEdit> Cursor::eraseLeft() {
     if (m_column > 0) {
         // We can erase on the left since column > 0
         const auto &edit = m_buffer->erase(m_line, m_column, m_line, m_column - 1);
-        --m_column;
+        m_column = edit.new_end.column;
         return edit;
     }
 
@@ -256,8 +262,8 @@ std::optional<BufferEdit> Cursor::eraseLeft() {
         // We can't erase left because column = 0, so we move the remainder of this line to the end of the line above
         const auto string_above_length = m_buffer->getString(m_line - 1).length();
         const auto &edit =  m_buffer->erase(m_line, m_column, m_line - 1, string_above_length);
-        --m_line;
-        m_column = string_above_length;
+        m_line = edit.new_end.line;
+        m_column = edit.new_end.column;
         return edit;
     }
 
@@ -267,7 +273,7 @@ std::optional<BufferEdit> Cursor::eraseLeft() {
 std::optional<BufferEdit> Cursor::eraseRight() {
     if (m_column < m_buffer->getString(m_line).length()) {
         // We can erase on the right since column < string_length
-        return  m_buffer->erase(m_line, m_column, m_line, m_column + 1);
+        return m_buffer->erase(m_line, m_column, m_line, m_column + 1);
     }
 
     if (m_line < m_buffer->getStringCount() - 1) {
@@ -278,12 +284,15 @@ std::optional<BufferEdit> Cursor::eraseRight() {
     return std::nullopt;
 }
 
-std::optional<BufferEdit> Cursor::eraseSelection() const {
+std::optional<BufferEdit> Cursor::eraseSelection() {
     if (!m_is_selection_active) {
         return std::nullopt;
     }
 
-    return m_buffer->erase(m_selected_line_start, m_selected_column_start, m_line, m_column);
+    const auto& edit = m_buffer->erase(m_selected_line_start, m_selected_column_start, m_line, m_column);
+    m_line = edit.new_end.line;
+    m_column = edit.new_end.column;
+    return edit;
 }
 
 BufferEdit Cursor::clear() {
