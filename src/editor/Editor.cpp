@@ -504,8 +504,6 @@ void Editor::drawText(const HighLighter& highLighter, const Cursor& cursor, cons
                     throw std::runtime_error("Not enough quad allowed to render the prompt.");
                 }
 
-                const auto token_id = highLighter.getHighLightAtPosition(line_index, character_column);
-                const auto &character_color = m_theme.getColor(token_id);
                 switch (const auto c = string[character_column]) {
                     case ' ':
                         pen_position_x += font_advance;
@@ -516,7 +514,9 @@ void Editor::drawText(const HighLighter& highLighter, const Cursor& cursor, cons
                     default:
                         if (pen_position_x + font_advance >= position_x) {
                             // Only fetch characters and insert if it could be visible
+                            const auto token_id = highLighter.getHighLightAtPosition(line_index, character_column);
                             const auto &character = m_theme.getCharacter(c);
+                            const auto &character_color = m_theme.getColor(token_id);
                             drawCharacter(pen_position_x, pen_position_y, character, character_color);
                         }
                         pen_position_x += font_advance;
