@@ -134,14 +134,16 @@ void CommandManager::getArgumentsCompletion(const std::string_view command, cons
 
 void CommandManager::getPathCompletions(const std::string_view input, const bool foldersOnly, const ItemCallback<char> &itemCallback) {
     const auto path_input = std::filesystem::path(input);
-    const auto directory = path_input.has_parent_path() ? path_input.parent_path() : ".";
-    const auto input_path = path_input.filename().string();
-    if (std::filesystem::exists(directory) && std::filesystem::is_directory(directory)) {
-        for (const auto &entry : std::filesystem::directory_iterator(directory)) {
+    const auto path_input_string = path_input.filename().string();
+    const auto parent_path = path_input.has_parent_path() ? path_input.parent_path() : ".";
+    const auto exists = std::filesystem::exists(parent_path);
+    const auto is_directory = std::filesystem::is_directory(parent_path);
+    if (exists && is_directory) {
+        for (const auto &entry : std::filesystem::directory_iterator(parent_path)) {
             const auto &path = entry.path();
             const auto &complete_path = path.string();
             const auto &filename = path.filename().string();
-            if (filename.starts_with(input_path)) {
+            if (filename.starts_with(path_input_string)) {
                 if (entry.is_directory() || (!foldersOnly && entry.is_regular_file())) {
                     itemCallback(complete_path);
                 }
