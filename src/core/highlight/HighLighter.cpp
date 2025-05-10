@@ -124,7 +124,9 @@ void HighLighter::setInput(const Cursor &cursor) {
 
 void HighLighter::parse() {
     if (p_current_parser != nullptr) {
+        // Reuse the old tree to parse create a new one, if p_ts_tree is nullptr, start from scratch
         auto *new_tree = ts_parser_parse(p_ts_parser, p_ts_tree, m_input);
+        // Delete the old tree and set the new as the current one
         ts_tree_delete(p_ts_tree);
         p_ts_tree = new_tree;
     }
@@ -175,7 +177,7 @@ TokenId HighLighter::getHighLightAtPosition(const uint32_t line, const uint32_t 
     }
 
     // Find the node at the line and column position
-    const auto &point = TSPoint(line, column * sizeof(char16_t));
+    const auto point = TSPoint(line, column * sizeof(char16_t));
     const auto &root_node = ts_tree_root_node(p_ts_tree);
     const auto &target_node = ts_node_descendant_for_point_range(root_node, point, point);
     if (ts_node_is_null(target_node)) {
