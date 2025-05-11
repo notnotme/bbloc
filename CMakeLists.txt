@@ -68,37 +68,26 @@ target_include_directories(bbloc PUBLIC ${TREE_SITTER_JSON_INCLUDE_DIRS})
 target_link_libraries(bbloc PUBLIC ${TREE_SITTER_JSON_LIBRARIES})
 
 # Freetype2
-if (NOT NINTENDO_SWITCH)
-    find_package(Freetype REQUIRED)
-    target_link_libraries(bbloc PUBLIC Freetype::Freetype)
-else ()
-    pkg_check_modules(FREETYPE2 REQUIRED freetype2)
-    target_include_directories(bbloc PUBLIC ${FREETYPE2_INCLUDE_DIRS})
-    target_link_libraries(bbloc PUBLIC ${FREETYPE2_LIBRARIES})
-endif ()
+pkg_check_modules(FREETYPE2 REQUIRED freetype2)
+target_include_directories(bbloc PUBLIC ${FREETYPE2_INCLUDE_DIRS})
+target_link_libraries(bbloc PUBLIC ${FREETYPE2_LIBRARIES})
 
 # glad
-if (NOT NINTENDO_SWITCH)
-    find_package(glad CONFIG REQUIRED)
-    target_link_libraries(bbloc PUBLIC glad::glad)
-else ()
-    pkg_check_modules(GLAD REQUIRED libglad)
-    target_include_directories(bbloc PUBLIC ${GLAD_INCLUDE_DIRS})
-    target_link_libraries(bbloc PUBLIC ${GLAD_LIBRARIES})
-endif ()
+pkg_check_modules(GLAD REQUIRED libglad)
+target_include_directories(bbloc PUBLIC ${GLAD_INCLUDE_DIRS})
+target_link_libraries(bbloc PUBLIC ${GLAD_LIBRARIES})
 
-if(NINTENDO_SWITCH)
-    nx_generate_nacp(bbloc.nacp
-        NAME ${CMAKE_PROJECT_NAME}
-        VERSION ${CMAKE_PROJECT_VERSION}
-        AUTHOR "romain337"
-    )
-    nx_create_nro(bbloc
-        NACP bbloc.nacp
-        ROMFS romfs
-        ICON icon.jpg
-    )
-endif()
+# NRO config
+nx_generate_nacp(bbloc.nacp
+    NAME ${CMAKE_PROJECT_NAME}
+    VERSION ${CMAKE_PROJECT_VERSION}
+    AUTHOR "romain337"
+)
+nx_create_nro(bbloc
+    NACP bbloc.nacp
+    ROMFS romfs
+    ICON icon.jpg
+)
 
 # get_cmake_property(_variableNames VARIABLES)
 # list (SORT _variableNames)
