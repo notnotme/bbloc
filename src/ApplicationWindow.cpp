@@ -91,7 +91,7 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     registerRenderTimeCommand();
 
     // Create the theme and highlighter
-    m_theme.create(m_command_manager, "romfs/");
+    m_theme.create(m_command_manager, "romfs:/");
     m_high_lighter.create(m_command_manager);
     m_high_lighter.setInput(m_cursor);
 
@@ -148,6 +148,11 @@ void ApplicationWindow::mainLoop() {
             switch (event.type) {
                 case SDL_QUIT:
                     is_running = false;
+                break;
+                case SDL_CONTROLLERBUTTONDOWN:
+                    if (event.cbutton.which == 0 && event.cbutton.button == SDL_CONTROLLER_BUTTON_START) {
+                        is_running = false;
+                    }
                 break;
                 case SDL_WINDOWEVENT:
                     switch (event.window.event) {
