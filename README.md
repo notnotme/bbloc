@@ -64,7 +64,7 @@ This use some external libray:
 - This repository ships with [**JetBrains Mono**](https://www.jetbrains.com/lp/mono/) ttf font.
 
 ### How to build
-For linux, using CLion and the VCPKG integration should be straightforward (import project, set vcpkg, import necessary libraries, compile and debug.). Otherwise, you can use cmake as usual.
+For linux, check the main branch.
 
 The Nintendo Switch version needs devkitpro with devkitA64 and utilities + libraries. You'll need to compile and install *utfcpp*, *tree-sitter* and the *tree-sitter parsers* yourself.
 
@@ -78,6 +78,7 @@ $ cmake -G"Unix Makefiles" -DCMAKE_C_FLAGS="$CFLAGS $CPPFLAGS" -DCMAKE_TOOLCHAIN
 $ make
 ```
 
-Keep in mind that the game controller is not yet supported, so you must connect a keyboard via USB. I only test in portable mode **without** keyboard.
+The game controller and IME is not yet supported.
+USB keyboard is not really supported yet, SDL2 only sends key event and no text input.
 
 ![img](./capture.png)
