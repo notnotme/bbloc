@@ -46,7 +46,7 @@ void ApplicationWindow::updateOrthogonal(const int32_t width, const int32_t heig
 
 void ApplicationWindow::create(const std::string_view title, const int32_t width, const int32_t height) {
     // Init SDL
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) != 0) {
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         throw std::runtime_error(std::string("Failed to initialize SDL: ").append(SDL_GetError()));
     }
 
@@ -123,8 +123,6 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
 void ApplicationWindow::mainLoop() {
     // Request performance query used to calculate dt time
     const auto performanceQuery = static_cast<float>(SDL_GetPerformanceFrequency());
-    const auto controller = SDL_GameControllerOpen(0);
-
     auto window_width = 0;
     auto window_height = 0;
     auto is_running = true;
@@ -334,8 +332,6 @@ void ApplicationWindow::mainLoop() {
 
         SDL_GL_SwapWindow(p_sdl_window);
     }
-
-    SDL_GameControllerClose(controller);
 }
 
 void ApplicationWindow::destroy() {
