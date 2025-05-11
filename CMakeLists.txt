@@ -52,6 +52,14 @@ target_link_libraries(bbloc PUBLIC OpenGL::GL)
 find_package(utf8cpp REQUIRED)
 target_link_libraries(bbloc PUBLIC utf8::cpp utf8cpp::utf8cpp)
 
+# Freetype2
+find_package(Freetype REQUIRED)
+target_link_libraries(bbloc PUBLIC Freetype::Freetype)
+
+# glad
+find_package(glad CONFIG REQUIRED)
+target_link_libraries(bbloc PUBLIC glad::glad)
+
 # tree-sitter
 pkg_check_modules(TREE_SITTER REQUIRED tree-sitter)
 target_include_directories(bbloc PUBLIC ${TREE_SITTER_INCLUDE_DIRS})
@@ -66,39 +74,6 @@ target_link_libraries(bbloc PUBLIC ${TREE_SITTER_CPP_LIBRARIES})
 pkg_check_modules(TREE_SITTER_JSON REQUIRED tree-sitter-json)
 target_include_directories(bbloc PUBLIC ${TREE_SITTER_JSON_INCLUDE_DIRS})
 target_link_libraries(bbloc PUBLIC ${TREE_SITTER_JSON_LIBRARIES})
-
-# Freetype2
-if (NOT NINTENDO_SWITCH)
-    find_package(Freetype REQUIRED)
-    target_link_libraries(bbloc PUBLIC Freetype::Freetype)
-else ()
-    pkg_check_modules(FREETYPE2 REQUIRED freetype2)
-    target_include_directories(bbloc PUBLIC ${FREETYPE2_INCLUDE_DIRS})
-    target_link_libraries(bbloc PUBLIC ${FREETYPE2_LIBRARIES})
-endif ()
-
-# glad
-if (NOT NINTENDO_SWITCH)
-    find_package(glad CONFIG REQUIRED)
-    target_link_libraries(bbloc PUBLIC glad::glad)
-else ()
-    pkg_check_modules(GLAD REQUIRED libglad)
-    target_include_directories(bbloc PUBLIC ${GLAD_INCLUDE_DIRS})
-    target_link_libraries(bbloc PUBLIC ${GLAD_LIBRARIES})
-endif ()
-
-if(NINTENDO_SWITCH)
-    nx_generate_nacp(bbloc.nacp
-        NAME ${CMAKE_PROJECT_NAME}
-        VERSION ${CMAKE_PROJECT_VERSION}
-        AUTHOR "romain337"
-    )
-    nx_create_nro(bbloc
-        NACP bbloc.nacp
-        ROMFS romfs
-        ICON icon.jpg
-    )
-endif()
 
 # get_cmake_property(_variableNames VARIABLES)
 # list (SORT _variableNames)
