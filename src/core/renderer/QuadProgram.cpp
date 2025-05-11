@@ -150,9 +150,6 @@ void QuadProgram::destroy() {
 
 void QuadProgram::use() const {
     glUseProgram(m_program);
-}
-
-void QuadProgram::bindVertexArray() const {
     glBindVertexArray(m_vao);
 }
 

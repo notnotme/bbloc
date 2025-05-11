@@ -40,9 +40,6 @@ public:
     /** @brief Sets this program as the current one in the OpenGL pipeline. */
     void use() const;
 
-    /** @brief Binds the internal vertex array object. */
-    void bindVertexArray() const;
-
     /**
      * @brief Binds a vertex buffer to the shader's attribute layout.
      * @param buffer OpenGL buffer object to bind.
