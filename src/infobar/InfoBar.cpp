@@ -28,7 +28,7 @@ void InfoBar::render(const HighLighter &highLighter, const Cursor &cursor, InfoB
     m_quad_program.draw(ApplicationWindow::INFO_BAR_BUFFER_QUAD_OFFSET, m_quad_buffer.getCount());
 }
 
-bool InfoBar::onKeyDown(const HighLighter &highLighter, Cursor &cursor, InfoBarState &viewState, SDL_Keycode keyCode, uint16_t keyModifier) const {
+bool InfoBar::onKeyDown(const HighLighter &highLighter, Cursor &cursor, InfoBarState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
     // No-op
     return false;
 }

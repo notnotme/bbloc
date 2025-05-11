@@ -30,7 +30,7 @@ void Prompt::render(const HighLighter &highLighter, const PromptCursor &cursor, 
     m_quad_program.draw(ApplicationWindow::PROMPT_BUFFER_QUAD_OFFSET, m_quad_buffer.getCount());
 }
 
-bool Prompt::onKeyDown(const HighLighter &highLighter, PromptCursor &cursor, PromptState &viewState, SDL_Keycode keyCode, uint16_t keyModifier) const {
+bool Prompt::onKeyDown(const HighLighter &highLighter, PromptCursor &cursor, PromptState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
     switch (keyCode) {
         case SDLK_UP:
             if (viewState.getHistoryCount() > 0) {
