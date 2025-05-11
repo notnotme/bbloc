@@ -139,10 +139,8 @@ void ApplicationWindow::mainLoop() {
 
     SDL_Event event;
     while (is_running) {
-#if !defined(__SWITCH__)
         // fixme: needs testing: AFAIR this seems to not play well with the switch port of SDL (100% CPU usage)
-        SDL_WaitEvent(nullptr);
-#endif
+        /* SDL_WaitEvent(nullptr); */
 
         // We will use this to calculate the time spent to render this frame
         const auto frame_time = SDL_GetPerformanceCounter();
