@@ -100,7 +100,6 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     // Create the quad shader
     m_quad_program.create();
     m_quad_program.use();
-    m_quad_program.bindVertexArray();
     m_quad_program.bindVertexBuffer(m_quad_buffer.getBuffer());
     m_quad_program.setMatrix(m_orthogonal.data());
 
