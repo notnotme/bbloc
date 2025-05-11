@@ -54,7 +54,7 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
@@ -96,7 +96,6 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     // Create the quad buffer
     updateOrthogonal(width, height);
     m_quad_buffer.create(MAX_QUADS);
-    m_quad_buffer.bind();
 
     // Create the quad shader
     m_quad_program.create();

@@ -39,7 +39,7 @@ The cursor holds a unique pointer to a TextBuffer implementation, which is respo
 This uses tree-sitter for the text highlight feature. Nothing fancy, the most simplistic approach is used: tint character by their symbol representation. This is not ideal (like JSON showing same color for key:value, with strings) but seems to be working for now. The HighLighter is bound to a Cursor so it can read text from it. If the Cursor's text is edited, pass the BufferEdit object to the HighLighter so it can re-read the changed part and update the syntax color.
 
 - **Renderer**  
-The renderer use OpenGL and instantiated rendering. The glyph atlas is generated on the fly using the freetype library and populate a texture array used by the OpenGL renderer. One generated vertex in the application results in a textured and tinted quad on screen. It sticks to OpenGL 4.3 to be able to keep the Nintendo Switch support.
+The renderer use OpenGL 4.6 and instantiated rendering. The glyph atlas is generated on the fly using the freetype library and populate a texture array used by the OpenGL renderer. One generated vertex in the application results in a textured and tinted quad on screen.
 
 - **Theme**  
 This holds convenient function to access theme attributes like background or highlight colors and dimensions. It allows to change the font size, measure text width in pixels, and provide characters information (texture coordinates, size, ect).
@@ -66,18 +66,6 @@ This use some external libray:
 ### How to build
 For linux, using CLion and the VCPKG integration should be straightforward (import project, set vcpkg, import necessary libraries, compile and debug.). Otherwise, you can use cmake as usual.
 
-The Nintendo Switch version needs devkitpro with devkitA64 and utilities + libraries. You'll need to compile and install *utfcpp*, *tree-sitter* and the *tree-sitter parsers* yourself.
-
-To run the program, change the path **"romfs/"** to **"romfs:/"** in the **ApplicationWindow.cpp** source file.
-
-Assuming your using Linux:
-```
-$ mkdir nx && cd nx
-$ source $DEVKITPRO/switchvars.sh
-$ cmake -G"Unix Makefiles" -DCMAKE_C_FLAGS="$CFLAGS $CPPFLAGS" -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake ..
-$ make
-```
-
-Keep in mind that the game controller is not yet supported, so you must connect a keyboard via USB. I only test in portable mode **without** keyboard.
+For the Nintendo Switch version, use the nintendo_switch branch.
 
 ![img](./capture.png)

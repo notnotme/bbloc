@@ -101,40 +101,36 @@ void QuadProgram::create() {
     m_matrix_uniform = glGetUniformLocation(m_program, "u_matrix");
 
     // Create the vertex array object
-    glGenVertexArrays(1, &m_vao);
+    glCreateVertexArrays(1, &m_vao);
     if (m_vao == 0) {
         throw std::runtime_error("Failed to create vertex array");
     }
 
-    // Create the vertex array
-    glBindVertexArray(m_vao);
-
     // Set attributes
-    glEnableVertexAttribArray(0);
-    glVertexAttribFormat(0, 2, GL_SHORT, GL_FALSE, offsetof(QuadVertex, translation_x));
-    glVertexAttribBinding(0, 0);
-    glVertexBindingDivisor(0, 1);
+    glEnableVertexArrayAttrib(m_vao, 0);
+    glVertexArrayAttribFormat(m_vao, 0, 2, GL_SHORT, GL_FALSE, offsetof(QuadVertex, translation_x));
+    glVertexArrayAttribBinding(m_vao, 0, 0);
+    glVertexArrayBindingDivisor(m_vao, 0, 1);
 
-    glEnableVertexAttribArray(1);
-    glVertexAttribFormat(1, 2, GL_UNSIGNED_SHORT, GL_FALSE, offsetof(QuadVertex, width));
-    glVertexAttribBinding(1, 0);
-    glVertexBindingDivisor(1, 1);
+    glEnableVertexArrayAttrib(m_vao, 1);
+    glVertexArrayAttribFormat(m_vao, 1, 2, GL_UNSIGNED_SHORT, GL_FALSE, offsetof(QuadVertex, width));
+    glVertexArrayAttribBinding(m_vao, 1, 0);
+    glVertexArrayBindingDivisor(m_vao, 1, 1);
 
-    glEnableVertexAttribArray(2);
-    glVertexAttribFormat(2, 2, GL_UNSIGNED_BYTE, GL_FALSE, offsetof(QuadVertex, texture_s));
-    glVertexAttribBinding(2, 0);
-    glVertexBindingDivisor(2, 1);
+    glEnableVertexArrayAttrib(m_vao, 2);
+    glVertexArrayAttribFormat(m_vao, 2, 2, GL_UNSIGNED_BYTE, GL_FALSE, offsetof(QuadVertex, texture_s));
+    glVertexArrayAttribBinding(m_vao, 2, 0);
+    glVertexArrayBindingDivisor(m_vao, 2, 1);
 
-    glEnableVertexAttribArray(3);
-    glVertexAttribFormat(3, 4, GL_UNSIGNED_BYTE, GL_TRUE, offsetof(QuadVertex, tint_r));
-    glVertexAttribBinding(3, 0);
-    glVertexBindingDivisor(3, 1);
+    glEnableVertexArrayAttrib(m_vao, 3);
+    glVertexArrayAttribFormat(m_vao, 3, 4, GL_UNSIGNED_BYTE, GL_TRUE, offsetof(QuadVertex, tint_r));
+    glVertexArrayAttribBinding(m_vao, 3, 0);
+    glVertexArrayBindingDivisor(m_vao, 3, 1);
 
-
-    glEnableVertexAttribArray(4);
-    glVertexAttribFormat(4, 1, GL_UNSIGNED_BYTE, GL_FALSE, offsetof(QuadVertex, texture_layer));
-    glVertexAttribBinding(4, 0);
-    glVertexBindingDivisor(4, 1);
+    glEnableVertexArrayAttrib(m_vao, 4);
+    glVertexArrayAttribFormat(m_vao, 4, 1, GL_UNSIGNED_BYTE, GL_FALSE, offsetof(QuadVertex, texture_layer));
+    glVertexArrayAttribBinding(m_vao, 4, 0);
+    glVertexArrayBindingDivisor(m_vao, 4, 1);
 }
 
 void QuadProgram::destroy() {
@@ -157,7 +153,7 @@ void QuadProgram::bindVertexArray() const {
 }
 
 void QuadProgram::bindVertexBuffer(const GLuint buffer) const {
-    glBindVertexBuffer(0, buffer, 0, sizeof(QuadVertex));
+    glVertexArrayVertexBuffer(m_vao, 0, buffer, 0, sizeof(QuadVertex));
 }
 
 void QuadProgram::setMatrix(const float* matrix) const {
