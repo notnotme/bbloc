@@ -91,9 +91,13 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     registerSaveCommand();
     registerBindCommand();
     registerRenderTimeCommand();
+    registerFontSizeCommand();
+    registerActivatePromptCommand();
 
     // Create the theme and highlighter
-    m_theme.create(m_command_manager, "romfs:/");
+    constexpr auto path = "romfs:/";
+    constexpr auto path_utf16 = u"romfs:/";
+    m_theme.create(m_command_manager, path);
     m_high_lighter.create(m_command_manager);
     m_high_lighter.setInput(m_cursor);
 
@@ -112,6 +116,9 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     m_info_bar.resizeWindow(width, height);
     m_editor.resizeWindow(width, height);
     m_prompt.resizeWindow(width, height);
+
+    // Run autoexec
+    m_command_manager.execute(m_cursor, std::u16string(u"exec ").append(path_utf16).append(u"autoexec"));
 
     // Set our default OpenGL states
     glDisable(GL_DEPTH_WRITEMASK);
@@ -179,58 +186,28 @@ void ApplicationWindow::mainLoop() {
                         }
                     }
 
-                    switch (event.key.keysym.sym) {
-                        case SDLK_KP_PLUS:
-                            if (event.key.keysym.mod & KMOD_CTRL) {
-                                const auto font_size = m_theme.getFontSize();
-                                m_theme.setFontSize(font_size + 1);
-                                dirty_flags |= Views;
-                            }
+                    switch (m_focus_target) {
+                        case FocusTarget::Editor:
+                            dirty_flags |= m_editor.onKeyDown(m_high_lighter, m_cursor, m_editor_state, event.key.keysym.sym, event.key.keysym.mod);
                         break;
-                        case SDLK_KP_MINUS:
-                            if (event.key.keysym.mod & KMOD_CTRL) {
-                                const auto font_size = m_theme.getFontSize();
-                                m_theme.setFontSize(font_size - 1);
-                                dirty_flags |= Views;
-                            }
-                        break;
-                        default: {
-                            switch (m_focus_target) {
-                                case FocusTarget::Editor: {
-                                    // CTRL + SHIFT + : -> Focus prompt
-                                    const auto ctrl_pressed  = (event.key.keysym.mod & KMOD_CTRL) != 0;
-                                    const auto shift_pressed = (event.key.keysym.mod & KMOD_SHIFT) != 0;
-                                    if (event.key.keysym.sym == SDLK_COLON && ctrl_pressed && shift_pressed) {
-                                        dirty_flags |= Views;
-                                        m_focus_target = FocusTarget::Prompt;
-                                        m_prompt_state.setRunningState(PromptState::RunningState::Running);
-                                        m_prompt_state.setPromptText(PromptState::PROMPT_ACTIVE);
-                                    } else {
-                                        dirty_flags |= m_editor.onKeyDown(m_high_lighter, m_cursor, m_editor_state, event.key.keysym.sym, event.key.keysym.mod);
-                                    }
-                                }
+                        case FocusTarget::Prompt: {
+                            // Make views dirty only if the prompt is returning true
+                            dirty_flags |= m_prompt.onKeyDown(m_high_lighter, m_prompt_cursor, m_prompt_state, event.key.keysym.sym, event.key.keysym.mod);
+                            switch (m_prompt_state.getRunningState()) {
+                                case PromptState::RunningState::Idle:
+                                    // The prompt was canceled
+                                    m_focus_target = FocusTarget::Editor;
+                                    m_prompt_cursor.clear();
+                                    m_prompt_state.setPromptText(PromptState::PROMPT_READY);
                                 break;
-                                case FocusTarget::Prompt: {
-                                    // Make views dirty only if the prompt is returning true
-                                    dirty_flags |= m_prompt.onKeyDown(m_high_lighter, m_prompt_cursor, m_prompt_state, event.key.keysym.sym, event.key.keysym.mod);
-                                    switch (m_prompt_state.getRunningState()) {
-                                        case PromptState::RunningState::Idle:
-                                            // The prompt was canceled
-                                            m_focus_target = FocusTarget::Editor;
-                                            m_prompt_cursor.clear();
-                                            m_prompt_state.setPromptText(PromptState::PROMPT_READY);
-                                        break;
-                                        case PromptState::RunningState::Validated: {
-                                            // The prompt was validated
-                                            const auto command_string = m_prompt_cursor.getString();
-                                            runCommand(command_string);
-                                            // Clear the prompt cursor now
-                                            m_prompt_cursor.clear();
-                                        }
-                                        default:
-                                        break;
-                                    }
+                                case PromptState::RunningState::Validated: {
+                                    // The prompt was validated
+                                    const auto command_string = m_prompt_cursor.getString();
+                                    runCommand(command_string);
+                                    // Clear the prompt cursor now
+                                    m_prompt_cursor.clear();
                                 }
+                                default:
                                 break;
                             }
                         }
@@ -239,7 +216,7 @@ void ApplicationWindow::mainLoop() {
                 break;
                 case SDL_TEXTINPUT: {
                     // Don't process key input if of these modifiers are held
-                    const auto has_modifier = SDL_GetModState() & (KMOD_CTRL | KMOD_ALT); // KMOD_SHIFT ?
+                    const auto has_modifier = SDL_GetModState() & (KMOD_CTRL); // KMOD_SHIFT / KMOD_ALT ?
                     if (!has_modifier) {
                         dirty_flags |= Views;
                         switch (m_focus_target) {
@@ -375,10 +352,14 @@ void ApplicationWindow::runCommand(const std::u16string_view command) {
             m_prompt_state.setRunningState(PromptState::RunningState::Running);
             m_prompt_state.setPromptText(feedback.value());
         } else {
-            // Set prompt to idle
-            m_focus_target = FocusTarget::Editor;
-            m_prompt_state.setRunningState(PromptState::RunningState::Idle);
-            m_prompt_state.setPromptText(PromptState::PROMPT_READY);
+            // The prompt state can change while command execution (e.g: activate_prompt), check it again.
+            const auto prompt_state = m_prompt_state.getRunningState();
+            if (prompt_state == PromptState::RunningState::Validated) {
+                // Set prompt to idle
+                m_focus_target = FocusTarget::Editor;
+                m_prompt_state.setRunningState(PromptState::RunningState::Idle);
+                m_prompt_state.setPromptText(PromptState::PROMPT_READY);
+            }
         }
     }
 }
@@ -591,6 +572,53 @@ void ApplicationWindow::registerBindCommand() {
             }
 
             m_key_bindings.at(key).insert_or_assign(modifier, args[2]);
+            return std::nullopt;
+        });
+}
+
+void ApplicationWindow::registerFontSizeCommand() {
+    // Register increase_font_size and decrease_font_size command
+    m_command_manager.registerCommand("increase_font_size",
+        [&](const Cursor& cursor, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
+            (void) cursor;
+            if (!args.empty()) {
+                return u"Expected 0 argument.";
+            }
+
+            const auto font_size = m_theme.getFontSize();
+            m_theme.setFontSize(font_size + 1);
+
+            return std::nullopt;
+        });
+
+    m_command_manager.registerCommand("decrease_font_size",
+        [&](const Cursor& cursor, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
+            (void) cursor;
+            if (!args.empty()) {
+                return u"Expected 0 argument.";
+            }
+
+            const auto font_size = m_theme.getFontSize();
+            m_theme.setFontSize(font_size - 1);
+
+            return std::nullopt;
+        });
+}
+
+void ApplicationWindow::registerActivatePromptCommand() {
+    // Register activate_prompt command
+    m_command_manager.registerCommand("activate_prompt",
+        [&](const Cursor& cursor, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
+            (void) cursor;
+            if (!args.empty()) {
+                return u"Expected 0 argument.";
+            }
+
+            // Set focus to prompt (since the editor had it if we run from a binding)
+            m_focus_target = FocusTarget::Prompt;
+            // Set prompt to running state
+            m_prompt_state.setRunningState(PromptState::RunningState::Running);
+            m_prompt_state.setPromptText(PromptState::PROMPT_ACTIVE);
             return std::nullopt;
         });
 }

@@ -140,8 +140,14 @@ private:
     /** @brief Registers the quit command. */
     void registerQuitCommand();
 
-    /* @brief Registers the bind command. */
+    /** @brief Registers the bind command. */
     void registerBindCommand();
+
+    /** @brief Registers the increase_font_size and decrease_font_size command. */
+    void registerFontSizeCommand();
+
+    /** @brief Registers the activate_prompt command. */
+    void registerActivatePromptCommand();
 
     /**
      * @brief Run the said command.

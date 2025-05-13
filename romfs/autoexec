@@ -1,0 +1,8 @@
+bind ctrl+shift q quit
+bind ctrl+shift s save
+bind ctrl t "cvar inf_render_time"
+bind ctrl+shift t "reset_render_time"
+bind ctrl+shift : activate_prompt
+bind ctrl "Keypad +" increase_font_size
+bind ctrl "Keypad -" decrease_font_size
+
