@@ -53,7 +53,8 @@ std::optional<std::u16string> CommandManager::execute(Cursor &cursor, const std:
 
     if (m_command_feedback) {
         // Before executing the command, check if we have a feedback to run
-        const auto &feedback = m_command_feedback.value();
+        // Copy this object so the string is still valid after reset is called.
+        const auto feedback = m_command_feedback.value();
         if (tokens.size() == 1) {
             m_command_feedback.reset();
             return feedback.on_validate_callback(tokens[0], feedback.command);
@@ -194,6 +195,26 @@ std::vector<std::u16string_view> CommandManager::tokenize(const std::u16string_v
     }
 
     return tokens;
+}
+
+std::vector<std::u16string_view> CommandManager::split(const std::u16string_view input, const char16_t delimiter) {
+    std::vector<std::u16string_view> parts;
+    auto start = 0;
+    auto index = 0;
+    while (index < input.length()) {
+        if (input[index] == delimiter) {
+            ++index;
+            continue;
+        }
+
+        start = index;
+        while (index < input.size() && input[index] != delimiter) {
+            ++index;
+        }
+        parts.emplace_back(input.substr(start, index - start));
+    }
+
+    return parts;
 }
 
 void CommandManager::registerCVarCommand() {

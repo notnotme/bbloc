@@ -24,6 +24,7 @@ ApplicationWindow::ApplicationWindow()
       m_editor(m_command_manager, m_theme, m_quad_program, m_quad_buffer),
       m_prompt_state(m_command_manager),
       m_prompt(m_command_manager, m_theme, m_quad_program, m_quad_buffer),
+      m_focus_target(FocusTarget::Editor),
       m_orthogonal() {}
 
 void ApplicationWindow::updateOrthogonal(const int32_t width, const int32_t height) {
@@ -86,6 +87,7 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     registerQuitCommand();
     registerOpenCommand();
     registerSaveCommand();
+    registerBindCommand();
     registerRenderTimeCommand();
 
     // Create the theme and highlighter
@@ -127,7 +129,6 @@ void ApplicationWindow::mainLoop() {
     auto window_height = 0;
     auto is_running = true;
     auto dirty_flags = 0 | Views;
-    auto focus_target = FocusTarget::Editor;
     auto lastTime = SDL_GetPerformanceCounter();
     SDL_GetWindowSize(p_sdl_window, &window_width, &window_height);
     SDL_ShowWindow(p_sdl_window);
@@ -156,6 +157,18 @@ void ApplicationWindow::mainLoop() {
                     }
                 break;
                 case SDL_KEYDOWN:
+                    // Only run binding when the editor is focused (The prompt is not running then)
+                    if (m_focus_target == FocusTarget::Editor) {
+                        const auto modifiers = normalizeModifiers(event.key.keysym.mod);
+                        if (const auto &map_entry = m_key_bindings.find(event.key.keysym.sym); map_entry != m_key_bindings.end()) {
+                            if (const auto &binding = map_entry->second.find(modifiers); binding != map_entry->second.end()) {
+                                runCommand(binding->second);
+                                dirty_flags |= Views;
+                                break;
+                            }
+                        }
+                    }
+
                     switch (event.key.keysym.sym) {
                         case SDLK_KP_PLUS:
                             if (event.key.keysym.mod & KMOD_CTRL) {
@@ -172,14 +185,14 @@ void ApplicationWindow::mainLoop() {
                             }
                         break;
                         default: {
-                            switch (focus_target) {
+                            switch (m_focus_target) {
                                 case FocusTarget::Editor: {
                                     // CTRL + SHIFT + : -> Focus prompt
                                     const auto ctrl_pressed  = (event.key.keysym.mod & KMOD_CTRL) != 0;
                                     const auto shift_pressed = (event.key.keysym.mod & KMOD_SHIFT) != 0;
                                     if (event.key.keysym.sym == SDLK_COLON && ctrl_pressed && shift_pressed) {
                                         dirty_flags |= Views;
-                                        focus_target = FocusTarget::Prompt;
+                                        m_focus_target = FocusTarget::Prompt;
                                         m_prompt_state.setRunningState(PromptState::RunningState::Running);
                                         m_prompt_state.setPromptText(PromptState::PROMPT_ACTIVE);
                                     } else {
@@ -193,40 +206,15 @@ void ApplicationWindow::mainLoop() {
                                     switch (m_prompt_state.getRunningState()) {
                                         case PromptState::RunningState::Idle:
                                             // The prompt was canceled
-                                            focus_target = FocusTarget::Editor;
+                                            m_focus_target = FocusTarget::Editor;
                                             m_prompt_cursor.clear();
                                             m_prompt_state.setPromptText(PromptState::PROMPT_READY);
                                         break;
                                         case PromptState::RunningState::Validated: {
                                             // The prompt was validated
                                             const auto command_string = m_prompt_cursor.getString();
-                                            if (!m_command_manager.isCommandFeedbackPresent()) {
-                                                // Before command execution, we need to know if feedback is available
-                                                // If we have it, we don't push the answer to the feedback to the history
-                                                m_prompt_state.addHistory(command_string);
-                                            }
-
-                                            if (const auto &message = m_command_manager.execute(m_cursor, command_string)) {
-                                                // Show the error message in the prompt, if any
-                                                m_prompt_state.setRunningState(PromptState::RunningState::Message);
-                                                m_prompt_state.setPromptText(message.value());
-                                                focus_target = FocusTarget::Editor;
-                                            } else {
-                                                // After command execution, we need to know if feedback is available,
-                                                // so query the feedback again.
-                                                if (const auto &feedback = m_command_manager.getCommandFeedback()) {
-                                                    // The prompt needs a feedback, so let it running and update the
-                                                    // prompt text with the feedback
-                                                    m_prompt_state.setRunningState(PromptState::RunningState::Running);
-                                                    m_prompt_state.setPromptText(feedback.value());
-                                                } else {
-                                                    // Set prompt to idle
-                                                    focus_target = FocusTarget::Editor;
-                                                    m_prompt_state.setRunningState(PromptState::RunningState::Idle);
-                                                    m_prompt_state.setPromptText(PromptState::PROMPT_READY);
-                                                }
-                                            }
-                                            // Clear the prompt cursor and add the command to history
+                                            runCommand(command_string);
+                                            // Clear the prompt cursor now
                                             m_prompt_cursor.clear();
                                         }
                                         default:
@@ -241,10 +229,10 @@ void ApplicationWindow::mainLoop() {
                 break;
                 case SDL_TEXTINPUT: {
                     // Don't process key input if of these modifiers are held
-                    const auto has_modifier = SDL_GetModState() & (KMOD_CTRL | KMOD_GUI);
+                    const auto has_modifier = SDL_GetModState() & (KMOD_CTRL | KMOD_ALT); // KMOD_SHIFT ?
                     if (!has_modifier) {
                         dirty_flags |= Views;
-                        switch (focus_target) {
+                        switch (m_focus_target) {
                             case FocusTarget::Editor:
                                 m_editor.onTextInput(m_high_lighter, m_cursor, m_editor_state, event.text.text);
                                 break;
@@ -353,6 +341,56 @@ void ApplicationWindow::destroy() {
     m_orthogonal = {};
 }
 
+void ApplicationWindow::runCommand(const std::u16string_view command) {
+    if (!m_command_manager.isCommandFeedbackPresent()) {
+        // Before command execution, we need to know if feedback is available
+        // If we have it, we don't push the answer to the feedback to the history
+        m_prompt_state.addHistory(command);
+    }
+
+    if (const auto &message = m_command_manager.execute(m_cursor, command)) {
+        // Show the error message in the prompt, if any
+        m_prompt_state.setRunningState(PromptState::RunningState::Message);
+        m_prompt_state.setPromptText(message.value());
+        m_focus_target = FocusTarget::Editor;
+    } else {
+        // After command execution, we need to know if feedback is available,
+        // so query the feedback again.
+        if (const auto &feedback = m_command_manager.getCommandFeedback()) {
+            // The prompt needs a feedback, so let it running and update the
+            // prompt text with the feedback
+            m_prompt_state.setRunningState(PromptState::RunningState::Running);
+            m_prompt_state.setPromptText(feedback.value());
+        } else {
+            // Set prompt to idle
+            m_focus_target = FocusTarget::Editor;
+            m_prompt_state.setRunningState(PromptState::RunningState::Idle);
+            m_prompt_state.setPromptText(PromptState::PROMPT_READY);
+        }
+    }
+}
+
+uint16_t ApplicationWindow::normalizeModifiers(const uint16_t modifiers) {
+    uint16_t result = 0;
+    if (modifiers & (KMOD_LCTRL | KMOD_RCTRL)) {
+        result |= KMOD_CTRL;
+    }
+
+    if (modifiers & (KMOD_LSHIFT | KMOD_RSHIFT)) {
+        result |= KMOD_SHIFT;
+    }
+
+    if (modifiers & (KMOD_LALT | KMOD_RALT)) {
+        result |= KMOD_ALT;
+    }
+
+    if (modifiers & (KMOD_LGUI | KMOD_RGUI)) {
+        result |= KMOD_GUI;
+    }
+
+    return result;
+}
+
 void ApplicationWindow::registerOpenCommand() {
     // Add the "open" command to open files and populate Cursor's buffer
     m_command_manager.registerCommand("open",
@@ -440,7 +478,8 @@ void ApplicationWindow::registerSaveCommand() {
                     {u"n", u"y"},
                     [&](const std::u16string_view answer, const std::u16string_view command) -> std::optional<std::u16string> {
                         if (answer == u"y" || answer == u"Y") {
-                            return m_command_manager.execute(cursor, command);
+                            runCommand(command);
+                            return std::nullopt;
                         }
                         return std::nullopt;
                     });
@@ -500,6 +539,45 @@ void ApplicationWindow::registerQuitCommand() {
 
             SDL_Event event { .type = SDL_QUIT };
             SDL_PushEvent(&event);
+            return std::nullopt;
+        });
+}
+
+void ApplicationWindow::registerBindCommand() {
+    // Register bind command
+    m_command_manager.registerCommand("bind",
+        [&](const Cursor& cursor, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
+            (void) cursor;
+            if (args.size() < 3 || (!args.empty() && args[1].empty())) {
+                return u"Usage: bind <modifiers> <key> <command>";
+            }
+
+            const auto split_modifiers = CommandManager::split(args[0], u'+');
+
+            auto modifier = 0;
+            for (const auto &string_modifier : split_modifiers) {
+                if (string_modifier == u"ctrl") {
+                    modifier |= KMOD_CTRL;
+                } else if (string_modifier == u"alt") {
+                    modifier |= KMOD_ALT;
+                } else if (string_modifier == u"shift") {
+                    modifier |= KMOD_SHIFT;
+                } else {
+                    return std::u16string(u"Unknown modifier: ").append(string_modifier);
+                }
+            }
+
+            if (modifier == 0) {
+                return u"Expected at least one modifier.";
+            }
+
+            const auto keycode_utf8 = utf8::utf16to8(args[1]);
+            const auto key = SDL_GetKeyFromName(keycode_utf8.data());
+            if (! m_key_bindings.contains(key)) {
+                m_key_bindings.emplace(key, std::unordered_map<uint16_t, std::u16string>());
+            }
+
+            m_key_bindings.at(key).insert_or_assign(modifier, args[2]);
             return std::nullopt;
         });
 }
