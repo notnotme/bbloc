@@ -88,6 +88,9 @@ private:
     /** CVar tracking the maximum frame time (to render, before swapping). */
     std::shared_ptr<CVarFloat> m_render_time;
 
+    /** Map of key binding to commands */
+    std::unordered_map<SDL_Keycode, std::unordered_map<uint16_t, std::u16string>> m_key_bindings;
+
     /** The prompt cursor. */
     PromptCursor m_prompt_cursor;
 
@@ -112,6 +115,9 @@ private:
     /** Bottom command prompt view. */
     Prompt m_prompt;
 
+    /** The current focused view */
+    FocusTarget m_focus_target;
+
     /** 4x4 orthogonal projection matrix for 2D rendering. */
     std::array<float, 16> m_orthogonal;
 
@@ -133,6 +139,18 @@ private:
 
     /** @brief Registers the quit command. */
     void registerQuitCommand();
+
+    /* @brief Registers the bind command. */
+    void registerBindCommand();
+
+    /**
+     * @brief Run the said command.
+     * @param command The command string to rexecute by m_command_manager.
+     */
+    void runCommand(std::u16string_view command);
+
+    /** @brief Normalize input modifiers from raw sdl input modifiers*/
+    static uint16_t normalizeModifiers(uint16_t modifiers);
 
 public:
     /** @brief Deleted copy constructor. */

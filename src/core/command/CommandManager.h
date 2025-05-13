@@ -156,6 +156,14 @@ public:
     [[nodiscard]] static std::vector<std::u16string_view> tokenize(std::u16string_view input);
 
     /**
+     * @brief Split a UTF-16 input string.
+     * @param input The UTF-16 input string.
+     * @param delimiter The delimiter to use to split the string apart.
+     * @return Vector of UTF-16 views representing each part.
+     */
+    [[nodiscard]] static std::vector<std::u16string_view> split(std::u16string_view input, char16_t delimiter);
+
+    /**
      * @brief Gathers auto-completion suggestions for file system paths.
      * @param input The current input string (file or folder path).
      * @param foldersOnly If true, only folder names will be returned.

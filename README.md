@@ -23,6 +23,7 @@ Commands can be registered to become available in the prompt. There is also a CV
   |**reset_render_time**|No arguments. The CVar **inf_render_time** is read-only, and this command set its value back to 0. You can later check the value to see how much time was spent for rendering the window.|
   |**exec \<filename\>**|This will read the said file line by line and execute each command in it. There is some limitation: the exec will stop if feedback is needed, or if a message is returned from one the command in the list. Commands inside the exec file are not parts of history.|
   |**set_hl_mode \<mode\>**|Change highlight mode in the editor. Please do not try to enable color highlight with a gigantic regular text file as the application does not set any timer to stop long parsing operation yet.|
+  |**bind \<modifier\> \<key\> \<command\>**|Bind key press to a command. Modifiers are "+" separated (e.g: ctrl+shift). If the command take some arguments, quote it.|
 
   Current available CVar are:
   |Variable|Type|Description|
