@@ -8,7 +8,6 @@
 
 #include <SDL_image.h>
 #include <glad/glad.h>
-#include <switch.h>
 #include <utf8.h>
 
 #include "core/cursor/buffer/StringBuffer.h"
@@ -47,8 +46,7 @@ void ApplicationWindow::updateOrthogonal(const int32_t width, const int32_t heig
 }
 
 void ApplicationWindow::create(const std::string_view title, const int32_t width, const int32_t height) {
-    // Init Romfs & SDL
-    romfsInit();
+    // Init SDL
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) != 0) {
         throw std::runtime_error(std::string("Failed to initialize SDL: ").append(SDL_GetError()));
     }
@@ -320,7 +318,6 @@ void ApplicationWindow::destroy() {
     m_command_manager.destroy();
 
     // Exit Romfs & SDL
-    romfsExit();
     SDL_GL_DeleteContext(m_sdl_gl_context);
     SDL_DestroyWindow(p_sdl_window);
     SDL_Quit();
