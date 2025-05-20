@@ -33,13 +33,13 @@ public:
     static constexpr auto FONT_FILE = "font.ttf";
 
     /** @brief Default font size in pixels. */
-    static constexpr auto DEFAULT_FONT_SIZE = 25;
+    static constexpr auto DEFAULT_FONT_SIZE = 16;
 
     /** @brief Minimum font size allowed. */
     static constexpr auto MIN_FONT_SIZE = 13;
 
     /** @brief Maximum font size allowed. */
-    static constexpr auto MAX_FONT_SIZE = 127;
+    static constexpr auto MAX_FONT_SIZE = 96;
 
 
 private:
