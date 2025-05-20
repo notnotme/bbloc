@@ -59,7 +59,7 @@ void Theme::destroy() {
 
 void Theme::setFontSize(int32_t size) {
     size = std::clamp(size, MIN_FONT_SIZE, MAX_FONT_SIZE);
-    FT_Size_RequestRec font_size_req = {FT_SIZE_REQUEST_TYPE_CELL , 0, size << 6, 0, 0};
+    FT_Size_RequestRec font_size_req = {FT_SIZE_REQUEST_TYPE_NOMINAL, 0, size * 64, 96, 96};
     FT_Request_Size(m_font, &font_size_req);
 
     const auto bbox_y_max = FT_MulFix(m_font->bbox.yMax, m_font->size->metrics.y_scale) >> 6;
