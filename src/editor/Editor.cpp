@@ -61,7 +61,6 @@ void Editor::render(const HighLighter &highLighter, const Cursor &cursor, Editor
 }
 
 bool Editor::onKeyDown(const HighLighter &highLighter, Cursor &cursor, EditorState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
-    (void) keyModifier;
     switch (keyCode) {
         case SDLK_UP:
             viewState.setFollowIndicator(true);
