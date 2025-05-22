@@ -11,7 +11,7 @@ int32_t PromptCursor::getColumn() const {
 }
 
 std::u16string_view PromptCursor::getString() const {
-    return m_string;
+    return { m_string.begin(), m_string.end() };
 }
 
 void PromptCursor::moveLeft() {

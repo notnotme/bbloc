@@ -1,14 +1,12 @@
 #ifndef VIEW_H
 #define VIEW_H
 
-#include <cstdint>
-
 #include <SDL.h>
 
-#include "highlight/HighLighter.h"
 #include "renderer/QuadProgram.h"
 #include "renderer/QuadBuffer.h"
 #include "theme/Theme.h"
+#include "CursorContext.h"
 #include "ViewState.h"
 
 
@@ -16,14 +14,13 @@
  * @brief Base class for rendering a view in the application (e.g., editor, console).
  *
  * This class defines the interface and common rendering infrastructure shared by different views.
- * It is templated on a cursor type (`TCursor`) and an optional view state (`TState`, defaults to `ViewState`).
+ * It is templated on a optional view state (`TState`, defaults to `ViewState`).
  *
  * Derived classes must implement specific behaviors like input handling and rendering.
  *
- * @tparam TCursor Type of the cursor used for text navigation/editing.
  * @tparam TState State type for additional view-specific information.
  */
-template <class TCursor, class TState = ViewState>
+template <class TState = ViewState>
 class View {
 protected:
     /** Reference to the command manager (used for dynamic runtime controls). */
@@ -84,32 +81,29 @@ public:
 
     /**
      * @brief Renders the view contents.
-     * @param highLighter Reference to the highlighter for syntax highlighting.
-     * @param cursor Reference to the cursor representing the current text position.
+     * @param context Reference to the cursor context to render.
      * @param viewState Reference to the view-specific state.
      * @param dt Delta time in seconds (useful for animations or transitions).
      */
-    virtual void render(const HighLighter &highLighter, const TCursor &cursor, TState &viewState, float dt) = 0;
+    virtual void render(CursorContext &context, TState &viewState, float dt) = 0;
 
     /**
      * @brief Handles key press events.
-     * @param highLighter Reference to the highlighter.
-     * @param cursor Reference to the cursor.
+     * @param context Reference to the cursor context to handle keys for.
      * @param viewState Reference to the view state.
      * @param keyCode The SDL key code.
      * @param keyModifier Bitmask of modifier keys (CTRL, ALT, etc.).
      * @return true if the key was handled, false otherwise.
      */
-    virtual bool onKeyDown(const HighLighter &highLighter, TCursor &cursor, TState &viewState, SDL_Keycode keyCode, uint16_t keyModifier) const = 0;
+    virtual bool onKeyDown(CursorContext &context, TState &viewState, SDL_Keycode keyCode, uint16_t keyModifier) const = 0;
 
     /**
      * @brief Handles UTF-8 text input events (e.g., from typing).
-     * @param highLighter Reference to the highlighter.
-     * @param cursor Reference to the cursor.
+     * @param context Reference to the cursor context to handle text input for.
      * @param viewState Reference to the view state.
      * @param text UTF-8 encoded input text (from SDL_TEXTINPUT).
      */
-    virtual void onTextInput(const HighLighter &highLighter, TCursor &cursor, TState &viewState, const char* text) const = 0;
+    virtual void onTextInput(CursorContext &context, TState &viewState, const char* text) const = 0;
 
     /**
      * @brief Updates the internal window size for the view (e.g., after a resize event).
@@ -119,8 +113,8 @@ public:
     void resizeWindow(int32_t width, int32_t height);
 };
 
-template<class TCursor, class TState>
-View<TCursor, TState>::View(CommandManager &commandManager, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
+template<class TState>
+View<TState>::View(CommandManager &commandManager, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
     : m_command_manager(commandManager),
       m_theme(theme),
       m_quad_program(quadProgram),
@@ -128,14 +122,14 @@ View<TCursor, TState>::View(CommandManager &commandManager, Theme &theme, QuadPr
       m_window_width(0),
       m_window_height(0) {}
 
-template<class TCursor, class TState>
-void View<TCursor, TState>::resizeWindow(const int32_t width, const int32_t height) {
+template<class TState>
+void View<TState>::resizeWindow(const int32_t width, const int32_t height) {
     m_window_width = width;
     m_window_height = height;
 }
 
-template<class TCursor, class TState>
-void View<TCursor, TState>::drawQuad(const int32_t x, const int32_t y, const int32_t width, const int32_t height, const Color &color) const {
+template<class TState>
+void View<TState>::drawQuad(const int32_t x, const int32_t y, const int32_t width, const int32_t height, const Color &color) const {
     m_quad_buffer.insert(
         static_cast<int16_t>(x),
         static_cast<int16_t>(y),
@@ -144,8 +138,8 @@ void View<TCursor, TState>::drawQuad(const int32_t x, const int32_t y, const int
         color.red, color.green, color.blue, color.alpha);
 }
 
-template<class TCursor, class TState>
-void View<TCursor, TState>::drawCharacter(const int32_t x, const int32_t y, const AtlasEntry &character, const Color &color) const {
+template<class TState>
+void View<TState>::drawCharacter(const int32_t x, const int32_t y, const AtlasEntry &character, const Color &color) const {
     m_quad_buffer.insert(
         static_cast<int16_t>(x + character.bearing_x),
         static_cast<int16_t>(y - character.bearing_y),

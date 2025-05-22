@@ -7,12 +7,11 @@
 #include <string_view>
 #include <unordered_map>
 
-#include "../cursor/Cursor.h"
+#include "../CursorContext.h"
 #include "cvar/CVar.h"
 #include "cvar/CVarCallback.h"
 #include "CommandCallback.h"
 #include "CompletionCallback.h"
-#include "FeedbackCallback.h"
 #include "ItemCallback.h"
 
 
@@ -37,28 +36,14 @@ private:
         CompletionCallback completion_func; ///< Optional function for argument auto-completion.
     };
 
-    /** @brief Structure for managing command feedback interactions (e.g., confirmation prompts). */
-    struct CommandFeedback final {
-        std::u16string prompt;                   ///< Prompt message displayed to the user.
-        std::u16string command;                  ///< Command associated with the feedback.
-        std::vector<std::u16string> completions; ///< List of valid input options (e.g., "y", "n").
-        FeedbackCallback on_validate_callback;   ///< Callback to run after receiving user input.
-    };
-
     /** Registered commands. */
     std::unordered_map<std::string, CommandEntry> m_commands;
 
     /** Registered configuration variables. */
     std::unordered_map<std::string, CVarEntry> m_cvars;
 
-    /** Active feedback prompt state. */
-    std::optional<CommandFeedback> m_command_feedback;
-
     /** @brief Registers the built-in cvar command. */
     void registerCVarCommand();
-
-    /** @brief Registers the built-in exec command. */
-    void registerExecCommand();
 
 public:
     /** @brief Deleted copy constructor. */
@@ -67,14 +52,11 @@ public:
     /** @brief Deleted copy assignment operator. */
     CommandManager &operator=(const CommandManager &) = delete;
 
+    /** @brief Clean allocated resources. */
+    ~CommandManager() = default;
+
     /** @brief Constructs the CommandManager. */
-    explicit CommandManager() = default;
-
-    /** @brief Initializes the command manager and registers built-in commands. */
-    void create();
-
-    /** @brief Releases all internal resources and clears all registered items. */
-    void destroy();
+    explicit CommandManager();
 
     /**
      * @brief Registers a new command.
@@ -94,20 +76,11 @@ public:
 
     /**
      * @brief Executes a command string.
-     * @param cursor Reference to the cursor buffer.
+     * @param context Reference to the cursor context executing this command.
      * @param input UTF-16 input string containing the command and arguments.
      * @return An optional result string for displaying messages in the prompt.
      */
-    std::optional<std::u16string> execute(Cursor &cursor,std::u16string_view input);
-
-    /**
-     * @brief Initiates a feedback command. Displays a prompt to the user and waits for confirmation or selection.
-     * @param prompt The message shown to the user.
-     * @param command The command to be executed after feedback.
-     * @param completions A list of valid responses (e.g., {"yes", "no"}).
-     * @param callback Callback invoked with the user's feedback.
-     */
-    void setCommandFeedback(std::u16string_view prompt, std::u16string_view command, const std::vector<std::u16string_view> &completions, const FeedbackCallback &callback);
+    std::optional<std::u16string> execute(CursorContext &context, std::u16string_view input);
 
     /**
      * @brief Gathers auto-completion suggestions for CVars.
@@ -125,27 +98,13 @@ public:
 
     /**
      * @brief Provides auto-completions for command arguments.
+     * @param context Reference to the cursor context.
      * @param command The command name.
      * @param argumentIndex The index of the argument to complete.
      * @param input Current user input string.
      * @param itemCallback Callback to receive argument name suggestions.
      */
-    void getArgumentsCompletion(std::string_view command, int32_t argumentIndex, std::string_view input, const ItemCallback<char> &itemCallback);
-
-    /**
-      * @brief Provides completions for interactive feedback input.
-      * @param itemCallback Callback receiving feedback suggestions.
-      */
-    void getFeedbackCompletion(const ItemCallback<char16_t> &itemCallback) const;
-
-    /** @brief Clears any pending feedback prompt. */
-    void clearCommandFeedback();
-
-    /** return Optional prompt string to display to the user. */
-    [[nodiscard]] std::optional<std::u16string_view> getCommandFeedback() const;
-
-    /** return true if the feedback is present. */
-    [[nodiscard]] bool isCommandFeedbackPresent() const;
+    void getArgumentsCompletion(const CursorContext &context, std::string_view command, int32_t argumentIndex, std::string_view input, const ItemCallback<char> &itemCallback);
 
     /**
      * @brief Tokenizes a UTF-16 input string for command parsing. Splits the input into a list of arguments.

@@ -8,7 +8,8 @@
 #include "../core/renderer/QuadBuffer.h"
 #include "../core/theme/Theme.h"
 #include "../core/View.h"
-#include "InfoBarState.h"
+#include "../core/ViewState.h"
+#include "../core/CursorContext.h"
 
 
 /**
@@ -20,21 +21,20 @@
  * - Current highlight mode
  * - ect.
  */
-class InfoBar final : public View<Cursor, InfoBarState> {
+class InfoBar final : public View<> {
 private:
     /**
      * @brief: Draw the background layer of the info bar.
      * @param viewState A reference to the InfoBar view state.
      */
-    void drawBackground(const InfoBarState &viewState) const;
+    void drawBackground(const ViewState &viewState) const;
 
     /**
       * @brief: Draw the text layer of the info bar.
-      * @param highLighter A reference to the HighLighter.
-      * @param cursor A reference to the PromptCursor.
+      * @param context A reference to the cursor context.
       * @param viewState A reference to the Prompt view state.
       */
-    void drawText(const HighLighter &highLighter, const Cursor &cursor, const InfoBarState &viewState) const;
+    void drawText(const CursorContext &context, const ViewState &viewState) const;
 
 public:
     /**
@@ -49,21 +49,20 @@ public:
 
     /**
      * @brief Renders the InfoBar.
-     * @param highLighter Unused in InfoBar but required by base class.
-     * @param cursor Reference to the current cursor.
+     * @param context Reference to the cursor context.
      * @param viewState The InfoBarState of this view.
      * @param dt Time delta since the last frame.
      */
-    void render(const HighLighter &highLighter, const Cursor &cursor, InfoBarState &viewState, float dt) override;
+    void render(CursorContext &context, ViewState &viewState, float dt) override;
 
     /**
      * @brief InfoBar does not handle key input.
      * @return Always returns false.
      */
-    bool onKeyDown(const HighLighter &highLighter, Cursor &cursor, InfoBarState &viewState, SDL_Keycode keyCode, uint16_t keyModifier) const override;
+    bool onKeyDown(CursorContext &context, ViewState &viewState, SDL_Keycode keyCode, uint16_t keyModifier) const override;
 
     /** @brief InfoBar does not handle text input. */
-    void onTextInput(const HighLighter &highLighter, Cursor &cursor, InfoBarState &viewState, const char* text) const override;
+    void onTextInput(CursorContext &context, ViewState &viewState, const char* text) const override;
 };
 
 

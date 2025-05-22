@@ -12,11 +12,11 @@
 Prompt::Prompt(CommandManager &commandManager, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
     : View(commandManager, theme, quadProgram, quadBuffer) {}
 
-void Prompt::render(const HighLighter &highLighter, const PromptCursor &cursor, PromptState &viewState, float dt) {
+void Prompt::render(CursorContext &context, PromptState &viewState, float dt) {
     // Map 1024 quads
     m_quad_buffer.map(ApplicationWindow::PROMPT_BUFFER_QUAD_OFFSET, ApplicationWindow::PROMPT_BUFFER_QUAD_COUNT);
     drawBackground(viewState);
-    drawText(cursor, viewState);
+    drawText(context, viewState);
     m_quad_buffer.unmap();
 
     // Get the vew geometry
@@ -30,134 +30,26 @@ void Prompt::render(const HighLighter &highLighter, const PromptCursor &cursor, 
     m_quad_program.draw(ApplicationWindow::PROMPT_BUFFER_QUAD_OFFSET, m_quad_buffer.getCount());
 }
 
-bool Prompt::onKeyDown(const HighLighter &highLighter, PromptCursor &cursor, PromptState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
+bool Prompt::onKeyDown(CursorContext &context, PromptState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
     switch (keyCode) {
-        case SDLK_UP:
-            if (viewState.getHistoryCount() > 0) {
-                viewState.clearCompletions();
-                const auto command = viewState.previousHistory();
-                cursor.clear();
-                cursor.insert(command);
-                return true;
-            }
-            //viewState.follow_indicator = true;
-        return true;
-        case SDLK_DOWN:
-            if (viewState.getHistoryCount() > 0) {
-                viewState.clearCompletions();
-                const auto command = viewState.nextHistory();
-                cursor.clear();
-                cursor.insert(command);
-                return true;
-            }
-            //viewState.follow_indicator = true;
-        return true;
-        case SDLK_LEFT:
-            //viewState.follow_indicator = true;
-            cursor.moveLeft();
-        return true;
-        case SDLK_RIGHT:
-            //viewState.follow_indicator = true;
-            cursor.moveRight();
-        return true;
-        case SDLK_HOME:
-            //viewState.follow_indicator = true;
-            cursor.moveToStart();
-        return true;
-        case SDLK_END:
-            //viewState.follow_indicator = true;
-            cursor.moveToEnd();
-        return true;
         case SDLK_BACKSPACE:
             // Reset completions as soon as the user typed a new text
             viewState.clearCompletions();
             //viewState.follow_indicator = true;
-            cursor.eraseLeft();
+            context.prompt_cursor.eraseLeft();
         return true;
         case SDLK_DELETE:
             // Reset completions as soon as the user typed a new text
             viewState.clearCompletions();
             //viewState.follow_indicator = true;
-            cursor.eraseRight();
-        return true;
-        case SDLK_TAB: {
-            const auto input = cursor.getString();
-            const auto tokens = CommandManager::tokenize(input);
-            // Reset the history index if we were browsing
-            viewState.clearHistoryIndex();
-            if (viewState.getCompletionCount() > 0) {
-                // The viewState completion list is not empty, loop inside
-                const auto completion = keyModifier & KMOD_SHIFT ? viewState.previousCompletion() : viewState.nextCompletion();
-                cursor.clear();
-                cursor.insert(completion);
-                return true;
-            }
-
-            if (m_command_manager.isCommandFeedbackPresent()) {
-                // If a feedback is active, try to gather arguments
-                m_command_manager.getFeedbackCompletion([&viewState](const std::u16string_view completion) {
-                    viewState.addCompletion(completion);
-                });
-            } else {
-                // Find command name, argument, and argument index from the user input
-                const auto utf8_command_name = tokens.empty() ? "" : utf8::utf16to8(tokens.front());
-                const auto utf8_argument_to_complete = tokens.size() <= 1 ? "" : utf8::utf16to8(tokens.back());
-                const auto argument_index = std::max(0, static_cast<int32_t>(tokens.size() - 2));
-
-                // Try to complete commands arguments first, if the command name is incomplete, this will return an empty list
-                m_command_manager.getArgumentsCompletion(utf8_command_name, argument_index, utf8_argument_to_complete,
-                    [&](const std::string_view completion) {
-                        const auto completion_str = std::u16string(tokens[0]).append(u" ").append(utf8::utf8to16(completion));
-                        viewState.addCompletion(completion_str);
-                    });
-
-                if (viewState.getCompletionCount() == 0 && tokens.size() <= 1) {
-                    // Auto-complete commands names
-                    m_command_manager.getCommandCompletions(utf8_command_name,
-                        [&](const std::string_view completion) {
-                            viewState.addCompletion(utf8::utf8to16(completion));
-                        });
-                }
-            }
-
-            // Populate the viewState list and insert the first item in the cursor
-            const auto completion_count = viewState.getCompletionCount();
-            if (completion_count > 0) {
-                viewState.sortCompletions();
-
-                const auto completion = viewState.getCurrentCompletion();
-                cursor.clear();
-                cursor.insert(completion);
-
-                if (completion_count == 1) {
-                    // If we got only a single result, then append a space at the end of the command line
-                    // and clear the actual completion, so the next argument completion can occur.
-                    cursor.insert(u" ");
-                    viewState.clearCompletions();
-                }
-
-                return true;
-            }
-        }
-        return false;
-        case SDLK_ESCAPE:
-            // Reset completions, history index, and feedback if the user quit the prompt
-            m_command_manager.clearCommandFeedback();
-            viewState.clearCompletions();
-            viewState.clearHistoryIndex();
-            viewState.setRunningState(PromptState::RunningState::Idle);
-        return true;
-        case SDLK_RETURN:
-            // Reset completions if the user quit the prompt
-            viewState.clearCompletions();
-            viewState.setRunningState(PromptState::RunningState::Validated);
+            context.prompt_cursor.eraseRight();
         return true;
         default:
             return false;
     }
 }
 
-void Prompt::onTextInput(const HighLighter &highLighter, PromptCursor &cursor, PromptState &viewState, const char *text) const {
+void Prompt::onTextInput(CursorContext &context, PromptState &viewState, const char *text) const {
     auto utf8_text = std::string(text);
     if (!utf8::is_valid(utf8_text)) {
         // throw std::runtime_error("Invalid UTF-8 text: " + utf8_text);
@@ -168,7 +60,7 @@ void Prompt::onTextInput(const HighLighter &highLighter, PromptCursor &cursor, P
     }
 
     const auto utf16_text = utf8::utf8to16(utf8_text);
-    cursor.insert(utf16_text);
+    context.prompt_cursor.insert(utf16_text);
 
     // Reset completions and history index as soon as the user typed a new text
     viewState.clearCompletions();
@@ -193,7 +85,7 @@ void Prompt::drawBackground(const PromptState &viewState) const {
     drawQuad(position_x, position_y, width, border_size, border_color);
 }
 
-void Prompt::drawText(const PromptCursor &cursor, const PromptState &viewState) const {
+void Prompt::drawText(const CursorContext &context, const PromptState &viewState) const {
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
     const auto position_y = viewState.getPositionY();
@@ -242,9 +134,9 @@ void Prompt::drawText(const PromptCursor &cursor, const PromptState &viewState) 
 
     // Draw the prompt cursor text
     const auto &input_text_color = m_theme.getColor(ColorId::PromptInputText);
-    const auto string = cursor.getString();
+    const auto string = context.prompt_cursor.getString();
     const auto string_length = string.length();
-    const auto cursor_column = cursor.getColumn();
+    const auto cursor_column = context.prompt_cursor.getColumn();
 
     // Needs to keep track of the cursor position indicator
     auto cursor_position_x = pen_position_x;

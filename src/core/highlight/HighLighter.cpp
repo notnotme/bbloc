@@ -10,25 +10,36 @@
 #include "mapper/JsonMapper.h"
 
 
-HighLighter::HighLighter()
-    : p_ts_parser(nullptr),
+std::unordered_map<HighLightId, HighLighter::Parser> HighLighter::PARSERS = {
+    { HighLightId::Json, {
+        .language           = tree_sitter_json(),
+        .name               = "JSON",
+        .argument_value     = "json",
+        .files_format       = {".json", ".JSON"},
+        .mapper_function    = [](const uint16_t symbol) {
+            return mapJsonToken(symbol);
+        }
+    }},
+    { HighLightId::Cpp, {
+        .language           = tree_sitter_cpp(),
+        .name               = "C",
+        .argument_value     = "c",
+        .files_format       = {".c", ".C", ".cc", ".CC", ".cpp", ".CPP", ".h", ".H", ".hpp", ".HPP", ".cxx", ".CXX"},
+        .mapper_function    = [](const uint16_t symbol) {
+            return mapCppToken(symbol);
+        }
+    }}
+};
+
+HighLighter::HighLighter(Cursor &cursor)
+    : m_cursor(cursor),
+      p_current_parser(nullptr),
+      p_ts_parser(ts_parser_new()),
       p_ts_tree(nullptr),
       m_input(this, inputCallback, TSInputEncodingUTF16LE),
-      m_high_light(HighLightId::None),
-      p_current_parser(nullptr),
-      m_cb(nullptr) {
-}
+      m_high_light(HighLightId::None) {}
 
-void HighLighter::create(CommandManager &commandManager) {
-    // Create the tree-sitter parser
-    p_ts_parser = ts_parser_new();
-
-    // Register built-in parsers and a command to change the highlight mode
-    registerParsers();
-    registerHlCommand(commandManager);
-}
-
-void HighLighter::destroy() {
+HighLighter::~HighLighter() {
     // Cleanup tree
     if (p_ts_tree != nullptr) {
         ts_tree_delete(p_ts_tree);
@@ -56,7 +67,7 @@ void HighLighter::setMode(const HighLightId highLight) {
         p_current_parser = nullptr;
     } else {
         // Set new mode
-        const auto &parser = m_parsers.at(highLight);
+        const auto &parser = PARSERS.at(highLight);
         if (! ts_parser_set_language(p_ts_parser, parser.language)) {
             throw std::runtime_error("Could not set language");
         }
@@ -72,7 +83,7 @@ void HighLighter::setMode(const HighLightId highLight) {
 }
 
 void HighLighter::setMode(const std::string_view extension) {
-    for (const auto &[id, parser] : m_parsers) {
+    for (const auto &[id, parser] : PARSERS) {
         if (parser.files_format.contains(extension.data())) {
             // Found a match!
             setMode(id);
@@ -91,35 +102,6 @@ std::string_view HighLighter::getModeString() const {
     }
 
     return p_current_parser->name;
-}
-
-void HighLighter::setInput(const Cursor &cursor) {
-    // Invalidate the old parsed tree as tree-sitter will eventually need to reparse it
-    if (p_ts_tree != nullptr) {
-        ts_tree_delete(p_ts_tree);
-        p_ts_tree = nullptr;
-    }
-
-    // Set the input to the cursor content
-    // todo: this is not really safe to keep a reference inside the lambda, move it
-    m_cb = [&cursor](const uint32_t line, const uint32_t column) -> std::optional<std::u16string_view> {
-        // Return the line starting from line, column
-        const auto line_count = cursor.getLineCount();
-        if (line > line_count - 1) {
-            // At line_count -1, then there is no more data to process
-            return std::nullopt;
-        }
-
-        const auto string = cursor.getString(line);
-        if (line < line_count && column < string.length()) {
-            // Not at the very end of the buffer,
-            // and not at the end of a line, then there is nothing more to do
-            return cursor.getString(line).substr(column);
-        }
-
-        // Tells the parser there is more
-        return u"\n";
-    };
 }
 
 void HighLighter::parse() {
@@ -148,8 +130,8 @@ void HighLighter::edit(const BufferEdit &edit) const {
     }
 }
 
-bool HighLighter::isSupported(const std::string_view extension) const {
-    for (const auto &parser: std::views::values(m_parsers)) {
+bool HighLighter::isSupported(const std::string_view extension) {
+    for (const auto &parser: std::views::values(PARSERS)) {
         if (parser.files_format.contains(extension.data())) {
             return true;
         }
@@ -163,10 +145,10 @@ bool HighLighter::isSupported(const std::string_view extension) const {
     return false;
 }
 
-void HighLighter::getParserNames(const ItemCallback<char> &callback) const {
+void HighLighter::getParserNames(const ItemCallback<char> &callback) {
     // Add a "txt" item, for HighLightId::None
     callback("txt");
-    for (const auto &parser: std::views::values(m_parsers)) {
+    for (const auto &parser: std::views::values(PARSERS)) {
         callback(parser.argument_value);
     }
 }
@@ -192,7 +174,25 @@ TokenId HighLighter::getHighLightAtPosition(const uint32_t line, const uint32_t 
     return p_current_parser->mapper_function(symbol);
 }
 
-const char* HighLighter::inputCallback(void *payload, const uint32_t byteIndex, const TSPoint position, uint32_t *bytesRead) {
+std::optional<std::u16string_view> HighLighter::readCallback(const uint32_t line, const uint32_t column) const {
+    const auto line_count = m_cursor.getLineCount();
+    if (line > line_count - 1) {
+        // At line_count -1, then there is no more data to process
+        return std::nullopt;
+    }
+
+    const auto string = m_cursor.getString(line);
+    if (line < line_count && column < string.length()) {
+        // Not at the very end of the buffer,
+        // and not at the end of a line, then there is nothing more to do
+        return m_cursor.getString(line).substr(column);
+    }
+
+    // Tells the parser there is more
+    return u"\n";
+}
+
+const char *HighLighter::inputCallback(void *payload, const uint32_t byteIndex, const TSPoint position, uint32_t *bytesRead) {
     // This input callback is working with logical positions, so byteIndex is not needed
     (void) byteIndex;
 
@@ -202,7 +202,7 @@ const char* HighLighter::inputCallback(void *payload, const uint32_t byteIndex, 
     // Multiply and divide column according to char size, we are working with char16_t (2 bytes)
     const auto line = position.row;
     const auto column = position.column / sizeof(char16_t);
-    if (const auto &optional_line = self->m_cb(line, column)) {
+    if (const auto &optional_line = self->readCallback(line, column)) {
         // We got some data
         *bytesRead = optional_line->length() * sizeof(char16_t);
         return reinterpret_cast<const char*>(optional_line->data());
@@ -211,60 +211,4 @@ const char* HighLighter::inputCallback(void *payload, const uint32_t byteIndex, 
     // Tells tree-sitter there is no more data to process at this location
     *bytesRead = 0;
     return nullptr;
-}
-
-void HighLighter::registerHlCommand(CommandManager &commandManager) {
-    // Register a command to change the highlight mode
-    commandManager.registerCommand("set_hl_mode",
-        [&](const Cursor &cursor, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
-            (void) cursor;
-            if (args.size() != 1) {
-                return u"Usage: set_hl_mode <mode>";
-            }
-
-            // Developers are lazy, so let's prepend a dot to make it work flawlessly
-            const auto extension = std::string(".").append(utf8::utf16to8(args[0]));
-            if (!isSupported(extension)) {
-                return std::u16string(u"Unsupported highlight mode: ").append(args[0]);
-            }
-
-            setMode(extension);
-            return std::nullopt;
-        },
-        [&](const int32_t argumentIndex, const std::string_view input, const ItemCallback<char> &itemCallback) {
-            // Ignore input
-            (void) input;
-            if (argumentIndex != 0) {
-                // Only auto-complete the first argument (mode)
-                return;
-            }
-
-            getParserNames(itemCallback);
-        });
-}
-
-void HighLighter::registerParsers() {
-    m_parsers.insert(
-        { HighLightId::Json, {
-                .language           = tree_sitter_json(),
-                .name               = "JSON",
-                .argument_value     = "json",
-                .files_format       = {".json", ".JSON"},
-                .mapper_function    = [](const uint16_t symbol) {
-                    return mapJsonToken(symbol);
-                }
-            }
-        });
-
-    m_parsers.insert(
-        { HighLightId::Cpp, {
-                .language           = tree_sitter_cpp(),
-                .name               = "C",
-                .argument_value     = "c",
-                .files_format       = {".c", ".C", ".cc", ".CC", ".cpp", ".CPP", ".h", ".H", ".hpp", ".HPP", ".cxx", ".CXX"},
-                .mapper_function    = [](const uint16_t symbol) {
-                    return mapCppToken(symbol);
-                }
-            }
-        });
 }

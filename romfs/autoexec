@@ -1,8 +1,57 @@
-bind ctrl+shift q quit
-bind ctrl+shift s save
-bind ctrl t "cvar inf_render_time"
-bind ctrl+shift t "reset_render_time"
-bind ctrl+shift space activate_prompt
-bind ctrl "Keypad +" increase_font_size
-bind ctrl "Keypad -" decrease_font_size
+# Activate the prompt
+bind Ctrl+Shift space activate_prompt
 
+# Quit the program (without saving)
+bind Ctrl+Shift q quit
+
+# Show and reset the render time information
+bind Ctrl t "cvar inf_render_time"
+bind Ctrl+Shift t "reset_render_time"
+
+# Increase and decrease the font size
+bind Ctrl "Keypad +" increase_font_size
+bind Ctrl "Keypad -" decrease_font_size
+
+# Copy / cut and paste
+bind Ctrl c copy
+bind Ctrl x cut
+bind Ctrl v paste
+
+# Save the current buffer (will ask for confirmation before erasing a new file)
+bind Ctrl+Shift s save
+
+# Move the cursor one line up
+bind None Up "move up"
+bind Shift Up "move up true"
+
+# Move the cursor one line down
+bind None Down "move down"
+bind Shift Down "move down true"
+
+# Move the cursor one character left
+bind None Left "move left"
+bind Shift Left "move left true"
+
+# Move the cursor one character right
+bind None Right "move right"
+bind Shift Right "move right true"
+
+# Move the end or begining of the current line
+bind None Home "move bol"
+bind Shift Home "move bol true"
+bind None End "move eol"
+bind Shift End "move eol true"
+
+# Move a page up or down
+bind None PageUp "move page_up"
+bind Shift PageUp "move page_up true"
+bind None PageDown "move page_down"
+bind Shift PageDown "move page_down true"
+
+# Cancel and validate action
+bind None escape cancel
+bind None return validate
+
+# auto complete
+bind None tab "auto_complete forward"
+bind Shift tab "auto_complete backward"

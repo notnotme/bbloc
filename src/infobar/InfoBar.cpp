@@ -11,10 +11,10 @@
 InfoBar::InfoBar(CommandManager &commandManager, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
     : View(commandManager, theme, quadProgram, quadBuffer) {}
 
-void InfoBar::render(const HighLighter &highLighter, const Cursor &cursor, InfoBarState &viewState, const float dt) {
+void InfoBar::render(CursorContext &context, ViewState &viewState, const float dt) {
     m_quad_buffer.map(ApplicationWindow::INFO_BAR_BUFFER_QUAD_OFFSET, ApplicationWindow::INFO_BAR_BUFFER_QUAD_COUNT);
     drawBackground(viewState);
-    drawText(highLighter, cursor, viewState);
+    drawText(context, viewState);
     m_quad_buffer.unmap();
 
     // Get the vew geometry
@@ -28,16 +28,23 @@ void InfoBar::render(const HighLighter &highLighter, const Cursor &cursor, InfoB
     m_quad_program.draw(ApplicationWindow::INFO_BAR_BUFFER_QUAD_OFFSET, m_quad_buffer.getCount());
 }
 
-bool InfoBar::onKeyDown(const HighLighter &highLighter, Cursor &cursor, InfoBarState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
+bool InfoBar::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
     // No-op
+    (void) context;
+    (void) viewState;
+    (void) keyCode;
+    (void) keyModifier;
     return false;
 }
 
-void InfoBar::onTextInput(const HighLighter &highLighter, Cursor &cursor, InfoBarState &viewState, const char *text) const {
+void InfoBar::onTextInput(CursorContext &context, ViewState &viewState, const char *text) const {
     // No-op
+    (void) context;
+    (void) viewState;
+    (void) text;
 }
 
-void InfoBar::drawBackground(const InfoBarState &viewState) const {
+void InfoBar::drawBackground(const ViewState &viewState) const {
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
     const auto position_y = viewState.getPositionY();
@@ -53,7 +60,7 @@ void InfoBar::drawBackground(const InfoBarState &viewState) const {
     drawQuad(position_x, position_y + height - border_size, width, border_size, border_color);
 }
 
-void InfoBar::drawText(const HighLighter &highLighter, const Cursor &cursor, const InfoBarState &viewState) const {
+void InfoBar::drawText(const CursorContext &context, const ViewState &viewState) const {
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
     const auto position_y = viewState.getPositionY();
@@ -67,13 +74,14 @@ void InfoBar::drawText(const HighLighter &highLighter, const Cursor &cursor, con
     const auto font_advance = m_theme.getFontAdvance();
     const auto tab_to_space = m_theme.getDimension(DimensionId::TabToSpace);
     const auto padding_width = m_theme.getDimension(DimensionId::PaddingWidth);
-    const auto cursor_line = cursor.getLine();
-    const auto cursor_column = cursor.getColumn();
-    const auto cursor_line_count = cursor.getLineCount();
+    const auto cursor_line = context.cursor.getLine();
+    const auto cursor_column = context.cursor.getColumn();
+    const auto cursor_line_count = context.cursor.getLineCount();
+    const auto highlight_mode = context.highlighter.getModeString();
 
     // Build the informative strings, and calculate their x offset
-    const auto string_cursor_name = utf8::utf8to16(cursor.getName().empty() ? "Untitled" : cursor.getName());
-    const auto string_info = utf8::utf8to16(std::format("{} • {} • {}:{} / {}", font_size, highLighter.getModeString(), cursor_line + 1, cursor_column + 1, cursor_line_count));
+    const auto string_cursor_name = utf8::utf8to16(context.cursor.getName().empty() ? "Untitled" : context.cursor.getName());
+    const auto string_info = utf8::utf8to16(std::format("{} • {} • {}:{} / {}", font_size, highlight_mode, cursor_line + 1, cursor_column + 1, cursor_line_count));
     const auto string_info_size = m_theme.measure(string_info, true);
     const auto left_text_offset = static_cast<int16_t>(padding_width);
     const auto right_text_offset = static_cast<int16_t>(width - string_info_size - padding_width);

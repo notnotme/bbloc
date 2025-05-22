@@ -17,30 +17,30 @@ Editor::Editor(CommandManager &commandManager, Theme &theme, QuadProgram &quadPr
     registerTabToSpaceCVar();
 }
 
-void Editor::render(const HighLighter &highLighter, const Cursor &cursor, EditorState &viewState, const float dt) {
+void Editor::render(CursorContext &context, ViewState &viewState, const float dt) {
     // Need some variable
     const auto padding_width = m_theme.getDimension(DimensionId::PaddingWidth);
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
-    const auto cursor_line_count = static_cast<int32_t>(cursor.getLineCount());
+    const auto cursor_line_count = static_cast<int32_t>(context.cursor.getLineCount());
     const auto string_cursor_line_count = utf8::utf8to16(std::to_string(cursor_line_count));
     const auto cursor_line_count_width = m_theme.measure(string_cursor_line_count, true);
     const auto margin_width = padding_width + cursor_line_count_width + padding_width;
 
     // Follow or scroll to the said position. scrollX and scrollY and followIndicator are eventually updated outside (by reference)
-    updateLongestLineCache(cursor);
-    updateScroll(cursor, viewState);
+    updateLongestLineCache(context);
+    updateScroll(context, viewState);
 
     // Get updated scroll values
-    const auto scroll_x = viewState.getScrollX();
-    const auto scroll_y = viewState.getScrollY();
+    const auto scroll_x = context.scroll_x;
+    const auto scroll_y = context.scroll_y;
 
     // Map the buffer at offset 1024, keep a variable to know how many quads we have before the cursor text
     m_quad_buffer.map(ApplicationWindow::EDITOR_BUFFER_QUAD_OFFSET, ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT);
     drawBackground(viewState, margin_width);
-    drawMarginText(cursor, viewState, cursor_line_count_width, scroll_y);
+    drawMarginText(context, viewState, cursor_line_count_width, scroll_y);
 
     const auto quads_count_before_text = m_quad_buffer.getCount();
-    drawText(highLighter, cursor, viewState, scroll_x, scroll_y);
+    drawText(context, viewState, scroll_x, scroll_y);
     m_quad_buffer.unmap();
 
     // Get the vew geometry
@@ -60,180 +60,58 @@ void Editor::render(const HighLighter &highLighter, const Cursor &cursor, Editor
     m_quad_program.draw(draw_offset, m_quad_buffer.getCount() - quads_count_before_text);
 }
 
-bool Editor::onKeyDown(const HighLighter &highLighter, Cursor &cursor, EditorState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
+bool Editor::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
     switch (keyCode) {
-        case SDLK_UP:
-            viewState.setFollowIndicator(true);
-            cursor.activateSelection(keyModifier & KMOD_SHIFT);
-            cursor.moveUp();
-            return true;
-        case SDLK_DOWN:
-            viewState.setFollowIndicator(true);
-            cursor.activateSelection(keyModifier & KMOD_SHIFT);
-            cursor.moveDown();
-        return true;
-        case SDLK_LEFT:
-            viewState.setFollowIndicator(true);
-            cursor.activateSelection(keyModifier & KMOD_SHIFT);
-            cursor.moveLeft();
-        return true;
-        case SDLK_RIGHT:
-            viewState.setFollowIndicator(true);
-            cursor.activateSelection(keyModifier & KMOD_SHIFT);
-            cursor.moveRight();
-        return true;
-        case SDLK_HOME:
-            viewState.setFollowIndicator(true);
-            cursor.activateSelection(keyModifier & KMOD_SHIFT);
-            cursor.moveToStartOfLine();
-        return true;
-        case SDLK_END:
-            viewState.setFollowIndicator(true);
-            cursor.activateSelection(keyModifier & KMOD_SHIFT);
-            cursor.moveToEndOfLine();
-        return true;
-        case SDLK_PAGEUP: {
-            viewState.setFollowIndicator(true);
-            const auto line_amount = m_theme.getDimension(DimensionId::PageUpDown);
-            cursor.activateSelection(keyModifier & KMOD_SHIFT);
-            cursor.pageUp(line_amount);
-        }
-        return true;
-        case SDLK_PAGEDOWN: {
-            viewState.setFollowIndicator(true);
-            const auto line_amount = m_theme.getDimension(DimensionId::PageUpDown);
-            cursor.activateSelection(keyModifier & KMOD_SHIFT);
-            cursor.pageDown(line_amount);
-        }
-        return true;
-        case SDLK_RETURN: {
-            viewState.setFollowIndicator(true);
-            if (const auto &edit = cursor.eraseSelection()) {
-                // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
-                highLighter.edit(edit.value());
-                cursor.setPosition(edit->new_end.line, edit->new_end.column);
-                cursor.activateSelection(false);
-            }
-
-            const auto &edit = cursor.newLine();
-            highLighter.edit(edit);
-        }
-        return true;
         case SDLK_BACKSPACE: {
-            viewState.setFollowIndicator(true);
-            if (const auto &selection = cursor.eraseSelection()) {
+            context.follow_indicator = true;
+            if (const auto &selection = context.cursor.eraseSelection()) {
                 // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
-                highLighter.edit(selection.value());
-                cursor.setPosition(selection->new_end.line, selection->new_end.column);
-                cursor.activateSelection(false);
-            } else if (const auto &edit = cursor.eraseLeft()) {
-                highLighter.edit(edit.value());
+                context.highlighter.edit(selection.value());
+                context.cursor.setPosition(selection->new_end.line, selection->new_end.column);
+                context.cursor.activateSelection(false);
+            } else if (const auto &edit = context.cursor.eraseLeft()) {
+                context.highlighter.edit(edit.value());
             }
         }
         return true;
         case SDLK_DELETE: {
-            viewState.setFollowIndicator(true);
-            if (const auto &selection = cursor.eraseSelection()) {
+            context.follow_indicator = true;
+            if (const auto &selection = context.cursor.eraseSelection()) {
                 // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
-                highLighter.edit(selection.value());
-                cursor.setPosition(selection->new_end.line, selection->new_end.column);
-                cursor.activateSelection(false);
-            } else if (const auto &edit = cursor.eraseRight()) {
-                highLighter.edit(edit.value());
+                context.highlighter.edit(selection.value());
+                context.cursor.setPosition(selection->new_end.line, selection->new_end.column);
+                context.cursor.activateSelection(false);
+            } else if (const auto &edit = context.cursor.eraseRight()) {
+                context.highlighter.edit(edit.value());
             }
         }
         return true;
         case SDLK_TAB: {
-            viewState.setFollowIndicator(true);
-            if (const auto &selection = cursor.eraseSelection()) {
+            context.follow_indicator = true;
+            if (const auto &selection = context.cursor.eraseSelection()) {
                 // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
-                highLighter.edit(selection.value());
-                cursor.setPosition(selection->new_end.line, selection->new_end.column);
-                cursor.activateSelection(false);
+                context.highlighter.edit(selection.value());
+                context.cursor.setPosition(selection->new_end.line, selection->new_end.column);
+                context.cursor.activateSelection(false);
             }
 
             if (m_is_tab_to_space->m_value) {
                 // We have to replace the tab character by x amount of space character
                 const auto space_amount = m_theme.getDimension(DimensionId::TabToSpace);
-                const auto &edit = cursor.insert(std::u16string(space_amount, u' '));
-                highLighter.edit(edit);
+                const auto &edit = context.cursor.insert(std::u16string(space_amount, u' '));
+                context.highlighter.edit(edit);
             } else {
-                const auto &edit = cursor.insert(u"\t");
-                highLighter.edit(edit);
+                const auto &edit = context.cursor.insert(u"\t");
+                context.highlighter.edit(edit);
             }
         }
         return true;
-        case SDLK_c: {
-            const auto ctrl_pressed  = (keyModifier & KMOD_CTRL) != 0;
-            if (ctrl_pressed) {
-                auto to_clipboard_text = std::u16string();
-                if (const auto &selection = cursor.getSelectedText()) {
-                    const auto &all_text = selection.value();
-                    const auto all_text_size = all_text.size();
-                    for (auto i = 0; i < all_text_size; ++i) {
-                        to_clipboard_text = to_clipboard_text.append(all_text[i]);
-                        if (i < all_text_size - 1) {
-                            to_clipboard_text = to_clipboard_text.append(u"\n");
-                        }
-                    }
-                }
-                const auto utf8_clipboard_text = utf8::utf16to8(to_clipboard_text);
-                SDL_SetClipboardText(utf8_clipboard_text.data());
-                return true;
-            }
-        }
-        return false;
-        case SDLK_x: {
-            const auto ctrl_pressed  = (keyModifier & KMOD_CTRL) != 0;
-            if (ctrl_pressed) {
-                const auto &selection = cursor.getSelectedText();
-                if (!selection) {
-                    return false;
-                }
-
-                auto to_clipboard_text = std::u16string();
-                const auto &all_text = selection.value();
-                const auto all_text_size = all_text.size();
-                for (auto i = 0; i < all_text_size; ++i) {
-                    to_clipboard_text = to_clipboard_text.append(all_text[i]);
-                    if (i < all_text_size - 1) {
-                        to_clipboard_text = to_clipboard_text.append(u"\n");
-                    }
-                }
-
-                if (const auto &edit = cursor.eraseSelection()) {
-                    highLighter.edit(edit.value());
-                    cursor.activateSelection(false);
-                }
-
-                const auto utf8_clipboard_text = utf8::utf16to8(to_clipboard_text);
-                SDL_SetClipboardText(utf8_clipboard_text.data());
-                return true;
-            }
-        }
-        return false;
-        case SDLK_v: {
-            const auto ctrl_pressed  = (keyModifier & KMOD_CTRL) != 0;
-            if (ctrl_pressed) {
-                char* sdl_clipboard_text = SDL_GetClipboardText();
-                const auto clipboard_text = std::string(sdl_clipboard_text);
-                const auto utf16_clipboard_text = utf8::utf8to16(clipboard_text);
-                if (!utf16_clipboard_text.empty()) {
-                    const auto &edit = cursor.insert(utf16_clipboard_text);
-                    highLighter.edit(edit);
-                    viewState.setFollowIndicator(true);
-                }
-                SDL_free(sdl_clipboard_text);
-                return true;
-            }
-        }
-        return false;
         default:
         return false;
     }
 }
 
-void Editor::onTextInput(const HighLighter& highLighter, Cursor &cursor, EditorState &viewState, const char *text) const {
+void Editor::onTextInput(CursorContext &context, ViewState &viewState, const char *text) const {
     auto utf8_text = std::string(text);
     if (!utf8::is_valid(utf8_text)) {
         // throw std::runtime_error("Invalid UTF-8 text: " + utf8_text);
@@ -243,24 +121,24 @@ void Editor::onTextInput(const HighLighter& highLighter, Cursor &cursor, EditorS
         utf8_text = utf8::replace_invalid(utf8_text);
     }
 
-    if (const auto &selection = cursor.eraseSelection()) {
+    if (const auto &selection = context.cursor.eraseSelection()) {
         // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
-        highLighter.edit(selection.value());
-        cursor.setPosition(selection->new_end.line, selection->new_end.column);
-        cursor.activateSelection(false);
+        context.highlighter.edit(selection.value());
+        context.cursor.setPosition(selection->new_end.line, selection->new_end.column);
+        context.cursor.activateSelection(false);
     }
 
     const auto utf16_text = utf8::utf8to16(utf8_text);
-    const auto &edit = cursor.insert(utf16_text);
-    highLighter.edit(edit);
-    viewState.setFollowIndicator(true);
+    const auto &edit = context.cursor.insert(utf16_text);
+    context.highlighter.edit(edit);
+    context.follow_indicator = true;
 }
 
-void Editor::updateLongestLineCache(const Cursor &cursor) {
+void Editor::updateLongestLineCache(const CursorContext &context) {
     // Find the longest line in the buffer and calculate its width
-    const auto cursor_line_count = cursor.getLineCount();
-    const auto cursor_line = cursor.getLine();
-    const auto cursor_string = cursor.getString();
+    const auto cursor_line_count = context.cursor.getLineCount();
+    const auto cursor_line = context.cursor.getLine();
+    const auto cursor_string = context.cursor.getString();
     const auto cursor_string_width = m_theme.measure(cursor_string, false);
     if (cursor_line_count != m_longest_line_cache.count
         || cursor_line == m_longest_line_cache.index && cursor_string_width < m_longest_line_cache.width) {
@@ -268,7 +146,7 @@ void Editor::updateLongestLineCache(const Cursor &cursor) {
         m_longest_line_cache.index = 0;
         m_longest_line_cache.width = 0;
         for (auto line = 0; line < cursor_line_count; ++line) {
-            const auto string = cursor.getString(line);
+            const auto string = context.cursor.getString(line);
             const auto string_width = m_theme.measure(string, false);
             if (string_width > m_longest_line_cache.width) {
                 m_longest_line_cache.width = string_width;
@@ -287,15 +165,15 @@ void Editor::updateLongestLineCache(const Cursor &cursor) {
     }
 }
 
-void Editor::updateScroll(const Cursor& cursor, EditorState &viewState) const {
+void Editor::updateScroll(CursorContext &context, const ViewState &viewState) const {
     const auto line_height = m_theme.getLineHeight();
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
     const auto padding_width = m_theme.getDimension(DimensionId::PaddingWidth);
     const auto indicator_width = m_theme.getDimension(DimensionId::IndicatorWidth);
 
-    const auto cursor_line =  static_cast<int32_t>(cursor.getLine());
-    const auto cursor_column =  static_cast<int32_t>(cursor.getColumn());
-    const auto cursor_line_count = static_cast<int32_t>(cursor.getLineCount());
+    const auto cursor_line =  static_cast<int32_t>(context.cursor.getLine());
+    const auto cursor_column =  static_cast<int32_t>(context.cursor.getColumn());
+    const auto cursor_line_count = static_cast<int32_t>(context.cursor.getLineCount());
 
     const auto cursor_line_count_string = utf8::utf8to16(std::to_string(cursor_line_count));
     const auto cursor_line_count_width = m_theme.measure(cursor_line_count_string, true);
@@ -304,39 +182,39 @@ void Editor::updateScroll(const Cursor& cursor, EditorState &viewState) const {
     const auto height = viewState.getHeight();
     const auto margin_width = padding_width + cursor_line_count_width + padding_width;
 
-    if (viewState.isFollowingIndicator()) {
-        const auto scroll_x = viewState.getScrollX();
-        const auto scroll_y = viewState.getScrollY();
-        const auto cursor_string = cursor.getString();
+    if (context.follow_indicator) {
+        const auto scroll_x = context.scroll_x;
+        const auto scroll_y = context.scroll_y;
+        const auto cursor_string = context.cursor.getString();
         const auto cursor_string_to_indicator = cursor_string.substr(0, cursor_column);
         const auto indicator_x = m_theme.measure(cursor_string_to_indicator, false);
         const auto indicator_y = line_height * cursor_line;
 
         // Vertical scroll
         if (indicator_y < scroll_y) {
-            viewState.setScrollY(indicator_y);
+            context.scroll_y = indicator_y;
         } else if (indicator_y > height + scroll_y - line_height) {
-            viewState.setScrollY(indicator_y - (height - line_height));
+            context.scroll_y = indicator_y - (height - line_height);
         }
 
         // Horizontal scroll
         if (indicator_x < scroll_x) {
-            viewState.setScrollX(indicator_x);
+            context.scroll_x = indicator_x;
         } else if (indicator_x > width - margin_width - border_size + scroll_x) {
-            viewState.setScrollX(indicator_x - width + margin_width + border_size + indicator_width);
+            context.scroll_x = indicator_x - width + margin_width + border_size + indicator_width;
         }
     } else {
         // Update max-scroll values
-        const auto scroll_x = viewState.getScrollX();
-        const auto scroll_y = viewState.getScrollY();
+        const auto scroll_x = context.scroll_x;
+        const auto scroll_y = context.scroll_y;
         const auto max_scroll_y = cursor_line_count * line_height - height;
         const auto max_scroll_x = m_longest_line_cache.width - (width - margin_width - border_size - indicator_width);
-        viewState.setScrollY(std::clamp(scroll_y, 0, max_scroll_y < 0 ? 0 : max_scroll_y));
-        viewState.setScrollX(std::clamp(scroll_x, 0, max_scroll_x < 0 ? 0 : max_scroll_x));
+        context.scroll_x = std::clamp(scroll_x, 0, max_scroll_x < 0 ? 0 : max_scroll_x);
+        context.scroll_y = std::clamp(scroll_y, 0, max_scroll_y < 0 ? 0 : max_scroll_y);
     }
 }
 
-void Editor::drawBackground(const EditorState &viewState, const int32_t marginWidth) const {
+void Editor::drawBackground(const ViewState &viewState, const int32_t marginWidth) const {
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
     const auto position_y = viewState.getPositionY();
@@ -355,7 +233,7 @@ void Editor::drawBackground(const EditorState &viewState, const int32_t marginWi
     drawQuad(position_x + marginWidth + border_size, position_y, width - marginWidth - border_size, height, background_color);
 }
 
-void Editor::drawMarginText(const Cursor& cursor, const EditorState& viewState, const int32_t lineCountWidth, const int32_t scrollY) const {
+void Editor::drawMarginText(const CursorContext &context, const ViewState &viewState, const int32_t lineCountWidth, const int32_t scrollY) const {
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
     const auto position_y = viewState.getPositionY();
@@ -367,7 +245,7 @@ void Editor::drawMarginText(const Cursor& cursor, const EditorState& viewState, 
     const auto line_height = m_theme.getLineHeight();
     const auto font_descender = m_theme.getFontDescender();
     const auto font_advance = m_theme.getFontAdvance();
-    const auto cursor_line_count = cursor.getLineCount();
+    const auto cursor_line_count = context.cursor.getLineCount();
 
     // Draw text
     const auto first_line_in_viewport = scrollY / line_height;
@@ -405,7 +283,7 @@ void Editor::drawMarginText(const Cursor& cursor, const EditorState& viewState, 
     }
 }
 
-void Editor::drawText(const HighLighter& highLighter, const Cursor& cursor, const EditorState& viewState, const int32_t scrollX, const int32_t scrollY) {
+void Editor::drawText(const CursorContext &context, const ViewState &viewState, const int32_t scrollX, const int32_t scrollY) {
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
     const auto position_y = viewState.getPositionY();
@@ -422,9 +300,9 @@ void Editor::drawText(const HighLighter& highLighter, const Cursor& cursor, cons
     const auto font_descender = m_theme.getFontDescender();
     const auto font_advance = m_theme.getFontAdvance();
 
-    const auto cursor_line =  static_cast<int32_t>(cursor.getLine());
-    const auto cursor_column =  static_cast<int32_t>(cursor.getColumn());
-    const auto cursor_line_count = static_cast<int32_t>(cursor.getLineCount());
+    const auto cursor_line =  static_cast<int32_t>(context.cursor.getLine());
+    const auto cursor_column =  static_cast<int32_t>(context.cursor.getColumn());
+    const auto cursor_line_count = static_cast<int32_t>(context.cursor.getLineCount());
 
     const auto string_cursor_line_count = utf8::utf8to16(std::to_string(cursor_line_count));
     const auto cursor_line_count_width = m_theme.measure(string_cursor_line_count, true);
@@ -442,7 +320,7 @@ void Editor::drawText(const HighLighter& highLighter, const Cursor& cursor, cons
     while (line_index < cursor_line_count) {
         if (line_index >= 0) {
             // Get the string at line_index
-            const auto string = cursor.getString(line_index);
+            const auto string = context.cursor.getString(line_index);
             const auto string_length = string.length();
             const auto is_cursor_line = cursor_line == line_index;
 
@@ -457,7 +335,7 @@ void Editor::drawText(const HighLighter& highLighter, const Cursor& cursor, cons
                 drawQuad(cursor_text_start_x, pen_position_y - line_height - font_descender, width, line_height, line_background_color);
             }
 
-            if (const auto &selected_range = cursor.getSelectedRange()) {
+            if (const auto &selected_range = context.cursor.getSelectedRange()) {
                 if (quad_in_buffer > ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT) {
                     throw std::runtime_error("Not enough quad allowed to render the prompt.");
                 }
@@ -513,7 +391,7 @@ void Editor::drawText(const HighLighter& highLighter, const Cursor& cursor, cons
                     default:
                         if (pen_position_x + font_advance >= position_x) {
                             // Only fetch characters and insert if it could be visible
-                            const auto token_id = highLighter.getHighLightAtPosition(line_index, character_column);
+                            const auto token_id = context.highlighter.getHighLightAtPosition(line_index, character_column);
                             const auto &character = m_theme.getCharacter(c);
                             const auto &character_color = m_theme.getColor(token_id);
                             drawCharacter(pen_position_x, pen_position_y, character, character_color);

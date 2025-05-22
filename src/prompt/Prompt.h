@@ -17,7 +17,7 @@
  * Handles rendering of the prompt input line, managing command execution,
  * and offering auto-completions.
  */
-class Prompt final : public View<PromptCursor, PromptState> {
+class Prompt final : public View<PromptState> {
 private:
     /**
      * @brief: Draw the background layer of the prompt.
@@ -27,10 +27,10 @@ private:
 
     /**
      * @brief: Draw the text layer of the prompt.
-     * @param cursor A reference to the PromptCursor.
+     * @param context A reference to the cursor context.
      * @param viewState A reference to the Prompt view state.
      */
-    void drawText(const PromptCursor &cursor, const PromptState &viewState) const;
+    void drawText(const CursorContext &context, const PromptState &viewState) const;
 
 public:
     /**
@@ -44,32 +44,29 @@ public:
 
     /**
      * @brief Renders the command prompt on screen.
-     * @param highLighter Reference to the syntax highlighter.
-     * @param cursor Current prompt cursor state.
+     * @param context Reference to the cursor context.
      * @param viewState The associated PromptState for layout/input data.
      * @param dt Time delta since the last frame.
      */
-    void render(const HighLighter &highLighter, const PromptCursor &cursor, PromptState &viewState, float dt) override;
+    void render(CursorContext &context, PromptState &viewState, float dt) override;
 
     /**
      * @brief Handles key events while the prompt is active.
-     * @param highLighter Reference to the syntax highlighter.
-     * @param cursor Current prompt cursor state.
+     * @param context Reference to the cursor context.
      * @param viewState The prompt's view state.
      * @param keyCode SDL key code.
      * @param keyModifier Key modifier mask.
      * @return True if input was handled.
      */
-    bool onKeyDown(const HighLighter &highLighter, PromptCursor &cursor, PromptState &viewState, SDL_Keycode keyCode, uint16_t keyModifier) const override;
+    bool onKeyDown(CursorContext &context, PromptState &viewState, SDL_Keycode keyCode, uint16_t keyModifier) const override;
 
     /**
      * @brief Handles raw text input for the prompt.
-     * @param highLighter Reference to the syntax highlighter.
-     * @param cursor Current prompt cursor state.
+     * @param context Reference to the cursor context.
      * @param viewState The prompt's view state.
      * @param text UTF-8 encoded character input.
      */
-    void onTextInput(const HighLighter &highLighter, PromptCursor &cursor, PromptState &viewState, const char* text) const override;
+    void onTextInput(CursorContext &context, PromptState &viewState, const char* text) const override;
 };
 
 
