@@ -14,12 +14,13 @@
  * A CompletionCallback is used to provide completion suggestions for command arguments.
  * It is typically invoked during user input to suggest possible completions based on the current input.
  *
+ * @param context The cursor context executing the completion.
  * @param argumentIndex The index of the argument currently being completed.
  * @param input The current partial input from the user for this argument.
  * @param itemCallback A callback to be invoked with each completion suggestion.
  */
 using CompletionCallback = std::function<
-    void(int32_t argumentIndex, std::string_view input, const ItemCallback<char> &itemCallback)
+    void(const CursorContext &context, int32_t argumentIndex, std::string_view input, const ItemCallback<char> &itemCallback)
 >;
 
 

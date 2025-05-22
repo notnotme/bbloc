@@ -26,7 +26,6 @@ add_executable(bbloc
         src/core/ViewState.cpp
         src/core/theme/Theme.cpp
         src/editor/Editor.cpp
-        src/editor/EditorState.cpp
         src/infobar/InfoBar.cpp
         src/prompt/Prompt.cpp
         src/prompt/PromptState.cpp

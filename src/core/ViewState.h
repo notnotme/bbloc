@@ -23,16 +23,15 @@ protected:
     /** Height of the InfoBar (in pixels). */
     uint16_t m_height;
 
-protected:
-    /** @brief For inheritance */
-    explicit ViewState();
-
 public:
     /** @brief Deleted copy constructor. */
     ViewState(const ViewState &) = delete;
 
     /** @brief Deleted copy assignment operator. */
     ViewState &operator=(const ViewState &) = delete;
+
+    /** @brief Create a ViewState with default values. */
+    explicit ViewState();
 
     /** @brief For inheritance */
     virtual ~ViewState() = default;

@@ -7,16 +7,14 @@
 #include <SDL.h>
 
 #include "core/command/cvar/CVarFloat.h"
+#include "core/CommandFeedback.h"
 #include "core/command/CommandManager.h"
 #include "core/cursor/PromptCursor.h"
-#include "core/cursor/Cursor.h"
 #include "core/renderer/QuadBuffer.h"
 #include "core/renderer/QuadProgram.h"
 #include "core/theme/Theme.h"
 #include "editor/Editor.h"
-#include "editor/EditorState.h"
 #include "infobar/InfoBar.h"
-#include "infobar/InfoBarState.h"
 #include "prompt/Prompt.h"
 #include "prompt/PromptState.h"
 
@@ -33,12 +31,6 @@ private:
     enum class FocusTarget {
         Editor, ///< Editor view is focused.
         Prompt  ///< Prompt view is focused.
-    };
-
-    /** @brief Dirty flags used for tracking pending updates. */
-    enum DirtyFlag {
-        Views  = 1,           ///< UI views need to be redrawn.
-        Matrix = Views << 1   ///< Projection matrix needs updating.
     };
 
 public:
@@ -76,9 +68,6 @@ private:
     /** Theme manager for fonts, colors, and UI style. */
     Theme m_theme;
 
-    /** Syntax highlighter used by views. */
-    HighLighter m_high_lighter;
-
     /** Shader program used to render textured quads. */
     QuadProgram m_quad_program;
 
@@ -95,7 +84,7 @@ private:
     PromptCursor m_prompt_cursor;
 
     /** The only cursor for now */
-    Cursor m_cursor;
+    CursorContext m_cursor_context;
 
     /** Top info bar view. */
     InfoBar m_info_bar;
@@ -104,10 +93,10 @@ private:
     Editor m_editor;
 
     /** State tracking the info bar. */
-    InfoBarState m_info_bar_state;
+    ViewState m_info_bar_state;
 
     /** State object tracking the editor. */
-    EditorState m_editor_state;
+    ViewState m_editor_state;
 
     /** State object tracking the prompt. */
     PromptState m_prompt_state;
@@ -115,11 +104,20 @@ private:
     /** Bottom command prompt view. */
     Prompt m_prompt;
 
+    /** Active feedback prompt state. */
+    std::optional<CommandFeedback> m_command_feedback;
+
     /** The current focused view */
     FocusTarget m_focus_target;
 
     /** 4x4 orthogonal projection matrix for 2D rendering. */
     std::array<float, 16> m_orthogonal;
+
+    /**
+      * @brief Provides completions for interactive feedback input.
+      * @param itemCallback Callback receiving feedback suggestions.
+      */
+    void getFeedbackCompletion(const ItemCallback<char16_t> &itemCallback) const;
 
     /**
      * @brief Recomputes the orthogonal projection matrix.
@@ -149,11 +147,39 @@ private:
     /** @brief Registers the activate_prompt command. */
     void registerActivatePromptCommand();
 
+    /** @brief Registers the copy command. */
+    void registerCopyCommand();
+
+    /** @brief Registers the paste command. */
+    void registerPasteCommand();
+
+    /** @brief Registers the cut command. */
+    void registerCutCommand();
+
+    /** @brief Registers a command to change highlight mode. */
+    void registerHighlighterCommand();
+
+    /** @brief Registers the exec command. */
+    void registerExecCommand();
+
+    /** @brief Registers the commands to move the cursors. */
+    void registerMoveCommands();
+
+    /** @brief Registers the cancel command */
+    void registerCancelCommand();
+
+    /** @brief Registers the validate command */
+    void registerValidateCommand();
+
+    /** @brief Registers the auto_complete command */
+    void registerAutoCompleteCommand();
+
     /**
      * @brief Run the said command.
      * @param command The command string to rexecute by m_command_manager.
+     * @param fromPrompt If the command is running from a direct prompt input.
      */
-    void runCommand(std::u16string_view command);
+    void runCommand(std::u16string_view command, bool fromPrompt);
 
     /** @brief Normalize input modifiers from raw sdl input modifiers*/
     static uint16_t normalizeModifiers(uint16_t modifiers);
