@@ -12,6 +12,7 @@
 #include "cvar/CVarCallback.h"
 #include "CommandCallback.h"
 #include "CompletionCallback.h"
+#include "ConditionCallback.h"
 #include "ItemCallback.h"
 
 
@@ -32,8 +33,9 @@ private:
 
     /** @brief Internal structure representing a registered command. */
     struct CommandEntry final {
-        CommandCallback func;               ///< Function to execute for this command.
-        CompletionCallback completion_func; ///< Optional function for argument auto-completion.
+        ConditionCallback condition_callback;   ///< Optional callback to evaluate before command execution.
+        CommandCallback command_callback;       ///< Function to execute for this command.
+        CompletionCallback completion_func;     ///< Optional function for argument auto-completion.
     };
 
     /** Registered commands. */
@@ -61,10 +63,11 @@ public:
     /**
      * @brief Registers a new command.
      * @param name Command name (must be unique).
-     * @param callback Function executed when the command is called.
+     * @param conditionCallback Callback to evaluate if a command can be run.
+     * @param commandCallback Function executed when the command is called.
      * @param completionCallback Optional function for argument auto-completion.
      */
-    void registerCommand(std::string_view name, const CommandCallback &callback, const CompletionCallback &completionCallback = nullptr);
+    void registerCommand(std::string_view name, const ConditionCallback &conditionCallback, const CommandCallback &commandCallback, const CompletionCallback &completionCallback = nullptr);
 
     /**
      * @brief Registers a new configuration variable (CVar).
@@ -77,10 +80,10 @@ public:
     /**
      * @brief Executes a command string.
      * @param context Reference to the cursor context executing this command.
-     * @param input UTF-16 input string containing the command and arguments.
+     * @param tokens List of UTF-16 input string view containing the command and arguments.
      * @return An optional result string for displaying messages in the prompt.
      */
-    std::optional<std::u16string> execute(CursorContext &context, std::u16string_view input);
+    std::optional<std::u16string> execute(CursorContext &context, const std::vector<std::u16string_view> &tokens);
 
     /**
      * @brief Gathers auto-completion suggestions for CVars.
@@ -105,6 +108,13 @@ public:
      * @param itemCallback Callback to receive argument name suggestions.
      */
     void getArgumentsCompletion(const CursorContext &context, std::string_view command, int32_t argumentIndex, std::string_view input, const ItemCallback<char> &itemCallback);
+
+    /**
+     * @brief Executes the condition function of a command string.
+     * @param tokens List of UTF-16 input string view containing the command and arguments.
+     * @return An optional result string for displaying messages in the prompt.
+     */
+    [[nodiscard]] bool canExecute(const std::vector<std::u16string_view> &tokens);
 
     /**
      * @brief Tokenizes a UTF-16 input string for command parsing. Splits the input into a list of arguments.

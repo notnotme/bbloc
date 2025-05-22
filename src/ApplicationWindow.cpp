@@ -92,7 +92,7 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
     // Create the theme
-    constexpr auto path = "romfs/";
+    const auto path = std::string("romfs/");
     m_theme.create(m_command_manager, path);
 
     // Create the quad buffer
@@ -127,9 +127,7 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     registerCancelCommand();
     registerValidateCommand();
     registerAutoCompleteCommand();
-
-    constexpr auto path_utf16 = u"romfs/";
-    m_command_manager.execute(m_cursor_context, std::u16string(u"exec ").append(path_utf16).append(u"autoexec"));
+    m_command_manager.execute(m_cursor_context, { u"exec", utf8::utf8to16(path).append(u"autoexec") });
 }
 
 void ApplicationWindow::mainLoop() {
@@ -176,8 +174,9 @@ void ApplicationWindow::mainLoop() {
                     if (const auto &map_entry = m_key_bindings.find(event.key.keysym.sym); map_entry != m_key_bindings.end()) {
                         if (const auto &binding = map_entry->second.find(modifiers); binding != map_entry->second.end()) {
                             // This does not necessarily redraw here, let the runCommand decide.
-                            runCommand(binding->second, false);
-                            break;
+                            if (runCommand(binding->second, false)) {
+                                break;
+                            }
                         }
                     }
 
@@ -300,13 +299,7 @@ void ApplicationWindow::destroy() {
     m_orthogonal = {};
 }
 
-void ApplicationWindow::runCommand(const std::u16string_view command, const bool fromPrompt) {
-    if (fromPrompt && !m_command_feedback) {
-        // If a command is not running from direct prompt input, don't add it to history
-        // and if feedback is available, don't push the answer to the feedback to the history
-        m_prompt_state.addHistory(command);
-    }
-
+bool ApplicationWindow::runCommand(const std::u16string_view command, const bool fromPrompt) {
     std::optional<std::u16string> result;
     if (m_command_feedback) {
         // Before executing the command, check if feedback exists
@@ -324,12 +317,23 @@ void ApplicationWindow::runCommand(const std::u16string_view command, const bool
             m_prompt_state.setRunningState(PromptState::RunningState::Idle);
         }
     } else {
+        const auto &tokens = CommandManager::tokenize(command);
+        const auto allowed_to_run = m_command_manager.canExecute(tokens);
+        if (tokens.empty() || !allowed_to_run) {
+            // Nothing to process
+            return false;
+        }
+
         if (fromPrompt) {
+            // If a command is not running from direct prompt input, don't add it to history
+            m_prompt_state.addHistory(command);
+
             // Move focus to the editor if we run this command from the prompt,
-            // because we don't want the next command to apply in the prompt in this case.
+            // because we don't want the next command to apply in the prompt in this case (e.g: "move up").
             m_focus_target = FocusTarget::Editor;
         }
-        result = m_command_manager.execute(m_cursor_context, command);
+
+        result = m_command_manager.execute(m_cursor_context, tokens);
     }
 
     if (result) {
@@ -380,6 +384,8 @@ void ApplicationWindow::runCommand(const std::u16string_view command, const bool
             }
         }
     }
+
+    return true;
 }
 
 void ApplicationWindow::getFeedbackCompletion(const ItemCallback<char16_t> &itemCallback) const {
@@ -414,6 +420,11 @@ uint16_t ApplicationWindow::normalizeModifiers(const uint16_t modifiers) {
 void ApplicationWindow::registerOpenCommand() {
     // Add the "open" command to open files and populate Cursor's buffer
     m_command_manager.registerCommand("open",
+        [](const std::vector<std::u16string_view> &commandTokens) {
+            (void) commandTokens;
+            // This can be run with no restriction
+            return true;
+        },
         [&](CursorContext &context, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             if (args.size() != 1) {
                 return u"Usage: open <filename>";
@@ -479,6 +490,11 @@ void ApplicationWindow::registerOpenCommand() {
 void ApplicationWindow::registerSaveCommand() {
     // Add the "save" command to save files to disk
     m_command_manager.registerCommand("save",
+        [](const std::vector<std::u16string_view> &commandTokens) {
+            (void) commandTokens;
+            // This can be run with no restriction
+            return true;
+        },
         [&](CursorContext &context, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             const auto cursor_name = std::filesystem::path(context.cursor.getName());
             if (cursor_name.empty() && (args.empty() || (args.size() >= 2 && args[1] != u"-f"))) {
@@ -548,6 +564,11 @@ void ApplicationWindow::registerRenderTimeCommand() {
     // Register inf_render_time cvar and associated command to reset the value, since we made it read-only
     m_command_manager.registerCvar("inf_render_time", m_render_time);
     m_command_manager.registerCommand("reset_render_time",
+        [](const std::vector<std::u16string_view> &commandTokens) {
+            (void) commandTokens;
+            // This can be run with no restriction
+            return true;
+        },
         [&](const CursorContext &context, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             (void) context;
             if (!args.empty()) {
@@ -562,6 +583,11 @@ void ApplicationWindow::registerRenderTimeCommand() {
 void ApplicationWindow::registerQuitCommand() {
     // Register quit command
     m_command_manager.registerCommand("quit",
+        [](const std::vector<std::u16string_view> &commandTokens) {
+            (void) commandTokens;
+            // This can be run with no restriction
+            return true;
+        },
         [&](const CursorContext &context, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             (void) context;
             if (!args.empty()) {
@@ -577,6 +603,11 @@ void ApplicationWindow::registerQuitCommand() {
 void ApplicationWindow::registerBindCommand() {
     // Register bind command
     m_command_manager.registerCommand("bind",
+        [](const std::vector<std::u16string_view> &commandTokens) {
+            (void) commandTokens;
+            // This can be run with no restriction
+            return true;
+        },
         [&](const CursorContext &context, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             (void) context;
             if (args.size() < 3 || (!args.empty() && args[1].empty())) {
@@ -614,6 +645,11 @@ void ApplicationWindow::registerBindCommand() {
 void ApplicationWindow::registerFontSizeCommand() {
     // Register increase_font_size and decrease_font_size command
     m_command_manager.registerCommand("increase_font_size",
+        [](const std::vector<std::u16string_view> &commandTokens) {
+            (void) commandTokens;
+            // This can be run with no restriction
+            return true;
+        },
         [&](CursorContext &context, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             (void) context;
             if (!args.empty()) {
@@ -628,6 +664,11 @@ void ApplicationWindow::registerFontSizeCommand() {
         });
 
     m_command_manager.registerCommand("decrease_font_size",
+        [](const std::vector<std::u16string_view> &commandTokens) {
+            (void) commandTokens;
+            // This can be run with no restriction
+            return true;
+        },
         [&](CursorContext &context, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             (void) context;
             if (!args.empty()) {
@@ -645,6 +686,11 @@ void ApplicationWindow::registerFontSizeCommand() {
 void ApplicationWindow::registerActivatePromptCommand() {
     // Register activate_prompt command
     m_command_manager.registerCommand("activate_prompt",
+        [&](const std::vector<std::u16string_view> &commandTokens) {
+            (void) commandTokens;
+            // This can be run only if the editor has the focus
+            return m_focus_target == FocusTarget::Editor;
+        },
         [&](CursorContext &context, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             (void) context;
             if (!args.empty()) {
@@ -656,6 +702,7 @@ void ApplicationWindow::registerActivatePromptCommand() {
             // Set prompt to running state
             m_prompt_state.setRunningState(PromptState::RunningState::Running);
             m_prompt_state.setPromptText(PromptState::PROMPT_ACTIVE);
+            m_prompt_cursor.clear();
 
             context.wants_redraw = true;
             return std::nullopt;
@@ -665,6 +712,11 @@ void ApplicationWindow::registerActivatePromptCommand() {
 void ApplicationWindow::registerCopyCommand() {
     // Resisters the copy command
     m_command_manager.registerCommand("copy",
+        [&](const std::vector<std::u16string_view> &commandTokens) {
+            (void) commandTokens;
+            // This can be run only if the editor has the focus
+            return m_focus_target == FocusTarget::Editor;
+        },
         [&](const CursorContext &context, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             if (!args.empty()) {
                 return u"Expected 0 argument.";
@@ -695,6 +747,11 @@ void ApplicationWindow::registerCopyCommand() {
 void ApplicationWindow::registerPasteCommand() {
     // Resisters the paste command
     m_command_manager.registerCommand("paste",
+        [&](const std::vector<std::u16string_view> &commandTokens) {
+            (void) commandTokens;
+            // This can be run only if the editor has the focus
+            return m_focus_target == FocusTarget::Editor;
+        },
         [&](CursorContext &context, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             if (!args.empty()) {
                 return u"Expected 0 argument.";
@@ -728,6 +785,11 @@ void ApplicationWindow::registerPasteCommand() {
 void ApplicationWindow::registerCutCommand() {
     // Resisters the cur command
     m_command_manager.registerCommand("cut",
+        [&](const std::vector<std::u16string_view> &commandTokens) {
+            (void) commandTokens;
+            // This can be run only if the editor has the focus
+            return m_focus_target == FocusTarget::Editor;
+        },
         [&](CursorContext &context, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             if (!args.empty()) {
                 return u"Expected 0 argument.";
@@ -764,6 +826,11 @@ void ApplicationWindow::registerCutCommand() {
 void ApplicationWindow::registerHighlighterCommand() {
     // Register a command to change the highlight mode
     m_command_manager.registerCommand("set_hl_mode",
+        [](const std::vector<std::u16string_view> &commandTokens) {
+            (void) commandTokens;
+            // This can be run with no restriction
+            return true;
+        },
         [&](CursorContext &context, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             if (args.size() != 1) {
                 return u"Usage: set_hl_mode <mode>";
@@ -795,6 +862,11 @@ void ApplicationWindow::registerHighlighterCommand() {
 void ApplicationWindow::registerExecCommand() {
     // Register the exec command, that read a text file on disk and execute each line as command
     m_command_manager.registerCommand("exec",
+        [](const std::vector<std::u16string_view> &commandTokens) {
+            (void) commandTokens;
+            // This can be run with no restriction
+            return true;
+        },
         [&](CursorContext &context, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             if (args.size() != 1) {
                 return u"Usage: exec <filename>";
@@ -831,7 +903,8 @@ void ApplicationWindow::registerExecCommand() {
                 // fixme?: At this point, any feedback needed will interrupt the command list execution
                 // fixme?: autoexec does not show in history
                 // todo: take in account "#" as comment and don't execute the line
-                if (const auto &result = m_command_manager.execute(context, command)) {
+                const auto &tokens = CommandManager::tokenize(command);
+                if (const auto &result = m_command_manager.execute(context, tokens)) {
                     context.wants_redraw = true;
                     return result.value();
                 }
@@ -852,6 +925,11 @@ void ApplicationWindow::registerExecCommand() {
 void ApplicationWindow::registerMoveCommands() {
     // Register the move commands
     m_command_manager.registerCommand("move",
+        [](const std::vector<std::u16string_view> &commandTokens) {
+            (void) commandTokens;
+            // This can be run with no restriction
+            return true;
+        },
         [&](CursorContext &context, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             if (args.empty() || args.size() > 2) {
                 return u"Usage: move <direction> [selected]";
@@ -970,6 +1048,11 @@ void ApplicationWindow::registerMoveCommands() {
 void ApplicationWindow::registerCancelCommand() {
     // Register cancel command
     m_command_manager.registerCommand("cancel",
+        [&](const std::vector<std::u16string_view> &commandTokens) {
+            (void) commandTokens;
+            // Only the prompt can be canceled
+            return m_focus_target == FocusTarget::Prompt;
+        },
         [&](const CursorContext &context, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             (void) context;
             if (!args.empty()) {
@@ -994,6 +1077,11 @@ void ApplicationWindow::registerCancelCommand() {
 void ApplicationWindow::registerValidateCommand() {
     // Register validate command
     m_command_manager.registerCommand("validate",
+        [&](const std::vector<std::u16string_view> &commandTokens) {
+            (void) commandTokens;
+            // Only the prompt can be validated
+            return m_focus_target == FocusTarget::Prompt;
+        },
         [&](CursorContext &context, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             if (!args.empty()) {
                 return u"Expected 0 argument.";
@@ -1007,20 +1095,8 @@ void ApplicationWindow::registerValidateCommand() {
                     runCommand(prompt_command, true);
                 }
                 break;
-                case FocusTarget::Editor: {
-                    if (const auto &edit = context.cursor.eraseSelection()) {
-                        // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
-                        context.highlighter.edit(edit.value());
-                        context.cursor.setPosition(edit->new_end.line, edit->new_end.column);
-                        context.cursor.activateSelection(false);
-                    }
-
-                    const auto &edit = context.cursor.newLine();
-                    context.highlighter.edit(edit);
-                    context.follow_indicator = true;
-                    context.wants_redraw = true;
-                    break;
-                }
+                case FocusTarget::Editor:
+                    // No-op
                 default:
                 break;
             }
@@ -1032,16 +1108,23 @@ void ApplicationWindow::registerValidateCommand() {
 void ApplicationWindow::registerAutoCompleteCommand() {
     // Register validate command
     m_command_manager.registerCommand("auto_complete",
+        [&](const std::vector<std::u16string_view> &commandTokens) {
+            (void) commandTokens;
+            // Only the prompt can be auto completed
+            return m_focus_target == FocusTarget::Prompt;
+        },
         [&](CursorContext &context, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             if (args.size() > 1) {
                 return u"Expected 0 or 1 argument.";
             }
 
             int direction = 0;
-            if (args[0] == u"forward") {
-                direction = 0;
-            } else if (args[0] == u"backward") {
-                direction = 1;
+            if (!args.empty()) {
+                if (args[0] == u"forward") {
+                    direction = 0;
+                } else if (args[0] == u"backward") {
+                    direction = 1;
+                }
             }
 
             switch (m_focus_target) {
