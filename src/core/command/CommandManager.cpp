@@ -13,13 +13,13 @@ CommandManager::CommandManager() {
     registerCVarCommand();
 }
 
-void CommandManager::registerCommand(const std::string_view name, const CommandCallback &callback, const CompletionCallback &completionCallback) {
+void CommandManager::registerCommand(const std::string_view name, const ConditionCallback &conditionCallback, const CommandCallback &commandCallback, const CompletionCallback &completionCallback) {
     const auto c_string = name.data();
     if (m_commands.contains(c_string)) {
         throw std::runtime_error(std::string("Command already registered: ").append(name));
     }
 
-    const auto &[new_entry, success] = m_commands.insert({c_string, { .func = callback, .completion_func = completionCallback}});
+    const auto &[new_entry, success] = m_commands.insert({ c_string, { conditionCallback, commandCallback, completionCallback } });
     if (!success) {
         throw std::runtime_error(std::string("Unable to register command: ").append(name));
     }
@@ -37,8 +37,7 @@ void CommandManager::registerCvar(const std::string_view name, std::shared_ptr<C
     }
 }
 
-std::optional<std::u16string> CommandManager::execute(CursorContext &context, const std::u16string_view input) {
-    const auto tokens = tokenize(input);
+std::optional<std::u16string> CommandManager::execute(CursorContext &context, const std::vector<std::u16string_view> &tokens) {
     if (tokens.empty()) {
         // Nothing to process
         return std::nullopt;
@@ -47,7 +46,7 @@ std::optional<std::u16string> CommandManager::execute(CursorContext &context, co
     const auto command = utf8::utf16to8(tokens[0]);
     if (const auto &cmd = m_commands.find(command); cmd != m_commands.end()) {
         // Skip the first item in the tokens, as it is the command name and we don't need it
-        return cmd->second.func(context, {tokens.begin() + 1, tokens.end()});
+        return cmd->second.command_callback(context, { tokens.begin() + 1, tokens.end() });
     }
 
     return std::u16string(u"Unknown command: ").append(tokens[0]);
@@ -79,6 +78,20 @@ void CommandManager::getArgumentsCompletion(const CursorContext &context, const 
             cmd->second.completion_func(context, argumentIndex, input, itemCallback);
         }
     }
+}
+
+bool CommandManager::canExecute(const std::vector<std::u16string_view> &tokens) {
+    if (tokens.empty()) {
+        // Nothing to process
+        return false;
+    }
+
+    const auto utf8_command = utf8::utf16to8(tokens[0]);
+    if (const auto &cmd = m_commands.find(utf8_command); cmd != m_commands.end()) {
+        return cmd->second.condition_callback(tokens);
+    }
+
+    return false;
 }
 
 void CommandManager::getPathCompletions(const std::string_view input, const bool foldersOnly, const ItemCallback<char> &itemCallback) {
@@ -168,8 +181,13 @@ std::vector<std::u16string_view> CommandManager::split(const std::u16string_view
 void CommandManager::registerCVarCommand() {
     // Register a "cvar" command that prints or set a CVar value
     // This will also call any callback registered with the said CVar
-    // built-in COmmandManager
+    // built-in CommandManager
     registerCommand("cvar",
+        [](const std::vector<std::u16string_view> &commandTokens) {
+            (void) commandTokens;
+            // This can be run with no restriction
+            return true;
+        },
         [&](const CursorContext &context, const std::vector<std::u16string_view> &args) -> std::optional<std::u16string> {
             (void) context;
             if (args.empty()) {

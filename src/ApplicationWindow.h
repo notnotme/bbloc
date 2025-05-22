@@ -179,7 +179,7 @@ private:
      * @param command The command string to rexecute by m_command_manager.
      * @param fromPrompt If the command is running from a direct prompt input.
      */
-    void runCommand(std::u16string_view command, bool fromPrompt);
+    bool runCommand(std::u16string_view command, bool fromPrompt);
 
     /** @brief Normalize input modifiers from raw sdl input modifiers*/
     static uint16_t normalizeModifiers(uint16_t modifiers);

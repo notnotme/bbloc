@@ -62,6 +62,19 @@ void Editor::render(CursorContext &context, ViewState &viewState, const float dt
 
 bool Editor::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
     switch (keyCode) {
+        case SDLK_RETURN: {
+            context.follow_indicator = true;
+            if (const auto &edit = context.cursor.eraseSelection()) {
+                // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
+                context.highlighter.edit(edit.value());
+                context.cursor.setPosition(edit->new_end.line, edit->new_end.column);
+                context.cursor.activateSelection(false);
+            }
+
+            const auto &edit = context.cursor.newLine();
+            context.highlighter.edit(edit);
+        }
+        return true;
         case SDLK_BACKSPACE: {
             context.follow_indicator = true;
             if (const auto &selection = context.cursor.eraseSelection()) {
