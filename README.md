@@ -89,7 +89,7 @@ $ cmake -G"Unix Makefiles" -DCMAKE_C_FLAGS="$CFLAGS $CPPFLAGS" -DCMAKE_TOOLCHAIN
 $ make
 ```
 
-The game controller and IME is not yet supported.
-USB keyboard is not really supported yet, SDL2 only sends key event and no text input.
+The game controller and IME is not yet supported (you can press "+" to quit the program however).  
+USB keyboard is partially supported for basic text typing and key binds (no text composition, key mapping may be out of place).
 
 ![img](./capture.png)
