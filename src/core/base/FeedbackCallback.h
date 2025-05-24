@@ -14,12 +14,12 @@
  * It receives both the answer/output and the original/modified command as UTF-16 string views.
  * The callback may return an optional modified message or feedback.
  *
- * @param answer The output or result of the executed command.
+ * @param input The output or result of the executed command.
  * @param command The command input to be invoked next if the feedback succeeds.
  * @return An optional UTF-16 string message, such as modified output or additional feedback.
  */
 using FeedbackCallback = std::function<
-    std::optional<std::u16string>(std::u16string_view answer, std::u16string_view command)
+    std::optional<std::u16string>(std::u16string_view input, std::u16string_view command)
 >;
 
 

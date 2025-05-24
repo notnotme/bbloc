@@ -3,8 +3,8 @@
 
 #include <SDL.h>
 
-#include "../core/command/cvar/CVarBool.h"
-#include "../core/command/CommandManager.h"
+#include "../core/base/CommandController.h"
+#include "../core/cvar/CVarBool.h"
 #include "../core/renderer/QuadProgram.h"
 #include "../core/renderer/QuadBuffer.h"
 #include "../core/theme/Theme.h"
@@ -81,12 +81,12 @@ private:
 public:
     /**
      * @brief Constructs the Editor view.
-     * @param commandManager Reference to the CommandManager.
+     * @param commandController Reference to the CommandController.
      * @param theme Reference to the Theme for rendering.
      * @param quadProgram Reference to the QuadProgram shader.
      * @param quadBuffer Reference to the geometry buffer.
      */
-    explicit Editor(CommandManager &commandManager, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
+    explicit Editor(CommandController<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
 
     /**
      * @brief Renders the text editor to the screen.

@@ -9,7 +9,7 @@
 
 #include <tree_sitter/api.h>
 
-#include "../command/ItemCallback.h"
+#include "../base/AutoCompleteCallback.h"
 #include "../cursor/buffer/BufferEdit.h"
 #include "../cursor/Cursor.h"
 #include "HighLightId.h"
@@ -122,10 +122,10 @@ public:
     [[nodiscard]] std::string_view getModeString() const;
 
     /**
-     * @brief Retrieves all available parser names for use in the prompt.
+     * @brief Retrieves all available parser names.
      * @param callback Callback that receives each parser name.
      */
-    static void getParserNames(const ItemCallback<char> &callback);
+    static void getParserCompletions(const AutoCompleteCallback<char> &callback);
 
     /**
      * @brief Checks whether a given file extension is supported.

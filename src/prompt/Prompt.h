@@ -35,12 +35,12 @@ private:
 public:
     /**
      * @brief Constructs a Prompt view instance.
-     * @param commandManager Reference to the CommandManager instance.
+     * @param commandController Reference to the CommandManager instance.
      * @param theme Reference to the Theme manager for styling.
      * @param quadProgram Reference to the QuadProgram for rendering.
      * @param quadBuffer Reference to the QuadBuffer for geometry submission.
      */
-    explicit Prompt(CommandManager &commandManager, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
+    explicit Prompt(CommandController<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
 
     /**
      * @brief Renders the command prompt on screen.

@@ -1,15 +1,15 @@
 #ifndef PROMPT_STATE_H
 #define PROMPT_STATE_H
 
-#include <cstdint>
 #include <list>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "../core/cvar/CVarInt.h"
+#include "../core/CommandManager.h"
+#include "../core/CursorContext.h"
 #include "../core/ViewState.h"
-#include "../core/command/cvar/CVarInt.h"
-#include "../core/command/CommandManager.h"
 
 /**
  * @brief Stores the layout, input state, and completions of the command prompt view.

@@ -20,11 +20,11 @@
  *
  * @tparam TState State type for additional view-specific information.
  */
-template <class TState = ViewState>
+template <typename TState = ViewState>
 class View {
 protected:
-    /** Reference to the command manager (used for dynamic runtime controls). */
-    CommandManager &m_command_manager;
+    /** Reference to a command controller. */
+    CommandController<CursorContext> &m_command_controller;
 
     /** Reference to the theme used for rendering (colors, fonts, etc.). */
     Theme &m_theme;
@@ -72,12 +72,12 @@ public:
 
     /**
      * @brief Constructs a view with references to rendering and theme resources.
-     * @param commandManager Reference to the command manager.
+     * @param commandController Reference to a command controller.
      * @param theme Reference to the theme manager.
      * @param quadProgram Reference to the quad shader program.
      * @param quadBuffer Reference to the quad geometry buffer.
      */
-    explicit View(CommandManager &commandManager, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
+    explicit View(CommandController<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
 
     /**
      * @brief Renders the view contents.
@@ -113,22 +113,22 @@ public:
     void resizeWindow(int32_t width, int32_t height);
 };
 
-template<class TState>
-View<TState>::View(CommandManager &commandManager, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
-    : m_command_manager(commandManager),
+template <typename TState>
+View<TState>::View(CommandController<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
+    : m_command_controller(commandController),
       m_theme(theme),
       m_quad_program(quadProgram),
       m_quad_buffer(quadBuffer),
       m_window_width(0),
       m_window_height(0) {}
 
-template<class TState>
+template <typename TState>
 void View<TState>::resizeWindow(const int32_t width, const int32_t height) {
     m_window_width = width;
     m_window_height = height;
 }
 
-template<class TState>
+template <typename TState>
 void View<TState>::drawQuad(const int32_t x, const int32_t y, const int32_t width, const int32_t height, const Color &color) const {
     m_quad_buffer.insert(
         static_cast<int16_t>(x),
@@ -138,7 +138,7 @@ void View<TState>::drawQuad(const int32_t x, const int32_t y, const int32_t widt
         color.red, color.green, color.blue, color.alpha);
 }
 
-template<class TState>
+template<typename TState>
 void View<TState>::drawCharacter(const int32_t x, const int32_t y, const AtlasEntry &character, const Color &color) const {
     m_quad_buffer.insert(
         static_cast<int16_t>(x + character.bearing_x),

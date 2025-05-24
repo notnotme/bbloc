@@ -3,8 +3,9 @@
 bbloc is a minimalist toy text editor developed in C++ using SDL2, OpenGL, glad, Freetype, utfcpp, and tree-sitter.
 
 There are missing key feature but most importantly:
-- undo/redo
-- search/replace
+- Up to date documentation
+- Undo/Redo feature
+- Search/Replace feature
 - More and better syntax highlight (mappers need to be done)
 - Better error handling.
 
@@ -24,9 +25,15 @@ Commands can be registered to become available in the prompt. There is also a CV
   |**exec \<filename\>**|This will read the said file line by line and execute each command in it. There is some limitation: the exec will stop if feedback is needed, or if a message is returned from one the command in the list. Commands inside the exec file are not parts of history.|
   |**set_hl_mode \<mode\>**|Change highlight mode in the editor. Please do not try to enable color highlight with a gigantic regular text file as the application does not set any timer to stop long parsing operation yet.|
   |**bind \<modifier\> \<key\> \<command\>**|Bind key press to a command. Modifiers are "+" separated (e.g: ctrl+shift). If the command take some arguments, quote it.|
-  |**increase_font_size**|Increase the font size by 1 pixel|
-  |**decrease_font_size**|Decrease the font size by 1 pixel|
-  |**activate_prompt**|Activate the prompt. For use with key binding. But you can activate the prompt inside the prompt if you want.|
+  |**set_font_size \<size\>**|Set the font size. Take "-", "+", or a size (e.g. 27) as argument.|
+  |**activate_prompt**|Activate the prompt.|
+  |**copy**|Copy the current selected text by the cursor to the clipboard.|
+  |**paste**|Paste the current text in the clipboard into the buffer.|
+  |**cut**|Cut the current selected text by the cursor, and put it in the clipboard.|
+  |**move \<direction\> \<expand_selection\>**|Move the cursor by some units. Direction is one of "**up**, **down**, **left**, **righ**, **bol**, **eol**, **bof**, **eof**, **page_up**, **page_down**". If **expand_selection** is true, then the current move activate and or expand the selected text. |
+  |**cancel**|Cancel the current action (e.g. Will close the prompt if opened).|
+  |**validate**|Validate the current action (e.g. Will validate the prompt and tries to run the input as a command).|
+  |**auto_complete \<direction\>**|Provide auto-completion of the input string in the prompt, if possible. Direction can be "**forward**, **backward**"|
 
   Current available CVar are:
   |Variable|Type|Description|

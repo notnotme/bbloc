@@ -7,24 +7,41 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Source files
 # ========================================
 add_executable(bbloc
-        src/core/command/cvar/CVar.cpp
-        src/core/command/cvar/CVarBool.cpp
-        src/core/command/cvar/CVarColor.cpp
-        src/core/command/cvar/CVarInt.cpp
-        src/core/command/cvar/CVarFloat.cpp
-        src/core/command/CommandManager.cpp
+        src/core/base/Command.h
         src/core/cursor/buffer/StringBuffer.cpp
         src/core/cursor/buffer/VectorBuffer.cpp
         src/core/cursor/Cursor.cpp
         src/core/cursor/PromptCursor.cpp
-        src/core/highlight/HighLighter.cpp
+        src/core/cvar/CVarBool.cpp
+        src/core/cvar/CVarColor.cpp
+        src/core/cvar/CVarInt.cpp
+        src/core/cvar/CVarFloat.cpp
+        src/core/highlighter/HighLighter.cpp
         src/core/renderer/AtlasArray.cpp
         src/core/renderer/QuadBuffer.cpp
         src/core/renderer/QuadProgram.cpp
         src/core/renderer/QuadTexture.cpp
         src/core/renderer/Shader.cpp
+        src/core/CommandManager.cpp
+        src/core/CVarCommand.cpp
         src/core/ViewState.cpp
         src/core/theme/Theme.cpp
+        src/command/QuitCommand.cpp
+        src/command/OpenFileCommand.cpp
+        src/command/SaveFileCommand.cpp
+        src/command/ResetRenderTimeCommand.cpp
+        src/command/FontSizeCommand.cpp
+        src/command/SetHighLightCommand.cpp
+        src/command/BindCommand.cpp
+        src/command/ActivatePromptCommand.cpp
+        src/command/CopyTextCommand.cpp
+        src/command/PasteTextCommand.cpp
+        src/command/CutTextCommand.cpp
+        src/command/MoveCursorCommand.cpp
+        src/command/ExecCommand.cpp
+        src/command/CancelCommand.cpp
+        src/command/ValidateCommand.cpp
+        src/command/AutoCompleteCommand.cpp
         src/editor/Editor.cpp
         src/infobar/InfoBar.cpp
         src/prompt/Prompt.cpp

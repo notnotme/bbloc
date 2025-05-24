@@ -1,6 +1,6 @@
 #ifndef TYPED_CVAR_H
 #define TYPED_CVAR_H
-#include "CVar.h"
+#include "../base/CVar.h"
 
 
 /**

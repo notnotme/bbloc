@@ -6,13 +6,14 @@
 
 #include <SDL.h>
 
-#include "core/command/cvar/CVarFloat.h"
-#include "core/CommandFeedback.h"
-#include "core/command/CommandManager.h"
+#include "core/cvar/CVarFloat.h"
+#include "core/CommandManager.h"
 #include "core/cursor/PromptCursor.h"
 #include "core/renderer/QuadBuffer.h"
 #include "core/renderer/QuadProgram.h"
 #include "core/theme/Theme.h"
+#include "core/CursorContext.h"
+#include "command/BindCommand.h"
 #include "editor/Editor.h"
 #include "infobar/InfoBar.h"
 #include "prompt/Prompt.h"
@@ -25,14 +26,7 @@
  * Responsible for SDL window and OpenGL context lifecycle, initializing core subsystems,
  * managing view layout and redraw state, and running the application's main event loop.
  */
-class ApplicationWindow final {
-private:
-    /** @brief Represents the currently focused input target. */
-    enum class FocusTarget {
-        Editor, ///< Editor view is focused.
-        Prompt  ///< Prompt view is focused.
-    };
-
+class ApplicationWindow final : public CommandRunner {
 public:
     /** Maximum number of renderable quads in m_quad_buffer. */
     static constexpr auto MAX_QUADS = 8192;
@@ -74,12 +68,6 @@ private:
     /** Geometry buffer for batched quad rendering. */
     QuadBuffer m_quad_buffer;
 
-    /** CVar tracking the maximum frame time (to render, before swapping). */
-    std::shared_ptr<CVarFloat> m_render_time;
-
-    /** Map of key binding to commands */
-    std::unordered_map<SDL_Keycode, std::unordered_map<uint16_t, std::u16string>> m_key_bindings;
-
     /** The prompt cursor. */
     PromptCursor m_prompt_cursor;
 
@@ -92,6 +80,9 @@ private:
     /** Main editor view. */
     Editor m_editor;
 
+    /** Bottom command prompt view. */
+    Prompt m_prompt;
+
     /** State tracking the info bar. */
     ViewState m_info_bar_state;
 
@@ -101,23 +92,14 @@ private:
     /** State object tracking the prompt. */
     PromptState m_prompt_state;
 
-    /** Bottom command prompt view. */
-    Prompt m_prompt;
+    /** CVar tracking the maximum frame time (to render, before swapping). */
+    std::shared_ptr<CVarFloat> m_render_time;
 
-    /** Active feedback prompt state. */
-    std::optional<CommandFeedback> m_command_feedback;
-
-    /** The current focused view */
-    FocusTarget m_focus_target;
+    /** The bind command. */
+    std::shared_ptr<BindCommand> m_bind_command;
 
     /** 4x4 orthogonal projection matrix for 2D rendering. */
     std::array<float, 16> m_orthogonal;
-
-    /**
-      * @brief Provides completions for interactive feedback input.
-      * @param itemCallback Callback receiving feedback suggestions.
-      */
-    void getFeedbackCompletion(const ItemCallback<char16_t> &itemCallback) const;
 
     /**
      * @brief Recomputes the orthogonal projection matrix.
@@ -126,63 +108,12 @@ private:
      */
     void updateOrthogonal(int32_t width, int32_t height);
 
-    /** @brief Registers the built-in ":open" command. */
-    void registerOpenCommand();
-
-    /** @brief Registers the built-in ":save" command. */
-    void registerSaveCommand();
-
-    /** @brief Registers the built-in render time command and cvar. */
-    void registerRenderTimeCommand();
-
-    /** @brief Registers the quit command. */
-    void registerQuitCommand();
-
-    /** @brief Registers the bind command. */
-    void registerBindCommand();
-
-    /** @brief Registers the increase_font_size and decrease_font_size command. */
-    void registerFontSizeCommand();
-
-    /** @brief Registers the activate_prompt command. */
-    void registerActivatePromptCommand();
-
-    /** @brief Registers the copy command. */
-    void registerCopyCommand();
-
-    /** @brief Registers the paste command. */
-    void registerPasteCommand();
-
-    /** @brief Registers the cut command. */
-    void registerCutCommand();
-
-    /** @brief Registers a command to change highlight mode. */
-    void registerHighlighterCommand();
-
-    /** @brief Registers the exec command. */
-    void registerExecCommand();
-
-    /** @brief Registers the commands to move the cursors. */
-    void registerMoveCommands();
-
-    /** @brief Registers the cancel command */
-    void registerCancelCommand();
-
-    /** @brief Registers the validate command */
-    void registerValidateCommand();
-
-    /** @brief Registers the auto_complete command */
-    void registerAutoCompleteCommand();
-
     /**
      * @brief Run the said command.
      * @param command The command string to rexecute by m_command_manager.
      * @param fromPrompt If the command is running from a direct prompt input.
      */
-    bool runCommand(std::u16string_view command, bool fromPrompt);
-
-    /** @brief Normalize input modifiers from raw sdl input modifiers*/
-    static uint16_t normalizeModifiers(uint16_t modifiers);
+    bool runCommand(std::u16string_view command, bool fromPrompt) override;
 
 public:
     /** @brief Deleted copy constructor. */
@@ -190,6 +121,8 @@ public:
 
     /** @brief Deleted copy assignment operator. */
     ApplicationWindow &operator=(const ApplicationWindow &) = delete;
+
+    ~ApplicationWindow() override = default;
 
     /** @brief Constructs the ApplicationWindow with default values. */
     explicit ApplicationWindow();
@@ -207,6 +140,10 @@ public:
 
     /** @brief Starts the main application loop (event handling and rendering). */
     void mainLoop();
+
+    void getCommandCompletions(std::string_view input, const AutoCompleteCallback<char> &itemCallback) override;
+    void getArgumentsCompletions(std::string_view command, int32_t argumentIndex, std::string_view input, const AutoCompleteCallback<char> &itemCallback) override;
+    void getFeedbackCompletions(const AutoCompleteCallback<char16_t> &itemCallback) const override;
 };
 
 
