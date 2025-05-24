@@ -15,23 +15,8 @@
  */
 class CVar {
 private:
-    /** Allows access to private members from the command manager. */
-    friend class CommandManager;
-
-private:
     /** Indicates whether this CVar is read-only. */
     const bool m_is_read_only;
-
-    /**
-     * @brief Sets the CVar value using string arguments (to be implemented by subclasses).
-     * This must not take into account the read-only status of the CVar.
-     * @param args The parsed arguments list.
-     * @return An optional message string in return.
-     */
-    virtual std::optional<std::u16string> setValueFromStrings(const std::vector<std::u16string_view> &args) = 0;
-
-    /** @return The current value as a UTF-16 string. */
-    [[nodiscard]] virtual std::u16string getStringValue() const = 0;
 
 public:
     /** @brief Deleted copy constructor. */
@@ -47,10 +32,21 @@ public:
      * @brief Constructs a CVar.
      * @param isReadOnly Whether this CVar is read-only.
      */
-    explicit CVar(bool isReadOnly);
+    explicit CVar(const bool isReadOnly) : m_is_read_only(isReadOnly) {}
 
     /** @return true if the CVar cannot be modified. */
-    [[nodiscard]] bool isReadOnly() const;
+    [[nodiscard]] bool isReadOnly() const { return m_is_read_only; }
+
+    /**
+     * @brief Sets the CVar value using string arguments (to be implemented by subclasses).
+     * This must not take into account the read-only status of the CVar.
+     * @param args The parsed arguments list.
+     * @return An optional message string in return.
+     */
+    virtual std::optional<std::u16string> setValueFromStrings(const std::vector<std::u16string_view> &args) = 0;
+
+    /** @return The current value as a UTF-16 string. */
+    [[nodiscard]] virtual std::u16string getStringValue() const = 0;
 };
 
 

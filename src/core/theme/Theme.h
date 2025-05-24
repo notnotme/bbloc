@@ -9,13 +9,13 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+#include "../base/CommandController.h"
+#include "../cvar/CVarColor.h"
+#include "../cvar/CVarInt.h"
 #include "../renderer/AtlasArray.h"
 #include "../renderer/AtlasEntry.h"
 #include "../renderer/QuadTexture.h"
-#include "../command/cvar/CVarColor.h"
-#include "../command/cvar/CVarInt.h"
-#include "../command/CommandManager.h"
-#include "../highlight/TokenId.h"
+#include "../highlighter/TokenId.h"
 #include "ColorId.h"
 #include "DimensionId.h"
 
@@ -24,8 +24,8 @@
  * @brief Manages all UI theme assets, including fonts, colors, and dimensions.
  *
  * This class encapsulates font loading via FreeType, color and dimension configuration via CVars,
- * and provides glyph rendering information via a glyph atlas. It also integrates with the
- * CommandManager to expose runtime-modifiable theme variables.
+ * and provides glyph rendering information via a glyph atlas. It also integrates with a
+ * CommandController to expose runtime-modifiable theme variables.
  */
 class Theme final {
 public:
@@ -78,13 +78,16 @@ private:
 
 private:
     /** @brief Registers all UI color CVars with the command manager. */
-    void registerThemeColorCVar(CommandManager &commandManager);
+    template <typename TPayload>
+    void registerThemeColorCVar(CommandController<TPayload> &commandController);
 
     /** @brief Registers all syntax highlight color CVars. */
-    void registerHighLightColorCVar(CommandManager &commandManager);
+    template <typename TPayload>
+    void registerHighLightColorCVar(CommandController<TPayload> &commandController);
 
     /** @brief Registers dimension CVars used for layout and spacing. */
-    void registerThemeDimensionCVar(CommandManager &commandManager);
+    template <typename TPayload>
+    void registerThemeDimensionCVar(CommandController<TPayload> &commandController);
 
 public:
     /** @brief Deleted copy constructor. */
@@ -99,10 +102,11 @@ public:
     /**
      * @brief Initializes the Theme system.
      * Loads the font, registers theme-related CVars, and prepares rendering assets.
-     * @param commandManager The CommandManager to register CVars with.
+     * @param commandController The CommandController to register CVars with.
      * @param path Filesystem path to the theme folder (must contain FONT_FILE).
      */
-    void create(CommandManager &commandManager, std::string_view path);
+    template <typename TPayload>
+    void create(CommandController<TPayload> &commandController, std::string_view path);
 
     /** @brief Releases all internal resources. */
     void destroy();
@@ -165,6 +169,102 @@ public:
      */
     [[nodiscard]] int32_t measure(std::u16string_view text, bool ignoreTabs);
 };
+
+template<typename TPayload>
+void Theme::create(CommandController<TPayload> &commandController, const std::string_view path) {
+    // Create the atlas and texture
+    m_atlas_array.create();
+    m_quad_texture.create(0);
+
+    // Set up the FT library and load theme text font
+    FT_Init_FreeType(&m_ft_library);
+    const auto font_file_path = std::string(path).append(FONT_FILE);
+    if (FT_New_Face(m_ft_library, font_file_path.data(), 0, &m_font) != 0) {
+        throw std::runtime_error(std::string("Theme::create: FT_New_Face failed: ").append(FONT_FILE));
+    }
+
+    if (!FT_IS_FIXED_WIDTH(m_font)) {
+        // We need a fixed width font
+        throw std::runtime_error("Theme::create: Font is not fixed width.");
+    }
+
+    setFontSize(DEFAULT_FONT_SIZE);
+    registerThemeColorCVar(commandController);
+    registerHighLightColorCVar(commandController);
+    registerThemeDimensionCVar(commandController);
+}
+
+template<typename TPayload>
+void Theme::registerThemeColorCVar(CommandController<TPayload> &commandController) {
+    // Create default colors for the theme
+    const auto &cvar_margin_background_color         = m_colors.insert({ColorId::MarginBackground,       std::make_shared<CVarColor>(220, 220, 220, 255)});
+    const auto &cvar_info_bar_background_color       = m_colors.insert({ColorId::InfoBarBackground,      std::make_shared<CVarColor>(210, 210, 210, 255)});
+    const auto &cvar_editor_background_color         = m_colors.insert({ColorId::EditorBackground,       std::make_shared<CVarColor>(250, 250, 250, 255)});
+    const auto &cvar_prompt_background_color         = m_colors.insert({ColorId::PromptBackground,       std::make_shared<CVarColor>(210, 210, 210, 255)});
+    const auto &cvar_current_line_background_color   = m_colors.insert({ColorId::LineBackground,         std::make_shared<CVarColor>(  0,   0,   0,  12)});
+    const auto &cvar_selected_text_background_color  = m_colors.insert({ColorId::SelectedTextBackground, std::make_shared<CVarColor>(  0, 200, 255,  32)});
+    const auto &cvar_line_number_color               = m_colors.insert({ColorId::LineNumber,             std::make_shared<CVarColor>(  0,   0,   0, 220)});
+    const auto &cvar_info_bar_text_color             = m_colors.insert({ColorId::InfoBarText,            std::make_shared<CVarColor>(  0,   0,   0, 220)});
+    const auto &cvar_prompt_text_color               = m_colors.insert({ColorId::PromptText,             std::make_shared<CVarColor>(  0,   0,   0, 220)});
+    const auto &cvar_prompt_input_text_color         = m_colors.insert({ColorId::PromptInputText,        std::make_shared<CVarColor>(  0,   0,   0, 220)});
+    const auto &cvar_border_color                    = m_colors.insert({ColorId::Border,                 std::make_shared<CVarColor>(150, 150, 150, 255)});
+    const auto &cvar_cursor_indicator_color          = m_colors.insert({ColorId::CursorIndicator,        std::make_shared<CVarColor>(  0,   0,   0, 255)});
+
+    // Make colors accessible from the console
+    commandController.registerCvar("col_margin_background",        cvar_margin_background_color.first->second, nullptr);
+    commandController.registerCvar("col_info_bar_background",      cvar_info_bar_background_color.first->second, nullptr);
+    commandController.registerCvar("col_editor_background",        cvar_editor_background_color.first->second, nullptr);
+    commandController.registerCvar("col_prompt_background",        cvar_prompt_background_color.first->second, nullptr);
+    commandController.registerCvar("col_current_line_background",  cvar_current_line_background_color.first->second, nullptr);
+    commandController.registerCvar("col_selected_text_background", cvar_selected_text_background_color.first->second, nullptr);
+    commandController.registerCvar("col_line_number",              cvar_line_number_color.first->second, nullptr);
+    commandController.registerCvar("col_info_bar_text",            cvar_info_bar_text_color.first->second, nullptr);
+    commandController.registerCvar("col_prompt_text",              cvar_prompt_text_color.first->second, nullptr);
+    commandController.registerCvar("col_prompt_input_text",        cvar_prompt_input_text_color.first->second, nullptr);
+    commandController.registerCvar("col_border",                   cvar_border_color.first->second, nullptr);
+    commandController.registerCvar("col_cursor_indicator",         cvar_cursor_indicator_color.first->second, nullptr);
+}
+
+template<typename TPayload>
+void Theme::registerHighLightColorCVar(CommandController<TPayload> &commandController) {
+    // Create default highlight colors
+    const auto &cvar_hl_text_color           = m_highlight_colors.insert({TokenId::None,         std::make_shared<CVarColor>( 64,  64,  64, 255)});
+    const auto &cvar_hl_comment_color        = m_highlight_colors.insert({TokenId::Comment,      std::make_shared<CVarColor>(160, 160, 160, 200)});
+    const auto &cvar_hl_string_color         = m_highlight_colors.insert({TokenId::String,       std::make_shared<CVarColor>(  0, 150,   0, 255)});
+    const auto &cvar_hl_preprocessor_color   = m_highlight_colors.insert({TokenId::Preprocessor, std::make_shared<CVarColor>(150, 150,  64, 255)});
+    const auto &cvar_hl_number_color         = m_highlight_colors.insert({TokenId::Number,       std::make_shared<CVarColor>(  0, 200, 200, 255)});
+    const auto &cvar_hl_keyword_color        = m_highlight_colors.insert({TokenId::Keyword,      std::make_shared<CVarColor>(  0,   0, 200, 255)});
+    const auto &cvar_hl_statement_color      = m_highlight_colors.insert({TokenId::Statement,    std::make_shared<CVarColor>(200,   0, 200, 255)});
+
+    // Make highlight colors accessible from the console
+    commandController.registerCvar("hl_text",          cvar_hl_text_color.first->second, nullptr);
+    commandController.registerCvar("hl_comment",       cvar_hl_comment_color.first->second, nullptr);
+    commandController.registerCvar("hl_string",        cvar_hl_string_color.first->second, nullptr);
+    commandController.registerCvar("hl_preprocessor",  cvar_hl_preprocessor_color.first->second, nullptr);
+    commandController.registerCvar("hl_number",        cvar_hl_number_color.first->second, nullptr);
+    commandController.registerCvar("hl_keyword",       cvar_hl_keyword_color.first->second, nullptr);
+    commandController.registerCvar("hl_statement",     cvar_hl_statement_color.first->second, nullptr);
+}
+
+template<typename TPayload>
+void Theme::registerThemeDimensionCVar(CommandController<TPayload> &commandController) {
+    // Create default dimensions for the theme
+    const auto &cvar_padding_width   = m_dimensions.insert({DimensionId::PaddingWidth,   std::make_shared<CVarInt>( 8)});
+    const auto &cvar_indicator_width = m_dimensions.insert({DimensionId::IndicatorWidth, std::make_shared<CVarInt>( 2)});
+    const auto &cvar_border_size     = m_dimensions.insert({DimensionId::BorderSize,     std::make_shared<CVarInt>( 1)});
+    const auto &cvar_tab_to_space    = m_dimensions.insert({DimensionId::TabToSpace,     std::make_shared<CVarInt>( 4)});
+    const auto &cvar_page_up_down    = m_dimensions.insert({DimensionId::PageUpDown,     std::make_shared<CVarInt>(10)});
+
+    // Make dimensions accessible from the console
+    commandController.registerCvar("dim_padding_width",    cvar_padding_width.first->second, nullptr);
+    commandController.registerCvar("dim_indicator_width",  cvar_indicator_width.first->second, nullptr);
+    commandController.registerCvar("dim_border_size",      cvar_border_size.first->second, nullptr);
+    commandController.registerCvar("dim_tab_to_space",     cvar_tab_to_space.first->second, nullptr);
+    commandController.registerCvar("dim_page_up_down",     cvar_page_up_down.first->second, nullptr);
+
+    // Register a cvar to change the font size. It needs a callback.
+    commandController.registerCvar("dim_font_size", m_font_size, [&]{ setFontSize(m_font_size->m_value); });
+}
 
 
 #endif //THEME_H

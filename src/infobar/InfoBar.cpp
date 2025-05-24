@@ -8,8 +8,8 @@
 #include "../core/theme/DimensionId.h"
 
 
-InfoBar::InfoBar(CommandManager &commandManager, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
-    : View(commandManager, theme, quadProgram, quadBuffer) {}
+InfoBar::InfoBar(CommandController<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
+    : View(commandController, theme, quadProgram, quadBuffer) {}
 
 void InfoBar::render(CursorContext &context, ViewState &viewState, const float dt) {
     m_quad_buffer.map(ApplicationWindow::INFO_BAR_BUFFER_QUAD_OFFSET, ApplicationWindow::INFO_BAR_BUFFER_QUAD_COUNT);

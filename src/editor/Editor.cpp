@@ -9,8 +9,8 @@
 #include "../core/theme/DimensionId.h"
 
 
-Editor::Editor(CommandManager &commandManager, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
-    : View(commandManager, theme, quadProgram, quadBuffer),
+Editor::Editor(CommandController<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
+    : View(commandController, theme, quadProgram, quadBuffer),
       m_longest_line_cache(0, 0, 0),
       m_is_tab_to_space(std::make_shared<CVarBool>(true)) {
     // Register cvars
@@ -443,5 +443,5 @@ void Editor::drawText(const CursorContext &context, const ViewState &viewState, 
 
 void Editor::registerTabToSpaceCVar() const {
     // Register a cvar to change the font size. It needs a callback.
-    m_command_manager.registerCvar("tab_to_space", m_is_tab_to_space);
+    m_command_controller.registerCvar("tab_to_space", m_is_tab_to_space, nullptr);
 }

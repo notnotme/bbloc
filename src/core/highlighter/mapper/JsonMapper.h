@@ -1,8 +1,6 @@
 #ifndef JSON_MAPPER_H
 #define JSON_MAPPER_H
 
-#include <cstdint>
-
 #include "../TokenId.h"
 
 

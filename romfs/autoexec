@@ -9,8 +9,8 @@ bind Ctrl t "cvar inf_render_time"
 bind Ctrl+Shift t "reset_render_time"
 
 # Increase and decrease the font size
-bind Ctrl "Keypad +" increase_font_size
-bind Ctrl "Keypad -" decrease_font_size
+bind Ctrl "Keypad +" "set_font_size +"
+bind Ctrl "Keypad -" "set_font_size -"
 
 # Copy / cut and paste
 bind Ctrl c copy

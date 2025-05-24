@@ -9,8 +9,8 @@
 #include "../core/theme/DimensionId.h"
 
 
-Prompt::Prompt(CommandManager &commandManager, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
-    : View(commandManager, theme, quadProgram, quadBuffer) {}
+Prompt::Prompt(CommandController<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
+    : View(commandController, theme, quadProgram, quadBuffer) {}
 
 void Prompt::render(CursorContext &context, PromptState &viewState, float dt) {
     // Map 1024 quads

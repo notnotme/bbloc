@@ -145,7 +145,7 @@ bool HighLighter::isSupported(const std::string_view extension) {
     return false;
 }
 
-void HighLighter::getParserNames(const ItemCallback<char> &callback) {
+void HighLighter::getParserCompletions(const AutoCompleteCallback<char> &callback) {
     // Add a "txt" item, for HighLightId::None
     callback("txt");
     for (const auto &parser: std::views::values(PARSERS)) {

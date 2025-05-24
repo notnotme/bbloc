@@ -2,7 +2,7 @@
 #define INFO_BAR_H
 
 
-#include "../core/command/CommandManager.h"
+#include "../core/base/CommandController.h"
 #include "../core/cursor/Cursor.h"
 #include "../core/renderer/QuadProgram.h"
 #include "../core/renderer/QuadBuffer.h"
@@ -40,12 +40,12 @@ public:
     /**
      * @brief Constructs the InfoBar view.
      *
-     * @param commandManager Reference to the command manager.
+     * @param commandController Reference to the command controller.
      * @param theme Reference to the Theme (fonts, colors, etc.).
      * @param quadProgram Reference to the quad shader program.
      * @param quadBuffer Reference to the quad buffer.
      */
-    explicit InfoBar(CommandManager &commandManager, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
+    explicit InfoBar(CommandController<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
 
     /**
      * @brief Renders the InfoBar.
