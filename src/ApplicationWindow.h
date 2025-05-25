@@ -93,7 +93,10 @@ private:
     PromptState m_prompt_state;
 
     /** CVar tracking the maximum frame time (to render, before swapping). */
-    std::shared_ptr<CVarFloat> m_render_time;
+    std::shared_ptr<CVarFloat> m_command_time;
+
+    /** CVar tracking the maximum frame time (to render, before swapping). */
+    std::shared_ptr<CVarFloat> m_draw_time;
 
     /** The bind command. */
     std::shared_ptr<BindCommand> m_bind_command;
