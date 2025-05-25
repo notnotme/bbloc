@@ -23,7 +23,6 @@ public:
     enum class RunningState {
         Idle,       ///< Prompt is hidden or inactive.
         Running,    ///< Prompt is actively receiving user input.
-        Validated,  ///< Input has been submitted and processed.
         Message     ///< Prompt displays an error or informational message.
     };
 

@@ -348,7 +348,6 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
         m_cursor_context.command_feedback.reset();
         if (tokens.size() == 1) {
             // For now only support 1 token from feedback answers
-            m_prompt_state.setRunningState(PromptState::RunningState::Validated);
             result = feedback.on_validate_callback(tokens[0], feedback.command_string);
         } else {
             // If we got no response from feedback, make it idle.
@@ -409,8 +408,6 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
             // The prompt state can change while command execution (e.g: activate_prompt, cancel), check it again.
             const auto prompt_state = m_prompt_state.getRunningState();
             switch (prompt_state) {
-                case PromptState::RunningState::Validated:
-                    m_prompt_state.setRunningState(PromptState::RunningState::Idle);
                 case PromptState::RunningState::Idle:
                     m_cursor_context.command_feedback.reset();
                     m_prompt_state.clearCompletions();
