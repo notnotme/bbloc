@@ -359,19 +359,19 @@ void Editor::drawText(const CursorContext &context, const ViewState &viewState, 
                     ++quad_in_buffer;
                     // The selection start / end on the same line. Select only a range of text.
                     const auto selected_text = string.substr(selected_range->column_start, selected_range->column_end - selected_range->column_start);
-                    const auto selected_text_width = m_theme.measure(selected_text, true);
-                    const auto selection_start_x = m_theme.measure(string.substr(0, selected_range->column_start), true);
+                    const auto selected_text_width = m_theme.measure(selected_text, false);
+                    const auto selection_start_x = m_theme.measure(string.substr(0, selected_range->column_start), false);
                     drawQuad(cursor_text_start_x - scrollX + selection_start_x, pen_position_y - line_height - font_descender, selected_text_width, line_height, selected_background_color);
                 } else if (line_index == selected_range->line_start) {
                     ++quad_in_buffer;
                     // First line of selected text, the selection starts at column until the end of the text area.
-                    const auto selection_start_x = m_theme.measure(string.substr(0, selected_range->column_start), true);
+                    const auto selection_start_x = m_theme.measure(string.substr(0, selected_range->column_start), false);
                     drawQuad(cursor_text_start_x - scrollX + selection_start_x, pen_position_y - line_height - font_descender, width - selection_start_x, line_height, selected_background_color);
                 } else if (line_index == selected_range->line_end) {
                     ++quad_in_buffer;
                     // Last line of selected text, the selection starts at the margin border, until the end column.
                     const auto selected_text = string.substr(0, selected_range->column_end);
-                    const auto selected_text_width = m_theme.measure(selected_text, true);
+                    const auto selected_text_width = m_theme.measure(selected_text, false);
                     drawQuad(cursor_text_start_x - scrollX, pen_position_y - line_height - font_descender, selected_text_width, line_height, selected_background_color);
                 } else if (line_index > selected_range->line_start && line_index < selected_range->line_end) {
                     ++quad_in_buffer;
