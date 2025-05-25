@@ -18,8 +18,6 @@ std::optional<std::u16string> ValidateCommand::run(CursorContext &payload, const
 
     switch (payload.focus_target) {
         case FocusTarget::Prompt: {
-            // If "validate" is ran via keybind while the prompt is active, then run the command in it.
-            m_prompt_state.setRunningState(PromptState::RunningState::Validated);
             const auto prompt_command = payload.prompt_cursor.getString();
             payload.command_runner.runCommand(prompt_command, true);
         }
