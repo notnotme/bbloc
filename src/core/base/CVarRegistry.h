@@ -13,6 +13,9 @@
  *
  * Implementations of this class manage configuration variables (CVars)
  * and allow for dynamic updates through callback hooks.
+ *
+ * Derived implementations are responsible for mapping string names to command objects
+ * and check collision during runtime.
  */
 class CVarRegistry {
 public:
@@ -24,9 +27,9 @@ public:
      * Associates a named CVar with the registry and optionally sets a callback to be
      * triggered when the variable's value changes.
      *
-     * @param name Variable name.                              ///< Unique identifier for the CVar.
-     * @param cvar Shared pointer to the CVar instance.         ///< The CVar object being registered.
-     * @param callback Optional callback invoked on changes.    ///< Called when the variable is modified.
+     * @param name Variable name.
+     * @param cvar Shared pointer to the CVar instance.
+     * @param callback Optional callback invoked on changes.
      */
     virtual void registerCvar(std::string_view name, std::shared_ptr<CVar> cvar, const CVarCallback &callback) = 0;
 };

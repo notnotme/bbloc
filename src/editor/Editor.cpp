@@ -9,7 +9,7 @@
 #include "../core/theme/DimensionId.h"
 
 
-Editor::Editor(CommandController<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
+Editor::Editor(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
     : View(commandController, theme, quadProgram, quadBuffer),
       m_longest_line_cache(0, 0, 0),
       m_is_tab_to_space(std::make_shared<CVarBool>(true)) {

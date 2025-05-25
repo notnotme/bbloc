@@ -34,7 +34,9 @@ public:
 
     /**
      * @brief Checks whether the command is allowed to run with the given payload.
+     *
      * Override this in derived classes if specific constraints are needed. Returns true by default.
+     *
      * @param payload The payload to test.
      * @return true if the command can be run.
      */

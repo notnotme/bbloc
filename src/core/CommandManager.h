@@ -13,7 +13,7 @@
 #include "base/CVar.h"
 #include "base/CVarCallback.h"
 #include "base/Command.h"
-#include "base/CommandController.h"
+#include "base/GlobalRegistry.h"
 #include "base/AutoCompleteCallback.h"
 #include "CursorContext.h"
 #include "CVarCommand.h"
@@ -24,7 +24,7 @@
  *
  * The CommandManager is responsible for registering, both commands and configuration variables.
  */
-class CommandManager final : public CommandController<CursorContext> {
+class CommandManager final : public GlobalRegistry<CursorContext> {
 private:
     /** Registered commands. */
     std::unordered_map<std::string, std::shared_ptr<Command<CursorContext>>> m_commands;

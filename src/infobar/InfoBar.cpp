@@ -8,7 +8,7 @@
 #include "../core/theme/DimensionId.h"
 
 
-InfoBar::InfoBar(CommandController<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
+InfoBar::InfoBar(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
     : View(commandController, theme, quadProgram, quadBuffer) {}
 
 void InfoBar::render(CursorContext &context, ViewState &viewState, const float dt) {

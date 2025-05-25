@@ -40,7 +40,7 @@ public:
      * @param quadProgram Reference to the QuadProgram for rendering.
      * @param quadBuffer Reference to the QuadBuffer for geometry submission.
      */
-    explicit Prompt(CommandController<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
+    explicit Prompt(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
 
     /**
      * @brief Renders the command prompt on screen.
