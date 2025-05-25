@@ -8,6 +8,15 @@
 #include "AutoCompleteCallback.h"
 
 
+/**
+ * @brief Abstract base class for all console commands in the text editor.
+ *
+ * This templated class provides the interface for defining custom commands that
+ * can be executed with a specific payload and optional arguments. It also supports
+ * command-line auto-completion and runtime validation.
+ *
+ * @tparam TPayload The type of the payload passed to the command at execution.
+ */
 template <typename TPayload>
 class Command {
 public:
@@ -20,18 +29,19 @@ public:
     /** @brief Constructs the Command with default values. */
     explicit Command() = default;
 
-    /** @brief Destructor for inheritance */
+    /** @brief Virtual destructor for inheritance */
     virtual ~Command() = default;
 
     /**
-     * @brief Tell if the command can be run with the said payload.
+     * @brief Checks whether the command is allowed to run with the given payload.
+     * Override this in derived classes if specific constraints are needed. Returns true by default.
      * @param payload The payload to test.
      * @return true if the command can be run.
      */
     [[nodiscard]] virtual bool isRunnable(const TPayload &payload);
 
     /**
-     * Run (do) the action.
+     * @brief Executes the command using the provided payload and arguments.
      * @param payload The payload to use for running this command.
      * @param args The arguments to pass to this command.
      * @return An optional informative or error message.
@@ -52,5 +62,6 @@ bool Command<TPayload>::isRunnable(const TPayload &payload) {
     // By default, an action is not restricted to run.
     return true;
 }
+
 
 #endif //COMMAND_H

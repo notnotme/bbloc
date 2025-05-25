@@ -8,8 +8,7 @@
 /**
  * @brief Template alias for an auto-completion callback function.
  *
- * An AutoCompleteCallback is used to pass individual items back to a consumer during iterative processing.
- * @param T The character type (e.g., char, char16_t) of the string to receive.
+ * @tparam T The character type (e.g., char, char16_t) of the string to receive.
  * @param input A string view representing the item being returned.
  */
 template<typename T>

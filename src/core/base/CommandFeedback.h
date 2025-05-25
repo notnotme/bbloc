@@ -7,7 +7,13 @@
 #include "FeedbackCallback.h"
 
 
-/** @brief Structure for managing command feedback interactions (e.g., confirmation prompts). */
+/**
+ * @brief Represents a feedback interaction triggered by a command.
+ *
+ * Used when a command requires user confirmation or additional input after initial execution
+ * (e.g., "Are you sure? [y/n]"). This structure holds the prompt message, expected completions,
+ * the command string to run next, and a callback to handle the user's input.
+ */
 struct CommandFeedback final {
     std::u16string prompt_message;                  ///< Prompt message displayed to the user.
     std::u16string command_string;                  ///< Command associated with the feedback.

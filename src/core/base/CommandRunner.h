@@ -3,38 +3,50 @@
 
 #include <string_view>
 
+
+/**
+ * @brief Abstract interface for executing user commands and providing auto-completion suggestions.
+ *
+ * This class handles parsing, dispatching, and completing console commands entered
+ * by users in the prompt. Implementations should manage command execution flow and
+ * intelligent suggestions for command names, arguments, and feedback.
+ */
 class CommandRunner {
 public:
     virtual ~CommandRunner() = default;
 
     /**
-     * @brief Run the said command input.
-     * @param input The command to run, including the arguments.
-     * @param fromPrompt true if that command is run from the command prompt.
-     * @return true if the command was run, false otherwise.
+     * @brief Executes the provided command input.
+     *
+     * @param input The full command input string, including arguments.
+     * @param fromPrompt Indicates whether the input came from the interactive command prompt.
+     * @return true if a command was successfully executed; false if unrecognized.
      */
     virtual bool runCommand(std::u16string_view input, bool fromPrompt) = 0;
 
     /**
-     * @brief Gathers auto-completion suggestions for command names.
-     * @param input Current user input string.
-     * @param itemCallback Callback to receive command name suggestions.
+     * @brief Provides auto-completion suggestions for command names.
+     *
+     * @param input The current (partial) user input string.
+     * @param itemCallback Callback to receive possible command name completions.
      */
     virtual void getCommandCompletions(std::string_view input, const AutoCompleteCallback<char> &itemCallback) = 0;
 
     /**
-     * @brief Provides auto-completions for command arguments.
-     * @param command The command name.
-     * @param argumentIndex The index of the argument to complete.
-     * @param input Current user input string.
-     * @param itemCallback Callback to receive argument name suggestions.
+     * @brief Provides auto-completion suggestions for command arguments.
+     *
+     * @param command The name of the command being executed.
+     * @param argumentIndex The zero-based index of the argument currently being completed.
+     * @param input The current (partial) user input for this argument.
+     * @param itemCallback Callback to receive possible argument completions.
      */
     virtual void getArgumentsCompletions(std::string_view command, int32_t argumentIndex, std::string_view input, const AutoCompleteCallback<char> &itemCallback) = 0;
 
     /**
-      * @brief Provides completions for interactive feedback input.
-      * @param itemCallback Callback receiving feedback suggestions.
-      */
+     * @brief Provides interactive feedback input completions.
+     *
+     * @param itemCallback Callback to receive feedback input completions.
+     */
     virtual void getFeedbackCompletions(const AutoCompleteCallback<char16_t> &itemCallback) const = 0;
 };
 
