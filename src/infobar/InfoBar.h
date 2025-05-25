@@ -2,7 +2,7 @@
 #define INFO_BAR_H
 
 
-#include "../core/base/CommandController.h"
+#include "../core/base/GlobalRegistry.h"
 #include "../core/cursor/Cursor.h"
 #include "../core/renderer/QuadProgram.h"
 #include "../core/renderer/QuadBuffer.h"
@@ -45,7 +45,7 @@ public:
      * @param quadProgram Reference to the quad shader program.
      * @param quadBuffer Reference to the quad buffer.
      */
-    explicit InfoBar(CommandController<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
+    explicit InfoBar(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
 
     /**
      * @brief Renders the InfoBar.

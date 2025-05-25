@@ -9,7 +9,7 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
-#include "../base/CommandController.h"
+#include "../base/GlobalRegistry.h"
 #include "../cvar/CVarColor.h"
 #include "../cvar/CVarInt.h"
 #include "../renderer/AtlasArray.h"
@@ -79,15 +79,15 @@ private:
 private:
     /** @brief Registers all UI color CVars with the command manager. */
     template <typename TPayload>
-    void registerThemeColorCVar(CommandController<TPayload> &commandController);
+    void registerThemeColorCVar(GlobalRegistry<TPayload> &commandController);
 
     /** @brief Registers all syntax highlight color CVars. */
     template <typename TPayload>
-    void registerHighLightColorCVar(CommandController<TPayload> &commandController);
+    void registerHighLightColorCVar(GlobalRegistry<TPayload> &commandController);
 
     /** @brief Registers dimension CVars used for layout and spacing. */
     template <typename TPayload>
-    void registerThemeDimensionCVar(CommandController<TPayload> &commandController);
+    void registerThemeDimensionCVar(GlobalRegistry<TPayload> &commandController);
 
 public:
     /** @brief Deleted copy constructor. */
@@ -106,7 +106,7 @@ public:
      * @param path Filesystem path to the theme folder (must contain FONT_FILE).
      */
     template <typename TPayload>
-    void create(CommandController<TPayload> &commandController, std::string_view path);
+    void create(GlobalRegistry<TPayload> &commandController, std::string_view path);
 
     /** @brief Releases all internal resources. */
     void destroy();
@@ -171,7 +171,7 @@ public:
 };
 
 template<typename TPayload>
-void Theme::create(CommandController<TPayload> &commandController, const std::string_view path) {
+void Theme::create(GlobalRegistry<TPayload> &commandController, const std::string_view path) {
     // Create the atlas and texture
     m_atlas_array.create();
     m_quad_texture.create(0);
@@ -195,7 +195,7 @@ void Theme::create(CommandController<TPayload> &commandController, const std::st
 }
 
 template<typename TPayload>
-void Theme::registerThemeColorCVar(CommandController<TPayload> &commandController) {
+void Theme::registerThemeColorCVar(GlobalRegistry<TPayload> &commandController) {
     // Create default colors for the theme
     const auto &cvar_margin_background_color         = m_colors.insert({ColorId::MarginBackground,       std::make_shared<CVarColor>(220, 220, 220, 255)});
     const auto &cvar_info_bar_background_color       = m_colors.insert({ColorId::InfoBarBackground,      std::make_shared<CVarColor>(210, 210, 210, 255)});
@@ -226,7 +226,7 @@ void Theme::registerThemeColorCVar(CommandController<TPayload> &commandControlle
 }
 
 template<typename TPayload>
-void Theme::registerHighLightColorCVar(CommandController<TPayload> &commandController) {
+void Theme::registerHighLightColorCVar(GlobalRegistry<TPayload> &commandController) {
     // Create default highlight colors
     const auto &cvar_hl_text_color           = m_highlight_colors.insert({TokenId::None,         std::make_shared<CVarColor>( 64,  64,  64, 255)});
     const auto &cvar_hl_comment_color        = m_highlight_colors.insert({TokenId::Comment,      std::make_shared<CVarColor>(160, 160, 160, 200)});
@@ -247,7 +247,7 @@ void Theme::registerHighLightColorCVar(CommandController<TPayload> &commandContr
 }
 
 template<typename TPayload>
-void Theme::registerThemeDimensionCVar(CommandController<TPayload> &commandController) {
+void Theme::registerThemeDimensionCVar(GlobalRegistry<TPayload> &commandController) {
     // Create default dimensions for the theme
     const auto &cvar_padding_width   = m_dimensions.insert({DimensionId::PaddingWidth,   std::make_shared<CVarInt>( 8)});
     const auto &cvar_indicator_width = m_dimensions.insert({DimensionId::IndicatorWidth, std::make_shared<CVarInt>( 2)});

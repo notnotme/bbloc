@@ -3,7 +3,7 @@
 
 #include <SDL.h>
 
-#include "../core/base/CommandController.h"
+#include "../core/base/GlobalRegistry.h"
 #include "../core/cvar/CVarBool.h"
 #include "../core/renderer/QuadProgram.h"
 #include "../core/renderer/QuadBuffer.h"
@@ -86,7 +86,7 @@ public:
      * @param quadProgram Reference to the QuadProgram shader.
      * @param quadBuffer Reference to the geometry buffer.
      */
-    explicit Editor(CommandController<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
+    explicit Editor(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
 
     /**
      * @brief Renders the text editor to the screen.

@@ -9,7 +9,7 @@
 #include "../core/theme/DimensionId.h"
 
 
-Prompt::Prompt(CommandController<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
+Prompt::Prompt(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
     : View(commandController, theme, quadProgram, quadBuffer) {}
 
 void Prompt::render(CursorContext &context, PromptState &viewState, float dt) {

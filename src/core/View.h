@@ -24,7 +24,7 @@ template <typename TState = ViewState>
 class View {
 protected:
     /** Reference to a command controller. */
-    CommandController<CursorContext> &m_command_controller;
+    GlobalRegistry<CursorContext> &m_command_controller;
 
     /** Reference to the theme used for rendering (colors, fonts, etc.). */
     Theme &m_theme;
@@ -77,7 +77,7 @@ public:
      * @param quadProgram Reference to the quad shader program.
      * @param quadBuffer Reference to the quad geometry buffer.
      */
-    explicit View(CommandController<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
+    explicit View(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
 
     /**
      * @brief Renders the view contents.
@@ -114,7 +114,7 @@ public:
 };
 
 template <typename TState>
-View<TState>::View(CommandController<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
+View<TState>::View(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
     : m_command_controller(commandController),
       m_theme(theme),
       m_quad_program(quadProgram),
