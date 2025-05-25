@@ -21,7 +21,7 @@
 #include "command/OpenFileCommand.h"
 #include "command/PasteTextCommand.h"
 #include "command/QuitCommand.h"
-#include "command/ResetRenderTimeCommand.h"
+#include "command/ResetCVarFloatCommand.h"
 #include "command/SaveFileCommand.h"
 #include "command/SetHighLightCommand.h"
 #include "command/ValidateCommand.h"
@@ -39,7 +39,8 @@ ApplicationWindow::ApplicationWindow()
       m_editor(m_command_manager, m_theme, m_quad_program, m_quad_buffer),
       m_prompt(m_command_manager, m_theme, m_quad_program, m_quad_buffer),
       m_prompt_state(m_command_manager),
-      m_render_time(std::make_shared<CVarFloat>(0.0f, true)),
+      m_command_time(std::make_shared<CVarFloat>(0.0f, true)),
+      m_draw_time(std::make_shared<CVarFloat>(0.0f, true)),
       m_bind_command(std::make_shared<BindCommand>()),
       m_orthogonal() {}
 
@@ -128,11 +129,13 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     m_prompt.resizeWindow(width, height);
 
     // Register cvars and commands then run autoexec
-    m_command_manager.registerCvar("inf_render_time", m_render_time, nullptr);
+    m_command_manager.registerCvar("inf_draw_time", m_draw_time, nullptr);
+    m_command_manager.registerCvar("inf_command_time", m_command_time, nullptr);
     m_command_manager.registerCommand("quit", std::make_shared<QuitCommand>());
     m_command_manager.registerCommand("open", std::make_shared<OpenFileCommand>());
     m_command_manager.registerCommand("save", std::make_shared<SaveFileCommand>());
-    m_command_manager.registerCommand("reset_render_time", std::make_shared<ResetRenderTimeCommand>(m_render_time));
+    m_command_manager.registerCommand("reset_draw_time", std::make_shared<ResetCVarFloatCommand>(m_draw_time));
+    m_command_manager.registerCommand("reset_command_time", std::make_shared<ResetCVarFloatCommand>(m_command_time));
     m_command_manager.registerCommand("set_font_size", std::make_shared<FontSizeCommand>());
     m_command_manager.registerCommand("set_hl_mode", std::make_shared<SetHighLightCommand>());
     m_command_manager.registerCommand("bind", m_bind_command);
@@ -145,7 +148,8 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     m_command_manager.registerCommand("cancel", std::make_shared<CancelCommand>(m_prompt_state));
     m_command_manager.registerCommand("validate", std::make_shared<ValidateCommand>(m_prompt_state));
     m_command_manager.registerCommand("auto_complete", std::make_shared<AutoCompleteCommand>(m_prompt_state));
-    m_command_manager.run(m_cursor_context, { u"exec", utf8::utf8to16(path).append(u"autoexec") });
+
+    runCommand(std::u16string(u"exec ").append(utf8::utf8to16(path)).append(u"autoexec"), true);
 }
 
 void ApplicationWindow::mainLoop() {
@@ -162,9 +166,6 @@ void ApplicationWindow::mainLoop() {
     while (is_running) {
         // Wait events from SDL
         SDL_WaitEvent(nullptr);
-
-        // We will use this to calculate the time spent to render this frame
-        const auto frame_time = SDL_GetPerformanceCounter();
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
                 case SDL_QUIT:
@@ -189,7 +190,12 @@ void ApplicationWindow::mainLoop() {
                 case SDL_KEYDOWN: {
                     // Try to run command binding first
                     if (const auto command = m_bind_command->getBinding(event.key.keysym.sym, event.key.keysym.mod)) {
+                        const auto currentTime = SDL_GetPerformanceCounter();
                         if (runCommand(command.value(), false)) {
+                            const auto command_time_elapsed = static_cast<float>(SDL_GetPerformanceCounter() - currentTime) / performanceQuery;
+                            if (command_time_elapsed > m_command_time->m_value) {
+                                m_command_time->m_value = command_time_elapsed;
+                            }
                             break;
                         }
                     }
@@ -287,9 +293,9 @@ void ApplicationWindow::mainLoop() {
         m_cursor_context.follow_indicator = false;
 
         // Update max_render_time metrics
-        const auto frame_time_elapsed = static_cast<float>(SDL_GetPerformanceCounter() - frame_time) / performanceQuery;
-        if (frame_time_elapsed > m_render_time->m_value) {
-            m_render_time->m_value = frame_time_elapsed;
+        const auto frame_time_elapsed = static_cast<float>(SDL_GetPerformanceCounter() - currentTime) / performanceQuery;
+        if (frame_time_elapsed > m_draw_time->m_value) {
+            m_draw_time->m_value = frame_time_elapsed;
         }
 
         SDL_GL_SwapWindow(p_sdl_window);

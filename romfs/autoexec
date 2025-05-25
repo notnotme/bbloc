@@ -5,8 +5,10 @@ bind Ctrl+Shift space activate_prompt
 bind Ctrl+Shift q quit
 
 # Show and reset the render time information
-bind Ctrl t "cvar inf_render_time"
-bind Ctrl+Shift t "reset_render_time"
+bind Ctrl t "cvar inf_draw_time"
+bind Ctrl+Shift t "reset_draw_time"
+bind Ctrl y "cvar inf_command_time"
+bind Ctrl+Shift y "reset_command_time"
 
 # Increase and decrease the font size
 bind Ctrl "Keypad +" "set_font_size +"
