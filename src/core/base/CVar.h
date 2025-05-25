@@ -39,7 +39,9 @@ public:
 
     /**
      * @brief Sets the CVar value using string arguments (to be implemented by subclasses).
+     *
      * This must not take into account the read-only status of the CVar.
+     *
      * @param args The parsed arguments list.
      * @return An optional message string in return.
      */
