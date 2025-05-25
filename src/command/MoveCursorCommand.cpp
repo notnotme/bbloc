@@ -31,9 +31,9 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
         direction = 6;
     } else if (args[0] == u"page_down") {
         direction = 7;
-    }  else if (args[0] == u"eof") {
+    }  else if (args[0] == u"bof") {
         direction = 8;
-    } else if (args[0] == u"bof") {
+    } else if (args[0] == u"eof") {
         direction = 9;
     } else {
         return std::u16string(u"Unknown direction argument: ").append(args[0]);
