@@ -7,6 +7,10 @@
 CVarBool::CVarBool(const bool value, const bool isReadOnly)
     : TypedCVar(value, isReadOnly) {}
 
+std::u16string CVarBool::getStringValue() const {
+    return m_value ? u"true" : u"false";
+}
+
 std::optional<std::u16string> CVarBool::setValueFromStrings(const std::vector<std::u16string_view> &args) {
     if (args.size() != 1) {
         return u"Argument expected: <value>.";
@@ -20,8 +24,4 @@ std::optional<std::u16string> CVarBool::setValueFromStrings(const std::vector<st
     }
 
     return std::nullopt;
-}
-
-std::u16string CVarBool::getStringValue() const {
-    return m_value ? u"true" : u"false";
 }

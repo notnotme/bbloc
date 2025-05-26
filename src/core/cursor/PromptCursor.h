@@ -13,10 +13,10 @@
  */
 class PromptCursor final {
 private:
-    /** @brief Internal text buffer storing the command input. */
+    /** Internal text buffer storing the command input. */
     std::u16string m_string;
 
-    /** @brief Current column position of the cursor in the buffer. */
+    /** Current column position of the cursor in the buffer. */
     int32_t m_column;
 
 public:
@@ -49,23 +49,39 @@ public:
 
     /**
      * @brief Sets the cursor column position.
+     *
      * @param column Desired column position (will be clamped to bounds).
      */
     void setPosition(int32_t column);
 
     /**
      * @brief Inserts characters at the current cursor position.
+     *
+     * Moves the cursor forward by the number of inserted characters.
+     *
      * @param characters UTF-16 string to insert.
      */
     void insert(std::u16string_view characters);
 
-    /** @brief Erases the character before the cursor (backspace). */
+    /**
+     * @brief Erases the character before the cursor (backspace).
+     *
+     * Move the cursor backward. It has no effect if the cursor is at the beginning of the buffer.
+     */
     void eraseLeft();
 
-    /** @brief Erases the character at the current cursor position (delete). */
+    /**
+     * @brief Erases the character at the current cursor position (delete).
+     *
+     * It has no effect if the cursor is at the end of the buffer.
+     */
     void eraseRight();
 
-    /** @brief Clears the cursor text and resets the position. */
+    /**
+     * @brief Clears the cursor text and resets the position.
+     *
+     * After this call, the buffer will be empty and the cursor will be at position 0.
+     */
     void clear();
 };
 

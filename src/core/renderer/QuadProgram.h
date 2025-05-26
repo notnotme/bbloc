@@ -42,18 +42,21 @@ public:
 
     /**
      * @brief Binds a vertex buffer to the shader's attribute layout.
+     *
      * @param buffer OpenGL buffer object to bind.
      */
     void bindVertexBuffer(GLuint buffer) const;
 
     /**
      * @brief Uploads a 4x4 transformation matrix to the shader program.
+     *
      * @param matrix Pointer to 16 floats representing the matrix.
      */
     void setMatrix(const float* matrix) const;
 
     /**
      * @brief Issues a draw call to render a range of quads from the vertex buffer.
+     *
      * @param start First index of the vertex buffer.
      * @param count Number of quads to render.
      */

@@ -3,6 +3,8 @@
 #include <filesystem>
 #include <fstream>
 
+#include <utf8.h>
+
 #include "../core/CommandManager.h"
 
 
@@ -49,7 +51,7 @@ std::optional<std::u16string> ExecCommand::run(CursorContext &payload, const std
     for (const auto &command : command_list) {
         // fixme?: At this point, any feedback needed will interrupt the command list execution
         // fixme?: autoexec does not show in history
-        // todo: take in account "#" as comment and don't execute the line
+        // fixme!: This is not well tested at all.
         payload.command_runner.runCommand(command, false);
     }
 

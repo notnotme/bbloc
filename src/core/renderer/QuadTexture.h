@@ -25,6 +25,7 @@ public:
 
     /**
      * @brief Creates the OpenGL texture array of 256x256x256 pixels and bind it to the OpenGL pipeline.
+     *
      * @param bindUnit The unit to bind the texture to.
      */
     void create(uint8_t bindUnit);
@@ -34,6 +35,7 @@ public:
 
     /**
      * @brief Uploads a region of pixels to the texture.
+     *
      * @param x X offset within the layer.
      * @param y Y offset within the layer.
      * @param width Width of the region.
@@ -45,6 +47,7 @@ public:
 
     /**
      * @brief Clears a texture layer by setting all pixels to zero.
+     *
      * @param layer Index of the texture layer to clear.
      */
     void clearLayer(uint8_t layer);

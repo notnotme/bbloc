@@ -19,19 +19,19 @@
  */
 class Cursor final {
 private:
-    /** @brief Name of the buffer (filename). */
+    /** Name of the buffer (filename). */
     std::string m_name;
 
-    /** @brief Pointer to the text buffer backend (owns it). */
+    /** Pointer to the text buffer backend (owns it). */
     std::unique_ptr<TextBuffer> m_buffer;
 
-    /** @brief Current column (X) position of the cursor. */
+    /** Current column (X) position of the cursor. */
     uint32_t m_column;
 
-    /** @brief Current line (Y) position of the cursor. */
+    /** Current line (Y) position of the cursor. */
     uint32_t m_line;
 
-    /** @brief holds the state of the selection (active / not active) */
+    /** Holds the state of the selection (active / not active) */
     bool m_is_selection_active;
 
     /** Holds the index of the line where the selection starts. */
@@ -42,6 +42,7 @@ private:
 
     /**
      * @brief Erase a range of text inside the internal buffer. This does not move the cursor coordinates.
+     *
      * @param lineStart The line index where the range starts.
      * @param columnStart The column index where the range starts.
      * @param lineEnd The line index where the range stops.
@@ -86,6 +87,7 @@ public:
 
     /**
      * @brief Gets the content of a specific line from the buffer.
+     *
      * @param line The index of the line to fetch.
      */
     [[nodiscard]] std::u16string_view getString(uint32_t line) const;
@@ -96,7 +98,7 @@ public:
     /** @brief Returns the current line at the cursor line position (from column 0). */
     [[nodiscard]] std::u16string_view getString() const;
 
-    /** @brief Returns the portion of sleected text, if any. */
+    /** @brief Returns the portion of selected text, if any. */
     [[nodiscard]] std::optional<std::vector<std::u16string_view>> getSelectedText() const;
 
     /** @brief Moves the cursor one character to the left. Otherwise, move one line above.  */
@@ -125,12 +127,14 @@ public:
 
     /**
      * @brief Set the cursor in selection mode. Moves will grow or shrink the selection.
+     *
      * @param active if true, the selection is activated, if false, the selection is deactivated and resets its state.
      */
     void activateSelection(bool active);
 
     /**
      * @brief Sets the new position of the cursor.
+     *
      * @param line New line index.
      * @param column New column index.
      * @throw std::runtime_error If coordinates are out of bounds.
@@ -139,43 +143,52 @@ public:
 
     /**
       * @brief Inserts UTF-16 text at the current cursor position.
+      *
       * Moves the cursor forward by the number of inserted characters.
+      *
       * @param characters The UTF-16 string to insert.
       * @return The resulting BufferEdit describing the change.
       */
-    BufferEdit insert(std::u16string_view characters);
-
+    [[nodiscard]] BufferEdit insert(std::u16string_view characters);
 
     /**
      * @brief Inserts a line break at the current cursor position.
+     *
      * Moves the cursor to the beginning of the next line.
+     *
      * @return The resulting BufferEdit describing the change.
      */
-    BufferEdit newLine();
+    [[nodiscard]] BufferEdit newLine();
 
     /**
      * @brief Deletes the character immediately before the cursor.
+     *
      * Move the cursor backward. It has no effect if the cursor is at the beginning of the buffer.
+     *
      * @return An optional BufferEdit describing the change.
      */
-    std::optional<BufferEdit> eraseLeft();
+    [[nodiscard]] std::optional<BufferEdit> eraseLeft();
 
     /**
      * @brief Deletes the character immediately after the cursor.
+     *
      * It has no effect if the cursor is at the end of the buffer.
+     *
      * @return An optional BufferEdit describing the change.
      */
-    std::optional<BufferEdit> eraseRight();
+    [[nodiscard]] std::optional<BufferEdit> eraseRight();
 
     /** @return An optional BufferEdit describing the change. */
     [[nodiscard]] std::optional<BufferEdit> eraseSelection();
 
     /**
      * @brief Clears the entire buffer and resets the cursor to the beginning.
+     *
      * After this call, the buffer will be empty and the cursor will be at (0, 0).
+     *
      * @return The resulting CursorEdit describing the change.
      */
-    BufferEdit clear();
+    [[nodiscard]] BufferEdit clear();
 };
 
 

@@ -28,6 +28,7 @@ private:
      * @brief Holds language-specific parser data and mapping logic.
      */
     struct Parser final {
+        /** @brief Type alias for a mapping function that take an uint16_t and return a TokenId */
         using MapperFunction = std::function<TokenId(uint16_t)>;
 
         const TSLanguage* language;                         ///< Pointer to the Tree-sitter language definition.
@@ -64,6 +65,7 @@ private:
 
     /**
      * @brief Used by static inputCallback to read text from the cursor.
+     *
      * @param line The line to start read.
      * @param column The column to start read.
      * @return A string view containing the line of text, starting from the said column, until the end of the said line (\n).
@@ -82,36 +84,40 @@ public:
 
     /**
      * @brief Constructs the HighLighter with default values.
+     *
      * @param cursor Reference to the source Cursor that feed data to this highlighter.
      */
     explicit HighLighter(Cursor &cursor);
 
     /**
      * @brief Sets the current syntax highlighting mode explicitly.
+     *
      * @param highLight Highlight mode to activate.
      */
     void setMode(HighLightId highLight);
 
     /**
      * @brief Sets the highlighting mode based on file extension.
-     * THis will fall back to no highlight if nothing matches.
+     *
+     * This will fall back to no highlight if nothing matches.
+     *
      * @param extension File extension (including the dot), e.g. ".cpp".
      */
     void setMode(std::string_view extension);
 
-    /**
-     * @brief Parses or reparses the current input buffer.
-     */
+    /** @brief Parses or reparses the current input buffer. */
     void parse();
 
     /**
      * @brief Notifies the HighLighter about a range of text edits.
+     *
      * @param edit Object describing the modified byte and position ranges. (provided by the Cursor class)
      */
     void edit(const BufferEdit &edit) const;
 
     /**
      * @brief Retrieves the TokenId (syntax classification) at a specific position.
+     *
      * @param line Line number (zero-based).
      * @param column Column number (zero-based).
      * @return TokenId describing the syntax element at that position.
@@ -123,12 +129,14 @@ public:
 
     /**
      * @brief Retrieves all available parser names.
+     *
      * @param callback Callback that receives each parser name.
      */
     static void getParserCompletions(const AutoCompleteCallback<char> &callback);
 
     /**
      * @brief Checks whether a given file extension is supported.
+     *
      * @param extension File extension to query (including the dot).
      * @return true if a parser supports the given extension.
      */

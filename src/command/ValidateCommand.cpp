@@ -18,14 +18,18 @@ std::optional<std::u16string> ValidateCommand::run(CursorContext &payload, const
 
     switch (payload.focus_target) {
         case FocusTarget::Prompt: {
+            // runCommand can also update the prompt state, set the prompt to Idle before running the command.
+            m_prompt_state.setRunningState(PromptState::RunningState::Idle);
+
+            // The return value can be ignored in this use case.
             const auto prompt_command = payload.prompt_cursor.getString();
             payload.command_runner.runCommand(prompt_command, true);
         }
-            break;
+        break;
         case FocusTarget::Editor:
             // No-op
         default:
-            break;
+        break;
     }
 
     return std::nullopt;

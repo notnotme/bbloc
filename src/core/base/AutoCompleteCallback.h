@@ -8,6 +8,8 @@
 /**
  * @brief Template alias for an auto-completion callback function.
  *
+ * This callback is called for each item that potentially matches with the input.
+ *
  * @tparam T The character type (e.g., char, char16_t) of the string to receive.
  * @param input A string view representing the item being returned.
  */

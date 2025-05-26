@@ -29,7 +29,7 @@ public:
     /** @brief Constructs the Command with default values. */
     explicit Command() = default;
 
-    /** @brief Virtual destructor for inheritance */
+    /** @brief Virtual destructor for inheritance. */
     virtual ~Command() = default;
 
     /**
@@ -44,6 +44,7 @@ public:
 
     /**
      * @brief Executes the command using the provided payload and arguments.
+     *
      * @param payload The payload to use for running this command.
      * @param args The arguments to pass to this command.
      * @return An optional informative or error message.
@@ -52,6 +53,7 @@ public:
 
     /**
      * @brief Command-line completion function used to provide completion suggestions for command arguments.
+     *
      * @param argumentIndex The index of the argument currently being completed.
      * @param input The current partial input from the user for this argument.
      * @param itemCallback A callback to be invoked with each completion suggestion.

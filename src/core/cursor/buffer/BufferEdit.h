@@ -1,6 +1,8 @@
 #ifndef BUFFER_EDIT_H
 #define BUFFER_EDIT_H
 
+#include <cstdint>
+
 
 /**
  * @brief Represents a text edit made in the text buffer.
@@ -9,9 +11,7 @@
  * byte offsets and Cursor positions before and after the edit.
  */
 struct BufferEdit final {
-    /**
-     * @brief Represents a line and column position in the text buffer.
-     */
+    /** @brief Represents a line and column position in the text buffer. */
     struct Position final {
         uint32_t line;   ///< Line number (0-based).
         uint32_t column; ///< Column number (0-based).

@@ -43,18 +43,30 @@ std::optional<std::u16string> AutoCompleteCommand::run(CursorContext &payload, c
 
             if (payload.command_feedback) {
                 // If a feedback is active, try to gather arguments
-                payload.command_runner.getFeedbackCompletions([&](const std::u16string_view completion) {
-                    m_prompt_state.addCompletion(completion);
-                });
+                for (const auto &item : payload.command_feedback->completions_list) {
+                    m_prompt_state.addCompletion(item);
+                }
             } else {
-                // Find command name, argument, and argument index from the user input
+                // Find command name, argument to complete, and argument index from the user input
                 const auto utf8_command_name = tokens.empty() ? "" : utf8::utf16to8(tokens.front());
                 const auto utf8_argument_to_complete = tokens.size() <= 1 ? "" : utf8::utf16to8(tokens.back());
-                const auto argument_index = std::max(0, static_cast<int32_t>(tokens.size() - 2));
+                const auto argument_index = static_cast<int32_t>(tokens.size() <= 1
+                    ? tokens.size() - 1
+                    : input.ends_with(' ')
+                        ? tokens.size() - 1
+                        : tokens.size() - 2);
+
+                // Reconstitute the original input
+                const auto left_index = input.rfind(' ');
+                auto reconstituted_command = left_index == std::string::npos
+                    ? std::u16string(input).append(u" ")
+                    : input.substr(0, left_index + 1);
+
                 // Try to complete commands arguments first, if the command name is incomplete, this will return an empty list
                 payload.command_runner.getArgumentsCompletions(utf8_command_name, argument_index, utf8_argument_to_complete,
                     [&](const std::string_view completion) {
-                        const auto completion_str = std::u16string(tokens[0]).append(u" ").append(utf8::utf8to16(completion));
+                        // Create a copy of the original strings
+                        const auto completion_str = std::u16string(reconstituted_command).append(utf8::utf8to16(completion));
                         m_prompt_state.addCompletion(completion_str);
                     });
 
@@ -98,5 +110,6 @@ std::optional<std::u16string> AutoCompleteCommand::run(CursorContext &payload, c
 }
 
 bool AutoCompleteCommand::isRunnable(const CursorContext &payload) {
+    // Auto complete is only available from the prompt perspective
     return payload.focus_target == FocusTarget::Prompt;
 }

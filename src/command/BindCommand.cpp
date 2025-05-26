@@ -1,6 +1,7 @@
 #include "BindCommand.h"
 
 #include <SDL_keyboard.h>
+#include <utf8.h>
 
 #include "../core/CommandManager.h"
 
@@ -46,7 +47,6 @@ std::optional<std::u16string_view> BindCommand::getBinding(const SDL_Keycode key
     const auto normalized_modifiers = normalizeModifiers(modifiers);
     if (const auto &map_entry = m_bindings.find(keycode); map_entry != m_bindings.end()) {
         if (const auto &binding = map_entry->second.find(normalized_modifiers); binding != map_entry->second.end()) {
-            // This does not necessarily redraw here, let the runCommand decide.
             return binding->second;
         }
     }

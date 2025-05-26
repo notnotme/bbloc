@@ -23,12 +23,13 @@ class Editor final : public View<> {
 private:
     /**
      * @brief Internal structure used to cache the longest visible line.
+     *
      * Optimizes horizontal scroll range and avoids remeasuring the longest line every frame.
      */
     struct LongestLineCache {
         uint32_t index; ///< Line index of the longest line.
         uint32_t count; ///< Character count in the longest line.
-        int32_t width; ///< Width in pixels of the longest line.
+        int32_t width;  ///< Width in pixels of the longest line.
     };
 
     /** Cache used for optimizing horizontal scroll and layout. */
@@ -42,12 +43,14 @@ private:
 
     /**
      * @brief Recomputes the longest line cache.
+     *
      * @param context Reference to the cursor context.
      */
     void updateLongestLineCache(const CursorContext &context);
 
     /**
      * @brief: Compute scroll position and max scroll for the horizontal and vertical axis.
+     *
      * @param context A reference to the cursor context.
      * @param viewState A reference to the Editor view state.
      */
@@ -55,6 +58,7 @@ private:
 
     /**
      * @brief: Draw the background layer of the editor.
+     *
      * @param viewState A reference to the Editor view state.
      * @param marginWidth The width of the margin, without the border size.
      */
@@ -62,6 +66,7 @@ private:
 
     /**
      * @brief: Draw the text layer in the left margin of the editor.
+     *
      * @param context A reference to the cursor context.
      * @param viewState A reference to the Editor view state.
      * @param lineCountWidth The width in pixel of the greatest line number.
@@ -71,6 +76,7 @@ private:
 
     /**
      * @brief: Draw the Cursor the text layer in the of the editor.
+     *
      * @param context A reference to the cursor context.
      * @param viewState A reference to the Editor view state.
      * @param scrollX The editor x scroll offset.
@@ -81,6 +87,7 @@ private:
 public:
     /**
      * @brief Constructs the Editor view.
+     *
      * @param commandController Reference to the CommandController.
      * @param theme Reference to the Theme for rendering.
      * @param quadProgram Reference to the QuadProgram shader.
@@ -90,6 +97,7 @@ public:
 
     /**
      * @brief Renders the text editor to the screen.
+     *
      * @param context Reference to the cursor context.
      * @param viewState State of the editor view.
      * @param dt Time delta since the last frame.
@@ -98,6 +106,7 @@ public:
 
     /**
      * @brief Handles key down events in the editor.
+     *
      * @param context Reference to the cursor context.
      * @param viewState State of the editor view.
      * @param keyCode SDL key code.
@@ -108,6 +117,7 @@ public:
 
     /**
      * @brief Handles text input events in the editor.
+     *
      * @param context Reference to the cursor context.
      * @param viewState State of the editor view.
      * @param text UTF-8 encoded character input from SDL_TEXTINPUT.

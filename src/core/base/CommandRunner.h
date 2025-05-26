@@ -17,6 +17,7 @@ public:
 
     /**
      * @brief Executes the provided command input.
+     *
      * @param input The full command input string, including arguments.
      * @param fromPrompt Indicates whether the input came from the interactive command prompt.
      * @return true if a command was successfully executed; false if unrecognized.
@@ -25,6 +26,7 @@ public:
 
     /**
      * @brief Provides auto-completion suggestions for command names.
+     *
      * @param input The current (partial) user input string.
      * @param itemCallback Callback to receive possible command name completions.
      */
@@ -32,18 +34,13 @@ public:
 
     /**
      * @brief Provides auto-completion suggestions for command arguments.
+     *
      * @param command The name of the command being executed.
      * @param argumentIndex The zero-based index of the argument currently being completed.
      * @param input The current (partial) user input for this argument.
      * @param itemCallback Callback to receive possible argument completions.
      */
     virtual void getArgumentsCompletions(std::string_view command, int32_t argumentIndex, std::string_view input, const AutoCompleteCallback<char> &itemCallback) = 0;
-
-    /**
-     * @brief Provides interactive feedback input completions.
-     * @param itemCallback Callback to receive feedback input completions.
-     */
-    virtual void getFeedbackCompletions(const AutoCompleteCallback<char16_t> &itemCallback) const = 0;
 };
 
 

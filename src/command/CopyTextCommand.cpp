@@ -20,12 +20,14 @@ std::optional<std::u16string> CopyTextCommand::run(CursorContext &payload, const
         return u"Selection is empty.";
     }
 
+    // Using this to store all the text at once and converting it to utf8 later in one shot, for SDL.
     auto to_clipboard_text = std::u16string();
     const auto &all_text = selection.value();
     const auto all_text_size = all_text.size();
     for (auto i = 0; i < all_text_size; ++i) {
         to_clipboard_text = to_clipboard_text.append(all_text[i]);
         if (i < all_text_size - 1) {
+            // Because the selected text returns a vector, we need to append line ending.
             to_clipboard_text = to_clipboard_text.append(u"\n");
         }
     }

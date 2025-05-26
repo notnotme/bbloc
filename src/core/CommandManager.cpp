@@ -1,5 +1,10 @@
 #include "CommandManager.h"
 
+#include <filesystem>
+#include <ranges>
+
+#include <utf8.h>
+
 
 CommandManager::CommandManager()
     : m_cvar_command(std::make_shared<CVarCommand>()) {

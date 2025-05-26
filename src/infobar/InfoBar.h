@@ -25,12 +25,14 @@ class InfoBar final : public View<> {
 private:
     /**
      * @brief: Draw the background layer of the info bar.
+     *
      * @param viewState A reference to the InfoBar view state.
      */
     void drawBackground(const ViewState &viewState) const;
 
     /**
       * @brief: Draw the text layer of the info bar.
+      *
       * @param context A reference to the cursor context.
       * @param viewState A reference to the Prompt view state.
       */
@@ -49,6 +51,7 @@ public:
 
     /**
      * @brief Renders the InfoBar.
+     *
      * @param context Reference to the cursor context.
      * @param viewState The InfoBarState of this view.
      * @param dt Time delta since the last frame.
@@ -57,6 +60,7 @@ public:
 
     /**
      * @brief InfoBar does not handle key input.
+     *
      * @return Always returns false.
      */
     bool onKeyDown(CursorContext &context, ViewState &viewState, SDL_Keycode keyCode, uint16_t keyModifier) const override;
