@@ -37,6 +37,7 @@ public:
 
     /**
      * @brief Initializes the buffer with a specific quad capacity.
+     *
      * @param capacity Number of quads the buffer should support.
      */
     void create(uint32_t capacity);
@@ -46,6 +47,7 @@ public:
 
     /**
      * @brief Maps a portion of the buffer to CPU address space.
+     *
      * @param start Index of the first quad to map.
      * @param count Number of quads to map.
      */
@@ -56,6 +58,7 @@ public:
 
 /**
      * @brief Inserts a plain tinted quad into the buffer.
+     *
      * @param x X position in pixels.
      * @param y Y position in pixels.
      * @param width Width of the quad.
@@ -70,6 +73,7 @@ public:
 
     /**
      * @brief Inserts a textured quad with a full tint (255) into the buffer.
+     *
      * @param x X position in pixels.
      * @param y Y position in pixels.
      * @param width Width of the quad.
@@ -83,6 +87,7 @@ public:
 
     /**
      * @brief Inserts a textured and tinted quad into the buffer.
+     *
      * @param x X position in pixels.
      * @param y Y position in pixels.
      * @param width Width of the quad.

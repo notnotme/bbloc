@@ -14,12 +14,13 @@
 template<typename T>
 class TypedCVar : public CVar {
 public:
-    /** @brief The current value of the typed CVar. */
+    /** The current value of the typed CVar. */
     T m_value;
 
 public:
     /**
-     * @brief Constructs a TypedCvar with the given value and read-only flag.
+     * @brief Constructs a TypedCVar with the given value and read-only flag.
+     *
      * @param value The initial value of this CVar.
      * @param isReadOnly Whether this CVar is read-only.
      */

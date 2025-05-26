@@ -111,18 +111,21 @@ public:
 
     /**
      * @brief Sets the visible prompt label text.
+     *
      * @param text New label text.
      */
     void setPromptText(std::u16string_view text);
 
     /**
      * @brief Adds a new auto-completion candidate.
+     *
      * @param item Completion string to append.
      */
     void addCompletion(std::u16string_view item);
 
     /**
      * @brief Adds a command string to the history list.
+     *
      * @param command The command string to store.
      */
     void addHistory(std::u16string_view command);
@@ -138,6 +141,7 @@ public:
 
     /**
      * @brief Updates the prompt's operational state.
+     *
      * @param state New running state to apply.
      */
     void setRunningState(RunningState state);

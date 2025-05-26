@@ -1,7 +1,6 @@
 #ifndef TEXT_BUFFER_H
 #define TEXT_BUFFER_H
 
-#include <cstdint>
 #include <string_view>
 
 #include "BufferEdit.h"
@@ -29,6 +28,7 @@ public:
 
     /**
      * @brief Returns the content of the given line as a UTF-16 string view.
+     *
      * @param line The line number to retrieve.
      * @return The content of the line as std::u16string_view.
      */
@@ -39,6 +39,7 @@ public:
 
     /**
      * @brief Return the offset of a byte inside the buffer, from a line, column coordinates.
+     *
      * @param line The line index of the wanted offset.
      * @param column The column index of the wanted offset.
      * @return The byte offset at this position.
@@ -47,6 +48,7 @@ public:
 
     /**
      * @brief Return the byte count of a range of text inside the buffer.
+     *
      * @param lineStart The line index at the beginning of the range.
      * @param columnStart The column index at the beginning of the range.
      * @param lineEnd The line index at the end of the range.
@@ -57,23 +59,25 @@ public:
 
     /**
      * @brief Inserts text at a specified location.
+     *
      * @param line Line index where to insert.
      * @param column Column index where to insert.
      * @param characters Characters to insert.
      */
-    virtual BufferEdit insert(uint32_t line, uint32_t column, std::u16string_view characters) = 0;
+    [[nodiscard]] virtual BufferEdit insert(uint32_t line, uint32_t column, std::u16string_view characters) = 0;
 
     /**
      * @brief Removes text from the buffer between the given coordinates.
+     *
      * @param lineStart Starting line index.
      * @param columnStart Starting column index.
      * @param lineEnd Ending line index.
      * @param columnEnd Ending column index.
      */
-    virtual BufferEdit erase(uint32_t lineStart, uint32_t columnStart, uint32_t lineEnd, uint32_t columnEnd) = 0;
+    [[nodiscard]] virtual BufferEdit erase(uint32_t lineStart, uint32_t columnStart, uint32_t lineEnd, uint32_t columnEnd) = 0;
 
     /** @brief Clears the entire content of the text buffer. */
-    virtual BufferEdit clear() = 0;
+    [[nodiscard]] virtual BufferEdit clear() = 0;
 };
 
 

@@ -43,6 +43,7 @@ protected:
 
     /**
      * @brief Helper to push a new quad into m_quad_buffer.
+     *
      * @param x The x position of the quad.
      * @param y The y position of the quad.
      * @param width The width of the quad.
@@ -53,6 +54,7 @@ protected:
 
     /**
      * @brief Helper to push a new character inside m_quad_buffer.
+     *
      * @param x The x position of the character.
      * @param y The y position of the character.
      * @param character The character to draw (from AtlasEntry).
@@ -72,6 +74,7 @@ public:
 
     /**
      * @brief Constructs a view with references to rendering and theme resources.
+     *
      * @param commandController Reference to a command controller.
      * @param theme Reference to the theme manager.
      * @param quadProgram Reference to the quad shader program.
@@ -81,6 +84,7 @@ public:
 
     /**
      * @brief Renders the view contents.
+     *
      * @param context Reference to the cursor context to render.
      * @param viewState Reference to the view-specific state.
      * @param dt Delta time in seconds (useful for animations or transitions).
@@ -89,6 +93,7 @@ public:
 
     /**
      * @brief Handles key press events.
+     *
      * @param context Reference to the cursor context to handle keys for.
      * @param viewState Reference to the view state.
      * @param keyCode The SDL key code.
@@ -99,6 +104,7 @@ public:
 
     /**
      * @brief Handles UTF-8 text input events (e.g., from typing).
+     *
      * @param context Reference to the cursor context to handle text input for.
      * @param viewState Reference to the view state.
      * @param text UTF-8 encoded input text (from SDL_TEXTINPUT).
@@ -107,6 +113,7 @@ public:
 
     /**
      * @brief Updates the internal window size for the view (e.g., after a resize event).
+     *
      * @param width New window width in pixels.
      * @param height New window height in pixels.
      */

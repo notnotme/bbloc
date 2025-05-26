@@ -18,7 +18,7 @@ std::optional<std::u16string> CancelCommand::run(CursorContext &payload, const s
 
     switch (payload.focus_target) {
         case FocusTarget::Prompt:
-            // Reset completions, history index, and feedback if the user quit the prompt
+            // Set the prompt state to Idle, then the command processing logic will take care of the rest.
             m_prompt_state.setRunningState(PromptState::RunningState::Idle);
             break;
         case FocusTarget::Editor:

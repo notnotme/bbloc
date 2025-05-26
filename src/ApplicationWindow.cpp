@@ -149,7 +149,8 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     m_command_manager.registerCommand("validate", std::make_shared<ValidateCommand>(m_prompt_state));
     m_command_manager.registerCommand("auto_complete", std::make_shared<AutoCompleteCommand>(m_prompt_state));
 
-    runCommand(std::u16string(u"exec ").append(utf8::utf8to16(path)).append(u"autoexec"), true);
+    // Don't run it "from prompt", so its not added to history
+    runCommand(std::u16string(u"exec ").append(utf8::utf8to16(path)).append(u"autoexec"), false);
 }
 
 void ApplicationWindow::mainLoop() {
@@ -417,12 +418,3 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
 
     return true;
 }
-
-void ApplicationWindow::getFeedbackCompletions(const AutoCompleteCallback<char16_t> &itemCallback) const {
-    if (m_cursor_context.command_feedback) {
-        for (const auto &completion : m_cursor_context.command_feedback->completions_list) {
-            itemCallback(completion);
-        }
-    }
-}
-

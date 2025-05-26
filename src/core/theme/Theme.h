@@ -101,7 +101,9 @@ public:
 
     /**
      * @brief Initializes the Theme system.
+     *
      * Loads the font, registers theme-related CVars, and prepares rendering assets.
+     *
      * @param commandController The CommandController to register CVars with.
      * @param path Filesystem path to the theme folder (must contain FONT_FILE).
      */
@@ -113,6 +115,7 @@ public:
 
     /**
      * @brief Sets the font size used for rendering text.
+     *
      * @param size Font size in pixels.
      */
     void setFontSize(int32_t size);
@@ -122,33 +125,33 @@ public:
 
     /**
      * @brief Retrieves a color value from the theme.
+     *
      * @param id Identifier of the color.
      * @return The associated ThemeColor.
-     * @throws std::runtime_error if not found.
      */
     [[nodiscard]] const Color &getColor(ColorId id) const;
 
     /**
      * @brief Retrieves a syntax highlight color by token type.
+     *
      * @param id The token identifier.
      * @return Reference to the color.
-     * @throws std::runtime_error if not found.
      */
     [[nodiscard]] const Color &getColor(TokenId id) const;
 
     /**
      * @brief Returns glyph metadata for the given character.
+     *
      * @param character The UTF-16 character.
      * @return Reference to the glyph's atlas entry.
-     * @throws std::runtime_error if not found.
      */
     [[nodiscard]] const AtlasEntry &getCharacter(char16_t character);
 
     /**
      * @brief Retrieves a dimension value by its identifier.
+     *
      * @param id The dimension identifier.
      * @return Dimension value in pixels.
-     * @throws std::runtime_error if not found.
      */
     [[nodiscard]] int32_t getDimension(DimensionId id) const;
 
@@ -163,6 +166,7 @@ public:
 
     /**
      * @brief Calculates the rendered width of a UTF-16 string.
+     *
      * @param text Text to measure.
      * @param ignoreTabs If true, tabs are ignored in the measurement.
      * @return Width in pixels.

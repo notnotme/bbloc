@@ -40,9 +40,7 @@ public:
     /** @brief Constructs an uninitialized AtlasArray. */
     explicit AtlasArray();
 
-    /**
-     * @brief Initializes the atlas array.
-     */
+    /** @brief Initializes the atlas array. */
     void create();
 
     /** @brief Destroys the atlas and clears all stored characters. */
@@ -50,18 +48,19 @@ public:
 
     /**
      * @brief Inserts a new character into the atlas.
+     *
      * @param character The Unicode codepoint to insert.
      * @param width Width of the glyph in pixels.
      * @param height Height of the glyph in pixels.
      * @param bearingX Horizontal bearing (offset from origin).
      * @param bearingY Vertical bearing (offset from baseline).
      * @return Reference to the inserted AtlasEntry.
-     * @throws std::runtime_error if the character already exists or there's no space left.
      */
     [[nodiscard]] const AtlasEntry &insert(char16_t character, uint8_t width, uint8_t height, int8_t bearingX, int8_t bearingY);
 
     /**
      * @brief Retrieves a character entry from the atlas.
+     *
      * @param character The Unicode codepoint.
      * @return Pointer to the corresponding AtlasEntry, or nullptr if not found.
      */

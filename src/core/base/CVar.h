@@ -30,12 +30,16 @@ public:
 
     /**
      * @brief Constructs a CVar.
+     *
      * @param isReadOnly Whether this CVar is read-only.
      */
-    explicit CVar(const bool isReadOnly) : m_is_read_only(isReadOnly) {}
+    explicit CVar(bool isReadOnly);
 
     /** @return true if the CVar cannot be modified. */
-    [[nodiscard]] bool isReadOnly() const { return m_is_read_only; }
+    [[nodiscard]] bool isReadOnly() const;
+
+    /** @return The current value as a UTF-16 string. */
+    [[nodiscard]] virtual std::u16string getStringValue() const = 0;
 
     /**
      * @brief Sets the CVar value using string arguments (to be implemented by subclasses).
@@ -46,10 +50,14 @@ public:
      * @return An optional message string in return.
      */
     virtual std::optional<std::u16string> setValueFromStrings(const std::vector<std::u16string_view> &args) = 0;
-
-    /** @return The current value as a UTF-16 string. */
-    [[nodiscard]] virtual std::u16string getStringValue() const = 0;
 };
+
+inline CVar::CVar(const bool isReadOnly)
+    : m_is_read_only(isReadOnly) {}
+
+inline bool CVar::isReadOnly() const {
+    return m_is_read_only;
+}
 
 
 #endif //CVAR_H

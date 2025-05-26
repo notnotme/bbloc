@@ -21,12 +21,14 @@ class Prompt final : public View<PromptState> {
 private:
     /**
      * @brief: Draw the background layer of the prompt.
+     *
      * @param viewState A reference to the Prompt view state.
      */
     void drawBackground(const PromptState &viewState) const;
 
     /**
      * @brief: Draw the text layer of the prompt.
+     *
      * @param context A reference to the cursor context.
      * @param viewState A reference to the Prompt view state.
      */
@@ -35,6 +37,7 @@ private:
 public:
     /**
      * @brief Constructs a Prompt view instance.
+     *
      * @param commandController Reference to the CommandManager instance.
      * @param theme Reference to the Theme manager for styling.
      * @param quadProgram Reference to the QuadProgram for rendering.
@@ -44,6 +47,7 @@ public:
 
     /**
      * @brief Renders the command prompt on screen.
+     *
      * @param context Reference to the cursor context.
      * @param viewState The associated PromptState for layout/input data.
      * @param dt Time delta since the last frame.
@@ -52,6 +56,7 @@ public:
 
     /**
      * @brief Handles key events while the prompt is active.
+     *
      * @param context Reference to the cursor context.
      * @param viewState The prompt's view state.
      * @param keyCode SDL key code.
@@ -62,6 +67,7 @@ public:
 
     /**
      * @brief Handles raw text input for the prompt.
+     *
      * @param context Reference to the cursor context.
      * @param viewState The prompt's view state.
      * @param text UTF-8 encoded character input.

@@ -50,15 +50,17 @@ public:
 
     /**
      * @brief Sets the position of the info bar view.
-     * @param x New X position.
-     * @param y New Y position.
+     *
+     * @param x The new X position.
+     * @param y The new Y position.
      */
     void setPosition(int16_t x, int16_t y);
 
     /**
      * @brief Sets the size of the info bar view.
-     * @param width New width.
-     * @param height New height.
+     *
+     * @param width The new width in pixels.
+     * @param height The new height in pixels.
      */
     void setSize(uint16_t width, uint16_t height);
 };

@@ -6,7 +6,17 @@ MoveCursorCommand::MoveCursorCommand(PromptState &promptState)
     : m_prompt_state(promptState) {}
 
 void MoveCursorCommand::provideAutoComplete(const int32_t argumentIndex, const std::string_view input, const AutoCompleteCallback<char> &itemCallback) const {
-    // TODO
+    if (argumentIndex == 0) {
+        const auto movement = { "up", "down", "left", "right", "bol", "eol", "page_up", "page_down", "bof", "eof" };
+        for (const auto &item : movement) {
+            itemCallback(item);
+        }
+    } else if (argumentIndex == 1) {
+        const auto selected = { "true", "false" };
+        for (const auto &item : selected) {
+            itemCallback(item);
+        }
+    }
 }
 
 std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, const std::vector<std::u16string_view> &args) {

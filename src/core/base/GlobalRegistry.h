@@ -17,6 +17,7 @@
 template<typename TPayload>
 class GlobalRegistry : public CommandRegistry<TPayload>, public CVarRegistry {
 public:
+    /** @brief Virtual destructor for inheritance. */
     ~GlobalRegistry() override = default;
 };
 

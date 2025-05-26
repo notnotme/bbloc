@@ -106,6 +106,7 @@ private:
 
     /**
      * @brief Recomputes the orthogonal projection matrix.
+     *
      * @param width New window width.
      * @param height New window height.
      */
@@ -113,6 +114,7 @@ private:
 
     /**
      * @brief Run the said command.
+     *
      * @param command The command string to rexecute by m_command_manager.
      * @param fromPrompt If the command is running from a direct prompt input.
      */
@@ -132,6 +134,7 @@ public:
 
     /**
      * @brief Creates the SDL window and initializes OpenGL context.
+     *
      * @param title The window title.
      * @param width Initial window width in pixels.
      * @param height Initial window height in pixels.
@@ -144,9 +147,30 @@ public:
     /** @brief Starts the main application loop (event handling and rendering). */
     void mainLoop();
 
+    /**
+     * @brief Provides command name completions for the command prompt.
+     *
+     * Invoked when the user is typing a command; filters available commands based on partial input. It use
+     * CommandManager under the hood to retrieve the items. Parts of CommandRunner.
+     *
+     * @param input Partial command name typed by the user.
+     * @param itemCallback Callback to return matching command names.
+     */
     void getCommandCompletions(std::string_view input, const AutoCompleteCallback<char> &itemCallback) override;
+
+
+    /**
+     * @brief Provides argument completions for a specific command.
+     *
+     * Use CommandManager under the hood to provide argument completions.
+     * Parts of CommandRunner.
+     *
+     * @param command Name of the command whose arguments are being completed. ///< Target command.
+     * @param argumentIndex Index of the current argument being typed.         ///< Zero-based arg index.
+     * @param input Partial input for the current argument.                    ///< Filter string.
+     * @param itemCallback Callback to return matching argument suggestions.   ///< Suggestion callback.
+     */
     void getArgumentsCompletions(std::string_view command, int32_t argumentIndex, std::string_view input, const AutoCompleteCallback<char> &itemCallback) override;
-    void getFeedbackCompletions(const AutoCompleteCallback<char16_t> &itemCallback) const override;
 };
 
 

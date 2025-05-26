@@ -45,7 +45,7 @@ bool Prompt::onKeyDown(CursorContext &context, PromptState &viewState, const SDL
             context.prompt_cursor.eraseRight();
         return true;
         default:
-            return false;
+        return false;
     }
 }
 
