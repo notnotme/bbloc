@@ -270,7 +270,7 @@ std::optional<BufferEdit> Cursor::eraseLeft() {
     return std::nullopt;
 }
 
-std::optional<BufferEdit> Cursor::eraseRight() {
+std::optional<BufferEdit> Cursor::eraseRight() const {
     if (m_column < m_buffer->getString(m_line).length()) {
         // We can erase on the right since column < string_length
         return m_buffer->erase(m_line, m_column, m_line, m_column + 1);

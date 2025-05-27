@@ -82,7 +82,7 @@ private:
      * @param scrollX The editor x scroll offset.
      * @param scrollY The editor y scroll offset.
      */
-    void drawText(const CursorContext &context, const ViewState &viewState, int32_t scrollX, int32_t scrollY);
+    void drawText(const CursorContext &context, const ViewState &viewState, int32_t scrollX, int32_t scrollY) const;
 
 public:
     /**

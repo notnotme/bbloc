@@ -68,7 +68,7 @@ std::optional<std::u16string> AutoCompleteCommand::run(CursorContext &payload, c
                     skip = 1;
                 }
 
-                auto reconstituted_command = left_index == std::string::npos
+                const auto reconstituted_command = left_index == std::string::npos
                     // Nothing was found, we return the entire input + space.
                     ? std::u16string(input).append(u" ")
                     // Return the left part of the input, before the eventually incomplete argument.

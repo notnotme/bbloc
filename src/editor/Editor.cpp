@@ -296,7 +296,7 @@ void Editor::drawMarginText(const CursorContext &context, const ViewState &viewS
     }
 }
 
-void Editor::drawText(const CursorContext &context, const ViewState &viewState, const int32_t scrollX, const int32_t scrollY) {
+void Editor::drawText(const CursorContext &context, const ViewState &viewState, const int32_t scrollX, const int32_t scrollY) const {
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
     const auto position_y = viewState.getPositionY();

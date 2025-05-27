@@ -50,7 +50,7 @@ public:
      *
      * @param layer Index of the texture layer to clear.
      */
-    void clearLayer(uint8_t layer);
+    void clearLayer(uint8_t layer) const;
 };
 
 

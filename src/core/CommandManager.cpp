@@ -23,7 +23,7 @@ void CommandManager::registerCommand(const std::string_view name, std::shared_pt
     }
 }
 
-void CommandManager::registerCvar(const std::string_view name, std::shared_ptr<CVar> cvar, const CVarCallback &callback) {
+void CommandManager::registerCvar(const std::string_view name, const std::shared_ptr<CVar> cvar, const CVarCallback &callback) {
     m_cvar_command->registerCvar(name, cvar, callback);
 }
 
