@@ -51,16 +51,28 @@ std::optional<std::u16string> AutoCompleteCommand::run(CursorContext &payload, c
                 const auto utf8_command_name = tokens.empty() ? "" : utf8::utf16to8(tokens.front());
                 const auto utf8_argument_to_complete = tokens.size() <= 1 ? "" : utf8::utf16to8(tokens.back());
                 const auto argument_index = static_cast<int32_t>(tokens.size() <= 1
+                    // Zero or one token = command argument
                     ? tokens.size() - 1
                     : input.ends_with(' ')
+                        // If the input ends with ' ', argument index is tokens.size() - 1
                         ? tokens.size() - 1
+                        // Otherwise, argument index is tokens.size() - 2
                         : tokens.size() - 2);
 
-                // Reconstitute the original input
-                const auto left_index = input.rfind(' ');
+                // Reconstitute the original input, first find left part of the input.
+                auto skip = 2;
+                auto left_index = input.rfind(u" \"");
+                if (left_index == std::string::npos) {
+                    // First tries to find the latest argument with a quote, then fallback to a space.
+                    left_index = input.rfind(' ');
+                    skip = 1;
+                }
+
                 auto reconstituted_command = left_index == std::string::npos
+                    // Nothing was found, we return the entire input + space.
                     ? std::u16string(input).append(u" ")
-                    : input.substr(0, left_index + 1);
+                    // Return the left part of the input, before the eventually incomplete argument.
+                    : input.substr(0, left_index + skip);
 
                 // Try to complete commands arguments first, if the command name is incomplete, this will return an empty list
                 payload.command_runner.getArgumentsCompletions(utf8_command_name, argument_index, utf8_argument_to_complete,
@@ -71,7 +83,7 @@ std::optional<std::u16string> AutoCompleteCommand::run(CursorContext &payload, c
                     });
 
                 if (m_prompt_state.getCompletionCount() == 0 && tokens.size() <= 1) {
-                    // Auto-complete commands names
+                    // Auto-complete commands names then
                     payload.command_runner.getCommandCompletions(utf8_command_name,
                         [&](const std::string_view completion) {
                             m_prompt_state.addCompletion(utf8::utf8to16(completion));
