@@ -36,15 +36,19 @@ uint32_t StringBuffer::getByteCount(uint32_t lineStart, uint32_t columnStart, ui
         return 0;
     }
 
-    // Find the start and end point in the cache, then subtract their offsets.
-    const auto start_byte_offset = (m_line_data[lineStart].start + columnStart);
-    const auto end_byte_offset = (m_line_data[lineEnd].start + columnEnd);
-    // Take in account "\n"
+    // Find the start and end point in the cache, then subtract their offsets. Take in account "\n".
+    const auto start_byte_offset = m_line_data[lineStart].start + columnStart;
+    const auto end_byte_offset = m_line_data[lineEnd].start + columnEnd;
     const auto line_ends = lineEnd - lineStart; // "\n"
     return (end_byte_offset - start_byte_offset + line_ends) * sizeof(char16_t);
 }
 
 BufferEdit StringBuffer::insert(uint32_t line, uint32_t column, const std::u16string_view characters) {
+    [[unlikely]] if (characters.empty()) {
+        // This will likely never happen?
+        return {0,0,0, {line, column}, {line, column}, {line, column}};
+    }
+
     // As we insert into the buffer, we need to fill a BufferEdit
     auto edit = BufferEdit();
 
@@ -95,7 +99,8 @@ BufferEdit StringBuffer::insert(uint32_t line, uint32_t column, const std::u16st
         }
     }
 
-    if (const auto final_segment_len = characters.length() - segment_start; final_segment_len > 0) {
+    const auto final_segment_len = characters.length() - segment_start;
+    if (final_segment_len > 0) {
         // Insert the final segment (after last \n or whole string if no \n)
         const auto segment_view = characters.substr(segment_start, final_segment_len);
         m_buffer.insert(insert_offset, segment_view);

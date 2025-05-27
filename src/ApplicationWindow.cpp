@@ -407,8 +407,7 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
             m_cursor_context.focus_target = FocusTarget::Prompt;
         } else {
             // The prompt state can change while command execution (e.g: activate_prompt, cancel), check it again.
-            const auto prompt_state = m_prompt_state.getRunningState();
-            switch (prompt_state) {
+            switch (m_prompt_state.getRunningState()) {
                 case PromptState::RunningState::Idle:
                     m_cursor_context.command_feedback.reset();
                     m_prompt_state.clearCompletions();

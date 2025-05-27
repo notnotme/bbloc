@@ -176,7 +176,7 @@ public:
      *
      * @return An optional BufferEdit describing the change.
      */
-    [[nodiscard]] std::optional<BufferEdit> eraseRight();
+    [[nodiscard]] std::optional<BufferEdit> eraseRight() const;
 
     /** @return An optional BufferEdit describing the change. */
     [[nodiscard]] std::optional<BufferEdit> eraseSelection();
