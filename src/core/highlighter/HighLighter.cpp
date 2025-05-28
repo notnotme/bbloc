@@ -10,7 +10,7 @@
 #include "mapper/JsonMapper.h"
 
 
-std::unordered_map<HighLightId, HighLighter::Parser> HighLighter::PARSERS = {
+const std::unordered_map<HighLightId, HighLighter::Parser> HighLighter::PARSERS = {
     { HighLightId::Json, {
         .language           = tree_sitter_json(),
         .name               = "JSON",
@@ -145,11 +145,12 @@ bool HighLighter::isSupported(const std::string_view extension) {
     return false;
 }
 
-void HighLighter::getParserCompletions(const AutoCompleteCallback<char> &callback) {
+void HighLighter::getParserCompletions(const AutoCompleteCallback &callback) {
     // Add a "txt" item, for HighLightId::None
-    callback("txt");
+    callback(u"txt");
     for (const auto &parser: std::views::values(PARSERS)) {
-        callback(parser.argument_value);
+        const auto utf8_argument_value = utf8::utf8to16(parser.argument_value);
+        callback(utf8_argument_value);
     }
 }
 

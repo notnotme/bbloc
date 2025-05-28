@@ -10,12 +10,10 @@
  *
  * This callback is called for each item that potentially matches with the input.
  *
- * @tparam T The character type (e.g., char, char16_t) of the string to receive.
  * @param input A string view representing the item being returned.
  */
-template<typename T>
 using AutoCompleteCallback = std::function<
-    void(std::basic_string_view<T> input)
+    void(std::u16string_view input)
 >;
 
 

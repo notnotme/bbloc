@@ -3,7 +3,7 @@
 #include <utf8.h>
 
 
-void SetHighLightCommand::provideAutoComplete(const int32_t argumentIndex, const std::string_view input, const AutoCompleteCallback<char> &itemCallback) const {
+void SetHighLightCommand::provideAutoComplete(const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     // Ignore input
     (void) input;
     if (argumentIndex != 0) {
@@ -20,12 +20,13 @@ std::optional<std::u16string> SetHighLightCommand::run(CursorContext &payload, c
     }
 
     // Developers are lazy, so let's prepend a dot to make it work flawlessly
-    const auto extension = std::string(".").append(utf8::utf16to8(args[0]));
-    if (!HighLighter::isSupported(extension)) {
-        return std::u16string(u"Unsupported highlight mode: ").append(args[0]);
+    const auto extension = std::u16string(u".").append(args[0]);
+    const auto utf8_extension = utf8::utf16to8(extension);
+    if (!HighLighter::isSupported(utf8_extension)) {
+        return std::u16string(u"Unsupported highlight mode: ").append(extension);
     }
 
-    payload.highlighter.setMode(extension);
+    payload.highlighter.setMode(utf8_extension);
     payload.wants_redraw = true;
     return std::nullopt;
 }

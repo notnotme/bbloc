@@ -3,7 +3,6 @@
 
 
 #include "../core/base/GlobalRegistry.h"
-#include "../core/cursor/Cursor.h"
 #include "../core/renderer/QuadProgram.h"
 #include "../core/renderer/QuadBuffer.h"
 #include "../core/theme/Theme.h"

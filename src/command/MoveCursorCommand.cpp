@@ -2,18 +2,35 @@
 
 #include "../core/theme/DimensionId.h"
 
+
+const std::unordered_map<std::u16string, MoveCursorCommand::Movement> MoveCursorCommand::MOVEMENT_MAP = {
+    { u"up", Movement::UP },
+    { u"down", Movement::DOWN },
+    { u"left", Movement::LEFT },
+    { u"right", Movement::RIGHT },
+    { u"bol", Movement::BEGIN_FILE },
+    { u"eol", Movement::END_LINE },
+    { u"page_up", Movement::PAGE_UP },
+    { u"page_down", Movement::PAGE_DOWN },
+    { u"bof", Movement::BEGIN_FILE },
+    { u"eof",  Movement::END_FILE }
+};
+
+const std::unordered_map<std::u16string, MoveCursorCommand::Boolean> MoveCursorCommand::BOOLEAN_MAP = {
+    { u"true", Boolean::TRUE },
+    { u"false", Boolean::FALSE }
+};
+
 MoveCursorCommand::MoveCursorCommand(PromptState &promptState)
     : m_prompt_state(promptState) {}
 
-void MoveCursorCommand::provideAutoComplete(const int32_t argumentIndex, const std::string_view input, const AutoCompleteCallback<char> &itemCallback) const {
+void MoveCursorCommand::provideAutoComplete(const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     if (argumentIndex == 0) {
-        const auto movement = { "up", "down", "left", "right", "bol", "eol", "page_up", "page_down", "bof", "eof" };
-        for (const auto &item : movement) {
+        for (const auto &item : std::views::keys(MOVEMENT_MAP)) {
             itemCallback(item);
         }
     } else if (argumentIndex == 1) {
-        const auto selected = { "true", "false" };
-        for (const auto &item : selected) {
+        for (const auto &item : std::views::keys(BOOLEAN_MAP)) {
             itemCallback(item);
         }
     }
@@ -24,111 +41,149 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
         return u"Usage: move <direction> [selected]";
     }
 
-    int direction;
-    if (args[0] == u"up") {
-        direction = 0;
-    } else if (args[0] == u"down") {
-        direction = 1;
-    } else if (args[0] == u"left") {
-        direction = 2;
-    } else if (args[0] == u"right") {
-        direction = 3;
-    } else if (args[0] == u"bol") {
-        direction = 4;
-    } else if (args[0] == u"eol") {
-        direction = 5;
-    } else if (args[0] == u"page_up") {
-        direction = 6;
-    } else if (args[0] == u"page_down") {
-        direction = 7;
-    }  else if (args[0] == u"bof") {
-        direction = 8;
-    } else if (args[0] == u"eof") {
-        direction = 9;
-    } else {
+    // Tries to map the movement argument
+    const auto movement = mapMovement(args[0]);
+    if (movement == Movement::UNKNOWN) {
         return std::u16string(u"Unknown direction argument: ").append(args[0]);
     }
 
-    bool selected;
-    if (args.size() == 2) {
-        if (args[1] == u"true") {
-            selected = true;
-        } else if (args[1] == u"false") {
-            selected = false;
-        } else {
-            return std::u16string(u"Selected argument expect a boolean value: ").append(args[1]);
-        }
-    } else {
-        selected = false;
+    // Tries to map the selected argument
+    const auto has_select_argument = args.size() == 2;
+    const auto select_text = has_select_argument
+        // User decide.
+        ? mapBoolean(args[1])
+        // Don't enable or expand the selection by default.
+        : Boolean::FALSE;
+
+    if (has_select_argument && select_text == Boolean::UNKNOWN) {
+        // If the user precise the select argument but it cannot be parsed.
+        return std::u16string(u"Selected argument expect a boolean value: ").append(args[1]);
     }
 
+    // Move cursor according to focus target.
+    // If any movement happens, then the view must be redrawn.
     switch (payload.focus_target) {
-        case FocusTarget::Prompt: {
-            switch (direction) {
-                case 0: {
+        case FocusTarget::Prompt:
+            switch (movement) {
+                case Movement::UP:
                     if (m_prompt_state.getHistoryCount() > 0) {
                         m_prompt_state.clearCompletions();
+
                         const auto command = m_prompt_state.previousHistory();
                         payload.prompt_cursor.clear();
                         payload.prompt_cursor.insert(command);
                         payload.wants_redraw = true;
                     }
-                    break;
-                }
-                case 1: {
+                break;
+                case Movement::DOWN:
                     if (m_prompt_state.getHistoryCount() > 0) {
                         m_prompt_state.clearCompletions();
+
                         const auto command = m_prompt_state.nextHistory();
                         payload.prompt_cursor.clear();
                         payload.prompt_cursor.insert(command);
                         payload.wants_redraw = true;
                     }
-                    break;
-                }
-                case 2:
+                break;
+                case Movement::LEFT:
                     payload.prompt_cursor.moveLeft();
                     payload.wants_redraw = true;
-                    break;
-                case 3:
+                break;
+                case Movement::RIGHT:
                     payload.prompt_cursor.moveRight();
                     payload.wants_redraw = true;
-                    break;
-                case 4:
+                break;
+                case Movement::BEGIN_LINE:
                     payload.prompt_cursor.moveToStart();
                     payload.wants_redraw = true;
-                    break;
-                case 5:
+                break;
+                case Movement::END_LINE:
                     payload.prompt_cursor.moveToEnd();
                     payload.wants_redraw = true;
-                    break;
+                break;
                 default:
-                    // No-op
-                    break;
+                    return std::nullopt;
             }
-
-            return std::nullopt;
-        }
-        case FocusTarget::Editor: {
-            payload.cursor.activateSelection(selected);
-            switch (direction) {
+        break;
+        case FocusTarget::Editor:
+            payload.cursor.activateSelection(select_text == Boolean::TRUE);
+            switch (movement) {
+                case Movement::UP:
+                    payload.cursor.moveUp();
+                    payload.follow_indicator = true;
+                    payload.wants_redraw = true;
+                break;
+                case Movement::DOWN:
+                    payload.cursor.moveDown();
+                    payload.follow_indicator = true;
+                    payload.wants_redraw = true;
+                break;
+                case Movement::LEFT:
+                    payload.cursor.moveLeft();
+                    payload.follow_indicator = true;
+                    payload.wants_redraw = true;
+                break;
+                case Movement::RIGHT:
+                    payload.cursor.moveRight();
+                    payload.follow_indicator = true;
+                    payload.wants_redraw = true;
+                break;
+                case Movement::BEGIN_LINE:
+                    payload.cursor.moveToStartOfLine();
+                    payload.follow_indicator = true;
+                    payload.wants_redraw = true;
+                break;
+                case Movement::END_LINE:
+                    payload.cursor.moveToEndOfLine();
+                    payload.follow_indicator = true;
+                    payload.wants_redraw = true;
+                break;
+                case Movement::PAGE_UP:
+                    payload.cursor.pageUp(payload.theme.getDimension(DimensionId::PageUpDown));
+                    payload.follow_indicator = true;
+                    payload.wants_redraw = true;
+                break;
+                case Movement::PAGE_DOWN:
+                    payload.cursor.pageDown(payload.theme.getDimension(DimensionId::PageUpDown));
+                    payload.follow_indicator = true;
+                    payload.wants_redraw = true;
+                break;
+                case Movement::BEGIN_FILE:
+                    payload.cursor.moveToStartOfFile();
+                    payload.follow_indicator = true;
+                    payload.wants_redraw = true;
+                break;
+                case Movement::END_FILE:
+                    payload.cursor.moveToEndOfFile();
+                    payload.follow_indicator = true;
+                    payload.wants_redraw = true;
+                break;
                 default:
-                case 0: payload.cursor.moveUp(); break;
-                case 1: payload.cursor.moveDown(); break;
-                case 2: payload.cursor.moveLeft(); break;
-                case 3: payload.cursor.moveRight(); break;
-                case 4: payload.cursor.moveToStartOfLine(); break;
-                case 5: payload.cursor.moveToEndOfLine(); break;
-                case 6: payload.cursor.pageUp(payload.theme.getDimension(DimensionId::PageUpDown)); break;
-                case 7: payload.cursor.pageDown(payload.theme.getDimension(DimensionId::PageUpDown)); break;
-                case 8: payload.cursor.moveToStartOfFile(); break;
-                case 9: payload.cursor.moveToEndOfFile(); break;
+                    return std::nullopt;
             }
-
-            payload.wants_redraw = true;
-            payload.follow_indicator = true;
-            return std::nullopt;
-        }
+        break;
         default:
         return std::nullopt;
     }
+
+    return std::nullopt;
 }
+
+MoveCursorCommand::Movement MoveCursorCommand::mapMovement(const std::u16string_view movement) {
+    const auto movement_str = std::u16string(movement.begin(), movement.end());
+    if (const auto &mapped_movement = MOVEMENT_MAP.find(movement_str); mapped_movement != MOVEMENT_MAP.end()) {
+        return mapped_movement->second;
+    }
+
+    return Movement::UNKNOWN;
+}
+
+MoveCursorCommand::Boolean MoveCursorCommand::mapBoolean(const std::u16string_view value) {
+    const auto boolean_str = std::u16string(value.begin(), value.end());
+    if (const auto &mapped_boolean = BOOLEAN_MAP.find(boolean_str); mapped_boolean != BOOLEAN_MAP.end()) {
+        return mapped_boolean->second;
+    }
+
+    return Boolean::UNKNOWN;
+}
+

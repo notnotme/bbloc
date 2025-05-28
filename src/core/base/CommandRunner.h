@@ -30,7 +30,7 @@ public:
      * @param input The current (partial) user input string.
      * @param itemCallback Callback to receive possible command name completions.
      */
-    virtual void getCommandCompletions(std::string_view input, const AutoCompleteCallback<char> &itemCallback) = 0;
+    virtual void getCommandCompletions(std::u16string_view input, const AutoCompleteCallback &itemCallback) = 0;
 
     /**
      * @brief Provides auto-completion suggestions for command arguments.
@@ -40,7 +40,7 @@ public:
      * @param input The current (partial) user input for this argument.
      * @param itemCallback Callback to receive possible argument completions.
      */
-    virtual void getArgumentsCompletions(std::string_view command, int32_t argumentIndex, std::string_view input, const AutoCompleteCallback<char> &itemCallback) = 0;
+    virtual void getArgumentsCompletions(std::u16string_view command, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) = 0;
 };
 
 

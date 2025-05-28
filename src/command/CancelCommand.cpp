@@ -1,9 +1,10 @@
 #include "CancelCommand.h"
 
+
 CancelCommand::CancelCommand(PromptState &promptState)
     : m_prompt_state(promptState) {}
 
-void CancelCommand::provideAutoComplete(const int32_t argumentIndex, const std::string_view input, const AutoCompleteCallback<char> &itemCallback) const {
+void CancelCommand::provideAutoComplete(const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) input;
     (void) argumentIndex;
     (void) itemCallback;
@@ -16,16 +17,8 @@ std::optional<std::u16string> CancelCommand::run(CursorContext &payload, const s
         return u"Expected 0 argument.";
     }
 
-    switch (payload.focus_target) {
-        case FocusTarget::Prompt:
-            // Set the prompt state to Idle, then the command processing logic will take care of the rest.
-            m_prompt_state.setRunningState(PromptState::RunningState::Idle);
-            break;
-        case FocusTarget::Editor:
-            // No-op
-        default:
-            break;
-    }
+    // Set the prompt state to Idle, then the command processing logic will take care of the rest.
+    m_prompt_state.setRunningState(PromptState::RunningState::Idle);
 
     return std::nullopt;
 }

@@ -20,6 +20,9 @@
  */
 class BindCommand final : public Command<CursorContext> {
 private:
+    /** Lookup map to ease mapping modifiers. */
+    static const std::unordered_map<std::u16string, uint16_t> MODIFIER_MAP;
+
     /** Map of key binding to commands.
      *
      * The outer map uses SDL_Keycode as keys, and the inner map uses modifier combinations
@@ -27,6 +30,7 @@ private:
      */
     std::unordered_map<SDL_Keycode, std::unordered_map<uint16_t, std::u16string>> m_bindings;
 
+private:
     /**
      * @brief Normalize input modifiers from raw SDL input modifiers.
      *
@@ -36,6 +40,20 @@ private:
      * @return Normalized modifier flags.
      */
     static uint16_t normalizeModifiers(uint16_t modifiers);
+
+    /**
+     * @brief Map a string representation of a key modifier into a int32_t.
+     *
+     * This converts a SDL modifier keycode into an int32_t. This allows returning a negative value in case the mapping
+     * fails, and return an error in this case.
+     *
+     * Values can be "Ctrl", "Alt", "Shift", "None".
+     * "None" is mandatory if the binding does not use key modifiers at all.
+     *
+     * @param modifier The string representation of the modifier to convert.
+     * @return An int representation of the modifier, or -1.
+     */
+    static int32_t mapModifier(std::u16string_view modifier);
 
 public:
     /** @brief Constructs a BindCommand with default initialization. */
@@ -50,7 +68,7 @@ public:
      * @param input The current partial input from the user for this argument.
      * @param itemCallback A callback to be invoked with each completion suggestion.
      */
-    void provideAutoComplete(int32_t argumentIndex, std::string_view input, const AutoCompleteCallback<char> &itemCallback) const override;
+    void provideAutoComplete(int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
 
     /**
      * @brief Executes the bind command to create a new key binding.
@@ -78,7 +96,6 @@ public:
      */
     std::optional<std::u16string_view> getBinding(SDL_Keycode keycode, uint16_t modifiers);
 };
-
 
 
 #endif //BIND_COMMAND_H

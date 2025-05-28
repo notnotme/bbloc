@@ -129,25 +129,25 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     m_prompt.resizeWindow(width, height);
 
     // Register cvars and commands then run autoexec
-    m_command_manager.registerCvar("inf_draw_time", m_draw_time, nullptr);
-    m_command_manager.registerCvar("inf_command_time", m_command_time, nullptr);
-    m_command_manager.registerCommand("quit", std::make_shared<QuitCommand>());
-    m_command_manager.registerCommand("open", std::make_shared<OpenFileCommand>());
-    m_command_manager.registerCommand("save", std::make_shared<SaveFileCommand>());
-    m_command_manager.registerCommand("reset_draw_time", std::make_shared<ResetCVarFloatCommand>(m_draw_time));
-    m_command_manager.registerCommand("reset_command_time", std::make_shared<ResetCVarFloatCommand>(m_command_time));
-    m_command_manager.registerCommand("set_font_size", std::make_shared<FontSizeCommand>());
-    m_command_manager.registerCommand("set_hl_mode", std::make_shared<SetHighLightCommand>());
-    m_command_manager.registerCommand("bind", m_bind_command);
-    m_command_manager.registerCommand("activate_prompt", std::make_shared<ActivatePromptCommand>(m_prompt_state));
-    m_command_manager.registerCommand("copy", std::make_shared<CopyTextCommand>());
-    m_command_manager.registerCommand("paste", std::make_shared<PasteTextCommand>());
-    m_command_manager.registerCommand("cut", std::make_shared<CutTextCommand>());
-    m_command_manager.registerCommand("move", std::make_shared<MoveCursorCommand>(m_prompt_state));
-    m_command_manager.registerCommand("exec", std::make_shared<ExecCommand>());
-    m_command_manager.registerCommand("cancel", std::make_shared<CancelCommand>(m_prompt_state));
-    m_command_manager.registerCommand("validate", std::make_shared<ValidateCommand>(m_prompt_state));
-    m_command_manager.registerCommand("auto_complete", std::make_shared<AutoCompleteCommand>(m_prompt_state));
+    m_command_manager.registerCvar(u"inf_draw_time", m_draw_time, nullptr);
+    m_command_manager.registerCvar(u"inf_command_time", m_command_time, nullptr);
+    m_command_manager.registerCommand(u"quit", std::make_shared<QuitCommand>());
+    m_command_manager.registerCommand(u"open", std::make_shared<OpenFileCommand>());
+    m_command_manager.registerCommand(u"save", std::make_shared<SaveFileCommand>());
+    m_command_manager.registerCommand(u"reset_draw_time", std::make_shared<ResetCVarFloatCommand>(m_draw_time));
+    m_command_manager.registerCommand(u"reset_command_time", std::make_shared<ResetCVarFloatCommand>(m_command_time));
+    m_command_manager.registerCommand(u"set_font_size", std::make_shared<FontSizeCommand>());
+    m_command_manager.registerCommand(u"set_hl_mode", std::make_shared<SetHighLightCommand>());
+    m_command_manager.registerCommand(u"bind", m_bind_command);
+    m_command_manager.registerCommand(u"activate_prompt", std::make_shared<ActivatePromptCommand>(m_prompt_state));
+    m_command_manager.registerCommand(u"copy", std::make_shared<CopyTextCommand>());
+    m_command_manager.registerCommand(u"paste", std::make_shared<PasteTextCommand>());
+    m_command_manager.registerCommand(u"cut", std::make_shared<CutTextCommand>());
+    m_command_manager.registerCommand(u"move", std::make_shared<MoveCursorCommand>(m_prompt_state));
+    m_command_manager.registerCommand(u"exec", std::make_shared<ExecCommand>());
+    m_command_manager.registerCommand(u"cancel", std::make_shared<CancelCommand>(m_prompt_state));
+    m_command_manager.registerCommand(u"validate", std::make_shared<ValidateCommand>(m_prompt_state));
+    m_command_manager.registerCommand(u"auto_complete", std::make_shared<AutoCompleteCommand>(m_prompt_state));
 
     // Don't run it "from prompt", so its not added to history
     runCommand(std::u16string(u"exec ").append(utf8::utf8to16(path)).append(u"autoexec"), false);
@@ -303,11 +303,11 @@ void ApplicationWindow::mainLoop() {
     }
 }
 
-void ApplicationWindow::getCommandCompletions(const std::string_view input, const AutoCompleteCallback<char> &itemCallback) {
+void ApplicationWindow::getCommandCompletions(const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
     m_command_manager.getCommandCompletions(input, itemCallback);
 }
 
-void ApplicationWindow::getArgumentsCompletions(const std::string_view command, const int32_t argumentIndex, const std::string_view input, const AutoCompleteCallback<char> &itemCallback) {
+void ApplicationWindow::getArgumentsCompletions(const std::u16string_view command, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
     m_command_manager.getArgumentsCompletion(command, argumentIndex, input, itemCallback);
 }
 
@@ -350,8 +350,8 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
             return false;
         }
 
-        const auto utf8_command_name = utf8::utf16to8(tokens[0]);
-        const auto allowed_to_run = m_command_manager.isRunnable(m_cursor_context, utf8_command_name);
+        const auto command_str = tokens[0].data();
+        const auto allowed_to_run = m_command_manager.isRunnable(m_cursor_context, command_str);
         if (!allowed_to_run) {
             // Nothing to process
             return false;

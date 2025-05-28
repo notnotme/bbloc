@@ -32,12 +32,14 @@ private:
         int32_t width;  ///< Width in pixels of the longest line.
     };
 
+private:
     /** Cache used for optimizing horizontal scroll and layout. */
     LongestLineCache m_longest_line_cache;
 
     /** CVar for toggling tab-to-space replacement in input. */
     std::shared_ptr<CVarBool> m_is_tab_to_space;
 
+private:
     /** @brief Registers the tab_to_space cvar into the command manager. */
     void registerTabToSpaceCVar() const;
 

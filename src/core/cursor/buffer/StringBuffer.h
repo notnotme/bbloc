@@ -27,6 +27,7 @@ private:
         uint32_t count;   ///< Number of characters in the line.
     };
 
+private:
     /** Internal contiguous buffer storing all characters. */
     std::u16string m_buffer;
 

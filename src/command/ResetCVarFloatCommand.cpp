@@ -1,9 +1,10 @@
 #include "ResetCVarFloatCommand.h"
 
+
 ResetCVarFloatCommand::ResetCVarFloatCommand(std::shared_ptr<CVarFloat> cvar)
     : m_cvar(std::move(cvar)) {}
 
-void ResetCVarFloatCommand::provideAutoComplete(const int32_t argumentIndex, const std::string_view input, const AutoCompleteCallback<char> &itemCallback) const {
+void ResetCVarFloatCommand::provideAutoComplete(const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) argumentIndex;
     (void) input;
     (void) itemCallback;

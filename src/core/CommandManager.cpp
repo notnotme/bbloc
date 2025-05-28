@@ -8,22 +8,22 @@
 
 CommandManager::CommandManager()
     : m_cvar_command(std::make_shared<CVarCommand>()) {
-    m_commands.insert({ "cvar", m_cvar_command });
+    m_commands.insert({ u"cvar", m_cvar_command });
 }
 
-void CommandManager::registerCommand(const std::string_view name, std::shared_ptr<Command<CursorContext>> command) {
-    const auto c_string = name.data();
-    if (m_commands.contains(c_string)) {
-        throw std::runtime_error(std::string("Command already registered: ").append(name));
+void CommandManager::registerCommand(const std::u16string_view name, std::shared_ptr<Command<CursorContext>> command) {
+    const auto name_str = name.data();
+    if (m_commands.contains(name_str)) {
+        throw std::runtime_error(std::string("Command already registered: ").append(utf8::utf16to8(name)));
     }
 
-    const auto &[new_entry, success] = m_commands.insert({ c_string, command });
+    const auto &[new_entry, success] = m_commands.insert({ name_str, command });
     if (!success) {
-        throw std::runtime_error(std::string("Unable to register command: ").append(name));
+        throw std::runtime_error(std::string("Unable to register command: ").append(utf8::utf16to8(name)));
     }
 }
 
-void CommandManager::registerCvar(const std::string_view name, const std::shared_ptr<CVar> cvar, const CVarCallback &callback) {
+void CommandManager::registerCvar(const std::u16string_view name, const std::shared_ptr<CVar> cvar, const CVarCallback &callback) {
     m_cvar_command->registerCvar(name, cvar, callback);
 }
 
@@ -33,16 +33,17 @@ std::optional<std::u16string> CommandManager::run(CursorContext &payload, const 
         return std::nullopt;
     }
 
-    const auto command = utf8::utf16to8(tokens[0]);
+    // Copy token 0 into a string to avoid looking paste it if using tokens[0].data().
+    const auto command = std::u16string(tokens[0].begin(), tokens[0].end());
     if (const auto &cmd = m_commands.find(command); cmd != m_commands.end()) {
         // Skip the first item in the tokens, as it is the command name and we don't need it
         return cmd->second->run(payload, { tokens.begin() + 1, tokens.end() });
     }
 
-    return std::u16string(u"Unknown command: ").append(tokens[0]);
+    return std::u16string(u"Unknown command: ").append(command);
 }
 
-void CommandManager::getCommandCompletions(const std::string_view input, const AutoCompleteCallback<char> &itemCallback) {
+void CommandManager::getCommandCompletions(const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
     const auto input_is_empty = input.empty();
     for (const auto &name : std::views::keys(m_commands)) {
         if (name.starts_with(input) || input_is_empty) {
@@ -52,14 +53,16 @@ void CommandManager::getCommandCompletions(const std::string_view input, const A
     }
 }
 
-void CommandManager::getArgumentsCompletion(const std::string_view command, const int32_t argumentIndex, const std::string_view input, const AutoCompleteCallback<char> &itemCallback) {
-    if (const auto &cmd = m_commands.find(command.data()); cmd != m_commands.end()) {
+void CommandManager::getArgumentsCompletion(const std::u16string_view command, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
+    const auto command_str = std::u16string(command.begin(), command.end());
+    if (const auto &cmd = m_commands.find(command_str); cmd != m_commands.end()) {
         cmd->second->provideAutoComplete(argumentIndex, input, itemCallback);
     }
 }
 
-bool CommandManager::isRunnable(const CursorContext &payload, const std::string_view name) {
-    if (const auto &cmd = m_commands.find(name.data()); cmd != m_commands.end()) {
+bool CommandManager::isRunnable(const CursorContext &payload, const std::u16string_view name) {
+    const auto name_str = std::u16string(name.begin(), name.end());
+    if (const auto &cmd = m_commands.find(name_str); cmd != m_commands.end()) {
         return cmd->second->isRunnable(payload);
     }
 
@@ -68,7 +71,7 @@ bool CommandManager::isRunnable(const CursorContext &payload, const std::string_
     return true;
 }
 
-void CommandManager::getPathCompletions(const std::string_view input, const bool foldersOnly, const AutoCompleteCallback<char> &itemCallback) {
+void CommandManager::getPathCompletions(const std::u16string_view input, const bool foldersOnly, const AutoCompleteCallback &itemCallback) {
     const auto path_input = std::filesystem::path(input);
     const auto path_input_string = path_input.filename().string();
     const auto parent_path = path_input.has_parent_path() ? path_input.parent_path() : ".";
@@ -81,7 +84,8 @@ void CommandManager::getPathCompletions(const std::string_view input, const bool
             const auto &filename = path.filename().string();
             if (filename.starts_with(path_input_string)) {
                 if (entry.is_directory() || (!foldersOnly && entry.is_regular_file())) {
-                    itemCallback(complete_path);
+                    const auto utf16_complete_path = utf8::utf8to16(complete_path);
+                    itemCallback(utf16_complete_path);
                 }
             }
         }

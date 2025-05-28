@@ -3,7 +3,8 @@
 #include <SDL_clipboard.h>
 #include <utf8.h>
 
-void CopyTextCommand::provideAutoComplete(const int32_t argumentIndex, const std::string_view input, const AutoCompleteCallback<char> &itemCallback) const {
+
+void CopyTextCommand::provideAutoComplete(const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) input;
     (void) argumentIndex;
     (void) itemCallback;
@@ -22,6 +23,7 @@ std::optional<std::u16string> CopyTextCommand::run(CursorContext &payload, const
 
     // Using this to store all the text at once and converting it to utf8 later in one shot, for SDL.
     auto to_clipboard_text = std::u16string();
+
     const auto &all_text = selection.value();
     const auto all_text_size = all_text.size();
     for (auto i = 0; i < all_text_size; ++i) {
@@ -32,6 +34,7 @@ std::optional<std::u16string> CopyTextCommand::run(CursorContext &payload, const
         }
     }
 
+    // Need to convert the string to UTF-8 for SDL_SetClipboardText
     const auto utf8_clipboard_text = utf8::utf16to8(to_clipboard_text);
     SDL_SetClipboardText(utf8_clipboard_text.data());
 

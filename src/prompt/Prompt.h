@@ -3,7 +3,6 @@
 
 #include <SDL.h>
 
-#include "../core/cursor/PromptCursor.h"
 #include "../core/renderer/QuadProgram.h"
 #include "../core/renderer/QuadBuffer.h"
 #include "../core/theme/Theme.h"

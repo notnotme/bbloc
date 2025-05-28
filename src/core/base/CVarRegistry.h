@@ -31,7 +31,7 @@ public:
      * @param cvar Shared pointer to the CVar instance.
      * @param callback Optional callback invoked on changes.
      */
-    virtual void registerCvar(std::string_view name, std::shared_ptr<CVar> cvar, const CVarCallback &callback) = 0;
+    virtual void registerCvar(std::u16string_view name, std::shared_ptr<CVar> cvar, const CVarCallback &callback) = 0;
 };
 
 

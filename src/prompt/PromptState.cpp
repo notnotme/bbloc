@@ -119,7 +119,7 @@ void PromptState::setRunningState(const RunningState state) {
 
 void PromptState::registerMaxHistoryCVar() {
     // register the max_history cvar
-    m_command_manager.registerCvar("dim_max_history", m_max_history, [&] {
+    m_command_manager.registerCvar(u"dim_max_history", m_max_history, [&] {
         // Clamp history so the user cannot enter funny numbers
         const auto new_size = std::clamp(m_max_history->m_value, 8, 255);
         m_max_history->m_value = new_size;
