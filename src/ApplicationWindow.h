@@ -165,10 +165,10 @@ public:
      * Use CommandManager under the hood to provide argument completions.
      * Parts of CommandRunner.
      *
-     * @param command Name of the command whose arguments are being completed. ///< Target command.
-     * @param argumentIndex Index of the current argument being typed.         ///< Zero-based arg index.
-     * @param input Partial input for the current argument.                    ///< Filter string.
-     * @param itemCallback Callback to return matching argument suggestions.   ///< Suggestion callback.
+     * @param command Name of the command whose arguments are being completed.
+     * @param argumentIndex Index of the current argument being typed.
+     * @param input Partial input for the current argument.
+     * @param itemCallback Callback to return matching argument suggestions.
      */
     void getArgumentsCompletions(std::u16string_view command, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) override;
 };
