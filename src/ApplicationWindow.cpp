@@ -350,8 +350,8 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
             return false;
         }
 
-        const auto command_str = tokens[0].data();
-        const auto allowed_to_run = m_command_manager.isRunnable(m_cursor_context, command_str);
+        const auto command_name = tokens[0];
+        const auto allowed_to_run = m_command_manager.isRunnable(m_cursor_context, command_name);
         if (!allowed_to_run) {
             // Nothing to process
             return false;
