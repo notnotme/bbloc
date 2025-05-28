@@ -29,7 +29,7 @@
 class CommandManager final : public GlobalRegistry<CursorContext> {
 private:
     /** Registered commands. */
-    std::unordered_map<std::string, std::shared_ptr<Command<CursorContext>>> m_commands;
+    std::unordered_map<std::u16string, std::shared_ptr<Command<CursorContext>>> m_commands;
 
     /** The CVarCommand */
     std::shared_ptr<CVarCommand> m_cvar_command;
@@ -53,7 +53,7 @@ public:
      * @param name Command name (must be unique).
      * @param command The command to register.
      */
-    void registerCommand(std::string_view name, std::shared_ptr<Command<CursorContext>> command) override;
+    void registerCommand(std::u16string_view name, std::shared_ptr<Command<CursorContext>> command) override;
 
     /**
      * @brief Registers a new configuration variable (CVar).
@@ -62,7 +62,7 @@ public:
      * @param cvar Shared pointer to the CVar instance.
      * @param callback Optional callback invoked when the variable is modified.
      */
-    void registerCvar(std::string_view name, std::shared_ptr<CVar> cvar, const CVarCallback &callback) override;
+    void registerCvar(std::u16string_view name, std::shared_ptr<CVar> cvar, const CVarCallback &callback) override;
 
     /**
      * @brief Executes a command string.
@@ -79,7 +79,7 @@ public:
      * @param input Current user input string.
      * @param itemCallback Callback to receive command name suggestions.
      */
-    void getCommandCompletions(std::string_view input, const AutoCompleteCallback<char> &itemCallback);
+    void getCommandCompletions(std::u16string_view input, const AutoCompleteCallback &itemCallback);
 
     /**
      * @brief Provides auto-completions for command arguments.
@@ -89,7 +89,7 @@ public:
      * @param input Current user input string.
      * @param itemCallback Callback to receive argument name suggestions.
      */
-    void getArgumentsCompletion(std::string_view command, int32_t argumentIndex, std::string_view input, const AutoCompleteCallback<char> &itemCallback);
+    void getArgumentsCompletion(std::u16string_view command, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback);
 
     /**
      * @brief Check if a command can be run.
@@ -98,7 +98,7 @@ public:
      * @param name The name of the command to test.
      * @return An optional result string for displaying messages in the prompt.
      */
-    [[nodiscard]] bool isRunnable(const CursorContext &payload, std::string_view name);
+    [[nodiscard]] bool isRunnable(const CursorContext &payload, std::u16string_view name);
 
     /**
      * @brief Tokenizes a UTF-16 input string for command parsing. Splits the input into a list of arguments.
@@ -127,7 +127,7 @@ public:
      * @param foldersOnly If true, only folder names will be returned.
      * @param itemCallback Callback to receive each path suggestion.
      */
-    static void getPathCompletions(std::string_view input, bool foldersOnly, const AutoCompleteCallback<char> &itemCallback);
+    static void getPathCompletions(std::u16string_view input, bool foldersOnly, const AutoCompleteCallback &itemCallback);
 };
 
 

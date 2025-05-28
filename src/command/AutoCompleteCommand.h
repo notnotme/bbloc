@@ -19,8 +19,30 @@
  */
 class AutoCompleteCommand final : public Command<CursorContext> {
 private:
+    /** @brief Represent a direction in the form of enum. */
+    enum class Direction {
+        UNKNOWN,    ///< Unknown direction.
+        FORWARD,    ///< Direction goes forward.
+        BACKWARD    ///< Direction goes backward.
+    };
+
+private:
+    /** Lookup map to ease mapping Direction. */
+    static const std::unordered_map<std::u16string, Direction> DIRECTION_MAP;
+
     /** Reference to the prompt state this command will use for auto-completion. */
     PromptState &m_prompt_state;
+
+private:
+    /**
+     * @brief Map a string representation of a Direction to a Direction enum.
+     *
+     * Values can be "forward", "backward".
+     *
+     * @param direction The string representation of the direction.
+     * @return The Direction enum corresponding to the string, or Unknown.
+     */
+    static Direction mapDirection(std::u16string_view direction);
 
 public:
     /**
@@ -39,7 +61,7 @@ public:
      * @param input The current partial input from the user for this argument.
      * @param itemCallback A callback to be invoked with each completion suggestion.
      */
-    void provideAutoComplete(int32_t argumentIndex, std::string_view input, const AutoCompleteCallback<char> &itemCallback) const override;
+    void provideAutoComplete(int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
 
     /**
      * @brief Executes the auto-completion command.
@@ -63,7 +85,6 @@ public:
      */
     [[nodiscard]] bool isRunnable(const CursorContext &payload) override;
 };
-
 
 
 #endif //AUTO_COMPLETE_COMMAND_H

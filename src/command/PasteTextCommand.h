@@ -29,7 +29,7 @@ public:
       * @param input The current partial input from the user for this argument.
       * @param itemCallback A callback to be invoked with each completion suggestion.
       */
-    void provideAutoComplete(int32_t argumentIndex, std::string_view input, const AutoCompleteCallback<char> &itemCallback) const override;
+    void provideAutoComplete(int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
 
     /**
      * @brief Executes the paste operation.
@@ -55,7 +55,6 @@ public:
      */
     [[nodiscard]] bool isRunnable(const CursorContext &payload) override;
 };
-
 
 
 #endif //PASTE_TEXT_COMMAND_H

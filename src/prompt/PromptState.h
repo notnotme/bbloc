@@ -8,7 +8,6 @@
 
 #include "../core/cvar/CVarInt.h"
 #include "../core/CommandManager.h"
-#include "../core/CursorContext.h"
 #include "../core/ViewState.h"
 
 /**

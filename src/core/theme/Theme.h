@@ -215,18 +215,18 @@ void Theme::registerThemeColorCVar(GlobalRegistry<TPayload> &commandController) 
     const auto &cvar_cursor_indicator_color          = m_colors.insert({ColorId::CursorIndicator,        std::make_shared<CVarColor>(  0,   0,   0, 255)});
 
     // Make colors accessible from the console
-    commandController.registerCvar("col_margin_background",        cvar_margin_background_color.first->second, nullptr);
-    commandController.registerCvar("col_info_bar_background",      cvar_info_bar_background_color.first->second, nullptr);
-    commandController.registerCvar("col_editor_background",        cvar_editor_background_color.first->second, nullptr);
-    commandController.registerCvar("col_prompt_background",        cvar_prompt_background_color.first->second, nullptr);
-    commandController.registerCvar("col_current_line_background",  cvar_current_line_background_color.first->second, nullptr);
-    commandController.registerCvar("col_selected_text_background", cvar_selected_text_background_color.first->second, nullptr);
-    commandController.registerCvar("col_line_number",              cvar_line_number_color.first->second, nullptr);
-    commandController.registerCvar("col_info_bar_text",            cvar_info_bar_text_color.first->second, nullptr);
-    commandController.registerCvar("col_prompt_text",              cvar_prompt_text_color.first->second, nullptr);
-    commandController.registerCvar("col_prompt_input_text",        cvar_prompt_input_text_color.first->second, nullptr);
-    commandController.registerCvar("col_border",                   cvar_border_color.first->second, nullptr);
-    commandController.registerCvar("col_cursor_indicator",         cvar_cursor_indicator_color.first->second, nullptr);
+    commandController.registerCvar(u"col_margin_background",        cvar_margin_background_color.first->second, nullptr);
+    commandController.registerCvar(u"col_info_bar_background",      cvar_info_bar_background_color.first->second, nullptr);
+    commandController.registerCvar(u"col_editor_background",        cvar_editor_background_color.first->second, nullptr);
+    commandController.registerCvar(u"col_prompt_background",        cvar_prompt_background_color.first->second, nullptr);
+    commandController.registerCvar(u"col_current_line_background",  cvar_current_line_background_color.first->second, nullptr);
+    commandController.registerCvar(u"col_selected_text_background", cvar_selected_text_background_color.first->second, nullptr);
+    commandController.registerCvar(u"col_line_number",              cvar_line_number_color.first->second, nullptr);
+    commandController.registerCvar(u"col_info_bar_text",            cvar_info_bar_text_color.first->second, nullptr);
+    commandController.registerCvar(u"col_prompt_text",              cvar_prompt_text_color.first->second, nullptr);
+    commandController.registerCvar(u"col_prompt_input_text",        cvar_prompt_input_text_color.first->second, nullptr);
+    commandController.registerCvar(u"col_border",                   cvar_border_color.first->second, nullptr);
+    commandController.registerCvar(u"col_cursor_indicator",         cvar_cursor_indicator_color.first->second, nullptr);
 }
 
 template<typename TPayload>
@@ -241,13 +241,13 @@ void Theme::registerHighLightColorCVar(GlobalRegistry<TPayload> &commandControll
     const auto &cvar_hl_statement_color      = m_highlight_colors.insert({TokenId::Statement,    std::make_shared<CVarColor>(200,   0, 200, 255)});
 
     // Make highlight colors accessible from the console
-    commandController.registerCvar("hl_text",          cvar_hl_text_color.first->second, nullptr);
-    commandController.registerCvar("hl_comment",       cvar_hl_comment_color.first->second, nullptr);
-    commandController.registerCvar("hl_string",        cvar_hl_string_color.first->second, nullptr);
-    commandController.registerCvar("hl_preprocessor",  cvar_hl_preprocessor_color.first->second, nullptr);
-    commandController.registerCvar("hl_number",        cvar_hl_number_color.first->second, nullptr);
-    commandController.registerCvar("hl_keyword",       cvar_hl_keyword_color.first->second, nullptr);
-    commandController.registerCvar("hl_statement",     cvar_hl_statement_color.first->second, nullptr);
+    commandController.registerCvar(u"hl_text",          cvar_hl_text_color.first->second, nullptr);
+    commandController.registerCvar(u"hl_comment",       cvar_hl_comment_color.first->second, nullptr);
+    commandController.registerCvar(u"hl_string",        cvar_hl_string_color.first->second, nullptr);
+    commandController.registerCvar(u"hl_preprocessor",  cvar_hl_preprocessor_color.first->second, nullptr);
+    commandController.registerCvar(u"hl_number",        cvar_hl_number_color.first->second, nullptr);
+    commandController.registerCvar(u"hl_keyword",       cvar_hl_keyword_color.first->second, nullptr);
+    commandController.registerCvar(u"hl_statement",     cvar_hl_statement_color.first->second, nullptr);
 }
 
 template<typename TPayload>
@@ -260,14 +260,14 @@ void Theme::registerThemeDimensionCVar(GlobalRegistry<TPayload> &commandControll
     const auto &cvar_page_up_down    = m_dimensions.insert({DimensionId::PageUpDown,     std::make_shared<CVarInt>(10)});
 
     // Make dimensions accessible from the console
-    commandController.registerCvar("dim_padding_width",    cvar_padding_width.first->second, nullptr);
-    commandController.registerCvar("dim_indicator_width",  cvar_indicator_width.first->second, nullptr);
-    commandController.registerCvar("dim_border_size",      cvar_border_size.first->second, nullptr);
-    commandController.registerCvar("dim_tab_to_space",     cvar_tab_to_space.first->second, nullptr);
-    commandController.registerCvar("dim_page_up_down",     cvar_page_up_down.first->second, nullptr);
+    commandController.registerCvar(u"dim_padding_width",    cvar_padding_width.first->second, nullptr);
+    commandController.registerCvar(u"dim_indicator_width",  cvar_indicator_width.first->second, nullptr);
+    commandController.registerCvar(u"dim_border_size",      cvar_border_size.first->second, nullptr);
+    commandController.registerCvar(u"dim_tab_to_space",     cvar_tab_to_space.first->second, nullptr);
+    commandController.registerCvar(u"dim_page_up_down",     cvar_page_up_down.first->second, nullptr);
 
     // Register a cvar to change the font size. It needs a callback.
-    commandController.registerCvar("dim_font_size", m_font_size, [&]{ setFontSize(m_font_size->m_value); });
+    commandController.registerCvar(u"dim_font_size", m_font_size, [&]{ setFontSize(m_font_size->m_value); });
 }
 
 

@@ -443,5 +443,5 @@ void Editor::drawText(const CursorContext &context, const ViewState &viewState, 
 
 void Editor::registerTabToSpaceCVar() const {
     // Register a cvar to change the font size. It needs a callback.
-    m_command_controller.registerCvar("tab_to_space", m_is_tab_to_space, nullptr);
+    m_command_controller.registerCvar(u"tab_to_space", m_is_tab_to_space, nullptr);
 }

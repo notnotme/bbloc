@@ -40,6 +40,7 @@ private:
     /** Holds the index of the column where the selection starts. */
     uint32_t m_selected_column_start;
 
+private:
     /**
      * @brief Erase a range of text inside the internal buffer. This does not move the cursor coordinates.
      *

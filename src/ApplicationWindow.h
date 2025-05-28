@@ -156,7 +156,7 @@ public:
      * @param input Partial command name typed by the user.
      * @param itemCallback Callback to return matching command names.
      */
-    void getCommandCompletions(std::string_view input, const AutoCompleteCallback<char> &itemCallback) override;
+    void getCommandCompletions(std::u16string_view input, const AutoCompleteCallback &itemCallback) override;
 
 
     /**
@@ -170,7 +170,7 @@ public:
      * @param input Partial input for the current argument.                    ///< Filter string.
      * @param itemCallback Callback to return matching argument suggestions.   ///< Suggestion callback.
      */
-    void getArgumentsCompletions(std::string_view command, int32_t argumentIndex, std::string_view input, const AutoCompleteCallback<char> &itemCallback) override;
+    void getArgumentsCompletions(std::u16string_view command, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) override;
 };
 
 

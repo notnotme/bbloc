@@ -31,7 +31,7 @@ public:
      * @param name The name used to reference the command in the console.
      * @param command A shared pointer to the Command instance to register.
      */
-    virtual void registerCommand(std::string_view name, std::shared_ptr<Command<TPayload>> command) = 0;
+    virtual void registerCommand(std::u16string_view name, std::shared_ptr<Command<TPayload>> command) = 0;
 };
 
 

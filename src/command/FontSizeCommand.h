@@ -17,6 +17,25 @@
  * a specific value to improve readability based on their preferences.
  */
 class FontSizeCommand final : public Command<CursorContext> {
+private:
+    /** @brief Represent a "size direction". */
+    enum class Size {
+        UNKNOWN,
+        PLUS,
+        MINUS
+    };
+
+private:
+    /** Lookup map to ease mapping font size. */
+    static const std::unordered_map<std::u16string, Size> SIZE_MAP;
+
+    /**
+     * Map a "size" argument into a Size. Argument "size" can be one of "+" or "-".
+     * @param size The string representation of the size in the font unit.
+     * @return The corresponding Size, or UNKNOWN.
+     */
+    static Size mapSize(std::u16string_view size);
+
 public:
     /** @brief Constructs a FontSizeCommand with default initialization. */
     explicit FontSizeCommand() = default;
@@ -30,7 +49,7 @@ public:
      * @param input The current partial input from the user for this argument.
      * @param itemCallback A callback to be invoked with each completion suggestion.
      */
-    void provideAutoComplete(int32_t argumentIndex, std::string_view input, const AutoCompleteCallback<char> &itemCallback) const override;
+    void provideAutoComplete(int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
 
     /**
      * @brief Executes the font size adjustment.
@@ -48,7 +67,6 @@ public:
      */
     [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, const std::vector<std::u16string_view> &args) override;
 };
-
 
 
 #endif //FONT_SIZE_COMMAND_H

@@ -38,9 +38,7 @@ private:
         const MapperFunction mapper_function;               ///< Function mapping Tree-sitter symbols to TokenIds.
     };
 
-    /** Static map of registered parsers indexed by highlighting mode. */
-    static std::unordered_map<HighLightId, Parser> PARSERS;
-
+private:
     /** Reference to the cursor giving the text data to this highlighter */
     const Cursor &m_cursor;
 
@@ -71,6 +69,9 @@ private:
      * @return A string view containing the line of text, starting from the said column, until the end of the said line (\n).
      */
     [[nodiscard]] std::optional<std::u16string_view> readCallback(uint32_t line, uint32_t column) const;
+
+    /** Static map of registered parsers indexed by highlighting mode. */
+    static const std::unordered_map<HighLightId, Parser> PARSERS;
 
 public:
     /** @brief Deleted copy constructor. */
@@ -132,7 +133,7 @@ public:
      *
      * @param callback Callback that receives each parser name.
      */
-    static void getParserCompletions(const AutoCompleteCallback<char> &callback);
+    static void getParserCompletions(const AutoCompleteCallback &callback);
 
     /**
      * @brief Checks whether a given file extension is supported.

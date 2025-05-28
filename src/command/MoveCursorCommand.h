@@ -18,8 +18,49 @@
  */
 class MoveCursorCommand final : public Command<CursorContext> {
 private:
+    enum class Movement {
+        UNKNOWN,
+        UP,
+        DOWN,
+        LEFT,
+        RIGHT,
+        BEGIN_LINE,
+        END_LINE,
+        PAGE_UP,
+        PAGE_DOWN,
+        BEGIN_FILE,
+        END_FILE
+    };
+
+    enum class Boolean {
+        UNKNOWN,
+        TRUE,
+        FALSE
+    };
+
+private:
+    /** Lookup map to ease mapping Movement. */
+    static const std::unordered_map<std::u16string, Movement> MOVEMENT_MAP;
+
+    /** Lookup map to ease mapping Boolean. */
+    static const std::unordered_map<std::u16string, Boolean> BOOLEAN_MAP;
+
     /** Reference to the prompt state. */
     PromptState &m_prompt_state;
+
+    /**
+     * Map a movement string representation to the enum representation.
+     * @param movement The movement string to map.
+     * @return The Movement value, UNKNOWN otherwise.
+     */
+    static Movement mapMovement(std::u16string_view movement);
+
+    /**
+     * Map a boolean string representation to the enum representation.
+     * @param value The boolean string to map.
+     * @return The Boolean value, UNKNOWN otherwise.
+     */
+    static Boolean mapBoolean(std::u16string_view value);
 
 public:
     /**
@@ -41,7 +82,7 @@ public:
      * @param input The current partial input from the user for this argument.
      * @param itemCallback A callback to be invoked with each completion suggestion.
      */
-    void provideAutoComplete(int32_t argumentIndex, std::string_view input, const AutoCompleteCallback<char> &itemCallback) const override;
+    void provideAutoComplete(int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
 
     /**
      * @brief Executes the cursor movement.
@@ -57,7 +98,6 @@ public:
      */
     [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, const std::vector<std::u16string_view> &args) override;
 };
-
 
 
 #endif //MOVE_CURSOR_COMMAND_H

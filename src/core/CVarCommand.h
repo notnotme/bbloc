@@ -27,7 +27,7 @@ class CVarCommand final : public Command<CursorContext>, public CVarRegistry {
     };
 
     /** Registered configuration variables. */
-    std::unordered_map<std::string, CVarEntry> m_cvars;
+    std::unordered_map<std::u16string, CVarEntry> m_cvars;
 
 public:
     CVarCommand() = default;
@@ -39,7 +39,7 @@ public:
      * @param input Partial user input string.
      * @param itemCallback Callback to provide suggestions.
      */
-    void provideAutoComplete(int32_t argumentIndex, std::string_view input, const AutoCompleteCallback<char> &itemCallback) const override;
+    void provideAutoComplete(int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
 
     /**
      * @brief Executes the CVar command.
@@ -61,7 +61,7 @@ public:
      * @param cvar Shared pointer to the CVar.
      * @param callback Function to call on CVar change. Can be nullptr.
      */
-    void registerCvar(std::string_view name, std::shared_ptr<CVar> cvar, const CVarCallback &callback) override;
+    void registerCvar(std::u16string_view name, std::shared_ptr<CVar> cvar, const CVarCallback &callback) override;
 };
 
 

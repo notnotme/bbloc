@@ -4,7 +4,7 @@
 ValidateCommand::ValidateCommand(PromptState &promptState)
     : m_prompt_state(promptState) {}
 
-void ValidateCommand::provideAutoComplete(const int32_t argumentIndex, const std::string_view input, const AutoCompleteCallback<char> &itemCallback) const {
+void ValidateCommand::provideAutoComplete(const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) input;
     (void) argumentIndex;
     (void) itemCallback;
@@ -16,21 +16,13 @@ std::optional<std::u16string> ValidateCommand::run(CursorContext &payload, const
         return u"Expected 0 argument.";
     }
 
-    switch (payload.focus_target) {
-        case FocusTarget::Prompt: {
-            // runCommand can also update the prompt state, set the prompt to Idle before running the command.
-            m_prompt_state.setRunningState(PromptState::RunningState::Idle);
+    // runCommand can also update the prompt state, set the prompt to Idle before running the command.
+    m_prompt_state.setRunningState(PromptState::RunningState::Idle);
 
-            // The return value can be ignored in this use case.
-            const auto prompt_command = payload.prompt_cursor.getString();
-            payload.command_runner.runCommand(prompt_command, true);
-        }
-        break;
-        case FocusTarget::Editor:
-            // No-op
-        default:
-        break;
-    }
+    // The return value of runCommand can be ignored in this use case,
+    // and because we just check the current focus inside Command::isRunnable to block commands, in facts.
+    const auto prompt_command = payload.prompt_cursor.getString();
+    payload.command_runner.runCommand(prompt_command, true);
 
     return std::nullopt;
 }
