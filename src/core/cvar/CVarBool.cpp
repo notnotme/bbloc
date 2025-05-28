@@ -17,8 +17,7 @@ std::optional<std::u16string> CVarBool::setValueFromStrings(const std::vector<st
     }
 
     try {
-        const auto arg = utf8::utf16to8(args[0]);
-        m_value = arg == "true";
+        m_value = args[0] == u"true";
     } catch (...) {
         return u"Unable to convert argument to boolean";
     }
