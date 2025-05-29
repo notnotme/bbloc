@@ -51,7 +51,7 @@ public:
 
 private:
     /** SDL window handle. */
-    SDL_Window* p_sdl_window;
+    SDL_Window *p_sdl_window;
 
     /** OpenGL rendering context. */
     SDL_GLContext m_sdl_gl_context;
@@ -127,6 +127,7 @@ public:
     /** @brief Deleted copy assignment operator. */
     ApplicationWindow &operator=(const ApplicationWindow &) = delete;
 
+    /** @brief Release resources helds by ApplicationWindow. */
     ~ApplicationWindow() override = default;
 
     /** @brief Constructs the ApplicationWindow with default values. */
@@ -157,7 +158,6 @@ public:
      * @param itemCallback Callback to return matching command names.
      */
     void getCommandCompletions(std::u16string_view input, const AutoCompleteCallback &itemCallback) override;
-
 
     /**
      * @brief Provides argument completions for a specific command.
