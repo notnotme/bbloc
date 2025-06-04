@@ -73,6 +73,8 @@ bool Editor::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_K
 
             const auto &edit = context.cursor.newLine();
             context.highlighter.edit(edit);
+            // Update stick to column index if we insert
+            context.stick_column_index = context.cursor.getColumn();
         }
         return true;
         case SDLK_BACKSPACE: {
@@ -85,6 +87,7 @@ bool Editor::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_K
             } else if (const auto &edit = context.cursor.eraseLeft()) {
                 context.highlighter.edit(edit.value());
             }
+            // Do not update stick to column index if we remove
         }
         return true;
         case SDLK_DELETE: {
@@ -97,6 +100,8 @@ bool Editor::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_K
             } else if (const auto &edit = context.cursor.eraseRight()) {
                 context.highlighter.edit(edit.value());
             }
+            // Update stick to column index
+            context.stick_column_index = context.cursor.getColumn();
         }
         return true;
         case SDLK_TAB: {
@@ -117,6 +122,8 @@ bool Editor::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_K
                 const auto &edit = context.cursor.insert(u"\t");
                 context.highlighter.edit(edit);
             }
+            // Update stick to column index
+            context.stick_column_index = context.cursor.getColumn();
         }
         return true;
         default:
@@ -143,8 +150,9 @@ void Editor::onTextInput(CursorContext &context, ViewState &viewState, const cha
 
     const auto utf16_text = utf8::utf8to16(utf8_text);
     const auto &edit = context.cursor.insert(utf16_text);
-    context.highlighter.edit(edit);
+    context.stick_column_index = context.cursor.getColumn();
     context.follow_indicator = true;
+    context.highlighter.edit(edit);
 }
 
 void Editor::updateLongestLineCache(const CursorContext &context) {

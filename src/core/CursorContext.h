@@ -31,6 +31,9 @@ struct CursorContext {
     bool follow_indicator;          ///< Indicate that the view should scroll to the indicator when rendering.
     bool wants_redraw;              ///< indicate that the view and parents or sibling should redraw due to state change.
 
+    bool stick_to_column;           ///< Flag indicating that the next move (up or down) must place the cursor column
+    uint32_t stick_column_index;    ///< Column where the cursor column must "stick".
+
     /** The feedback prompt state. */
     std::optional<CommandFeedback> command_feedback;
 
@@ -54,8 +57,11 @@ struct CursorContext {
           focus_target(FocusTarget::Editor),
           scroll_x(0),
           scroll_y(0),
+          stick_to_column(false),
+          stick_column_index(0),
           follow_indicator(false),
-          wants_redraw(true) {}
+          wants_redraw(true) {
+    }
 };
 
 

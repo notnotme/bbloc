@@ -49,18 +49,24 @@ private:
     PromptState &m_prompt_state;
 
     /**
-     * Map a movement string representation to the enum representation.
+     * @brief Map a movement string representation to the enum representation.
      * @param movement The movement string to map.
      * @return The Movement value, UNKNOWN otherwise.
      */
     static Movement mapMovement(std::u16string_view movement);
 
     /**
-     * Map a boolean string representation to the enum representation.
+     * @brief Map a boolean string representation to the enum representation.
      * @param value The boolean string to map.
      * @return The Boolean value, UNKNOWN otherwise.
      */
     static Boolean mapBoolean(std::u16string_view value);
+
+    /**
+     * @brief Update the payload's cursor column position to its "sticky" value, if possible. Or does not move at all.
+     * @param payload The payload with the runtime information allowing to compute the sticky state and update the cursor.
+     */
+    static void stickToColumn(CursorContext &payload);
 
 public:
     /**
