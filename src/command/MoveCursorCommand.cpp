@@ -110,51 +110,65 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
             switch (movement) {
                 case Movement::UP:
                     payload.cursor.moveUp();
+                    stickToColumn(payload);
                     payload.follow_indicator = true;
                     payload.wants_redraw = true;
                 break;
                 case Movement::DOWN:
                     payload.cursor.moveDown();
+                    stickToColumn(payload);
                     payload.follow_indicator = true;
                     payload.wants_redraw = true;
                 break;
                 case Movement::LEFT:
                     payload.cursor.moveLeft();
+                    payload.stick_column_index = payload.cursor.getColumn();
                     payload.follow_indicator = true;
                     payload.wants_redraw = true;
                 break;
                 case Movement::RIGHT:
                     payload.cursor.moveRight();
+                    payload.stick_column_index = payload.cursor.getColumn();
                     payload.follow_indicator = true;
                     payload.wants_redraw = true;
                 break;
                 case Movement::BEGIN_LINE:
                     payload.cursor.moveToStartOfLine();
+                    payload.stick_column_index = payload.cursor.getColumn();
                     payload.follow_indicator = true;
                     payload.wants_redraw = true;
                 break;
                 case Movement::END_LINE:
                     payload.cursor.moveToEndOfLine();
+                    payload.stick_column_index = payload.cursor.getColumn();
                     payload.follow_indicator = true;
                     payload.wants_redraw = true;
                 break;
-                case Movement::PAGE_UP:
-                    payload.cursor.pageUp(payload.theme.getDimension(DimensionId::PageUpDown));
+                case Movement::PAGE_UP: {
+                    const auto line_count = payload.theme.getDimension(DimensionId::PageUpDown);
+                    payload.cursor.pageUp(line_count);
+                    stickToColumn(payload);
                     payload.follow_indicator = true;
                     payload.wants_redraw = true;
+                }
                 break;
-                case Movement::PAGE_DOWN:
-                    payload.cursor.pageDown(payload.theme.getDimension(DimensionId::PageUpDown));
+                case Movement::PAGE_DOWN: {
+                    const auto line_count = payload.theme.getDimension(DimensionId::PageUpDown);
+                    payload.cursor.pageDown(line_count);
+                    stickToColumn(payload);
                     payload.follow_indicator = true;
                     payload.wants_redraw = true;
+                }
                 break;
                 case Movement::BEGIN_FILE:
                     payload.cursor.moveToStartOfFile();
+                    payload.stick_column_index = payload.cursor.getColumn();
                     payload.follow_indicator = true;
                     payload.wants_redraw = true;
                 break;
                 case Movement::END_FILE:
                     payload.cursor.moveToEndOfFile();
+                    payload.stick_column_index = payload.cursor.getColumn();
                     payload.follow_indicator = true;
                     payload.wants_redraw = true;
                 break;
@@ -186,4 +200,20 @@ MoveCursorCommand::Boolean MoveCursorCommand::mapBoolean(const std::u16string_vi
 
     return Boolean::UNKNOWN;
 }
+
+void MoveCursorCommand::stickToColumn(CursorContext &payload) {
+    if (payload.stick_to_column) {
+        const auto cursor_line = payload.cursor.getLine();
+        const auto string_length = payload.cursor.getString().length();
+        const auto new_column = payload.stick_column_index > string_length
+            ? string_length
+            : payload.stick_column_index;
+
+        payload.cursor.setPosition(cursor_line, new_column);
+    }
+
+    const auto new_column = payload.cursor.getColumn();
+    payload.stick_to_column = payload.stick_column_index >= new_column;
+}
+
 
