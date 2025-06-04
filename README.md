@@ -6,6 +6,7 @@ There are missing key features but most importantly:
 
 - Undo/Redo
 - Search/Replace
+- "\t" does not align on columns (does not align well when mixing with spaces).
 - More and better syntax highlight.
 - Better error handling.
 - Better inline documentation.
