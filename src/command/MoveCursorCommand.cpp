@@ -8,7 +8,7 @@ const std::unordered_map<std::u16string, MoveCursorCommand::Movement> MoveCursor
     { u"down", Movement::DOWN },
     { u"left", Movement::LEFT },
     { u"right", Movement::RIGHT },
-    { u"bol", Movement::BEGIN_FILE },
+    { u"bol", Movement::BEGIN_LINE },
     { u"eol", Movement::END_LINE },
     { u"page_up", Movement::PAGE_UP },
     { u"page_down", Movement::PAGE_DOWN },
