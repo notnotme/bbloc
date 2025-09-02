@@ -70,6 +70,8 @@ std::optional<std::u16string> OpenFileCommand::run(CursorContext &payload, const
     payload.cursor.setName(path);
     payload.cursor.setPosition(0, 0);
     payload.follow_indicator = true;
+    payload.stick_to_column = false;
+    payload.stick_column_index = 0;
 
     // In case the command is bound to a key, it will eventually needs a redraw the views.
     payload.wants_redraw = true;
