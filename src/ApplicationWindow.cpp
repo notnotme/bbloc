@@ -296,6 +296,8 @@ void ApplicationWindow::mainLoop() {
                 m_prompt_state.setRunningState(PromptState::RunningState::Idle);
                 m_prompt_state.setPromptText(PromptState::PROMPT_READY);
             }
+
+            SDL_GL_SwapWindow(p_sdl_window);
         }
 
         // Reset follow_indicator if it was not held by the editor render already
@@ -306,8 +308,6 @@ void ApplicationWindow::mainLoop() {
         if (frame_time_elapsed > m_draw_time->m_value) {
             m_draw_time->m_value = frame_time_elapsed;
         }
-
-        SDL_GL_SwapWindow(p_sdl_window);
     }
 
     SDL_GameControllerClose(controller);
