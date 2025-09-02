@@ -57,41 +57,41 @@ find_package(PkgConfig REQUIRED)
 
 # SDL2
 find_package(SDL2 REQUIRED)
-target_link_libraries(bbloc PUBLIC SDL2::SDL2main SDL2::SDL2)
+target_link_libraries(bbloc PRIVATE SDL2::SDL2main SDL2::SDL2)
 
 # OpenGL
 set(OpenGL_GL_PREFERENCE GLVND)
 find_package(OpenGL REQUIRED)
-target_link_libraries(bbloc PUBLIC OpenGL::GL)
+target_link_libraries(bbloc PRIVATE OpenGL::GL)
 
 # utfcpp
 find_package(utf8cpp REQUIRED)
-target_link_libraries(bbloc PUBLIC utf8::cpp utf8cpp::utf8cpp)
+target_link_libraries(bbloc PRIVATE utf8::cpp utf8cpp::utf8cpp)
 
 # tree-sitter
 pkg_check_modules(TREE_SITTER REQUIRED tree-sitter)
-target_include_directories(bbloc PUBLIC ${TREE_SITTER_INCLUDE_DIRS})
-target_link_libraries(bbloc PUBLIC ${TREE_SITTER_LIBRARIES})
+target_include_directories(bbloc PRIVATE ${TREE_SITTER_INCLUDE_DIRS})
+target_link_libraries(bbloc PRIVATE ${TREE_SITTER_LIBRARIES})
 
 # tree-sitter cpp languages
 pkg_check_modules(TREE_SITTER_CPP REQUIRED tree-sitter-cpp)
-target_include_directories(bbloc PUBLIC ${TREE_SITTER_CPP_INCLUDE_DIRS})
-target_link_libraries(bbloc PUBLIC ${TREE_SITTER_CPP_LIBRARIES})
+target_include_directories(bbloc PRIVATE ${TREE_SITTER_CPP_INCLUDE_DIRS})
+target_link_libraries(bbloc PRIVATE ${TREE_SITTER_CPP_LIBRARIES})
 
 # tree-sitter json languages
 pkg_check_modules(TREE_SITTER_JSON REQUIRED tree-sitter-json)
-target_include_directories(bbloc PUBLIC ${TREE_SITTER_JSON_INCLUDE_DIRS})
-target_link_libraries(bbloc PUBLIC ${TREE_SITTER_JSON_LIBRARIES})
+target_include_directories(bbloc PRIVATE ${TREE_SITTER_JSON_INCLUDE_DIRS})
+target_link_libraries(bbloc PRIVATE ${TREE_SITTER_JSON_LIBRARIES})
 
 # Freetype2
 pkg_check_modules(FREETYPE2 REQUIRED freetype2)
-target_include_directories(bbloc PUBLIC ${FREETYPE2_INCLUDE_DIRS})
-target_link_libraries(bbloc PUBLIC ${FREETYPE2_LIBRARIES})
+target_include_directories(bbloc PRIVATE ${FREETYPE2_INCLUDE_DIRS})
+target_link_libraries(bbloc PRIVATE ${FREETYPE2_LIBRARIES})
 
 # glad
 pkg_check_modules(GLAD REQUIRED libglad)
-target_include_directories(bbloc PUBLIC ${GLAD_INCLUDE_DIRS})
-target_link_libraries(bbloc PUBLIC ${GLAD_LIBRARIES})
+target_include_directories(bbloc PRIVATE ${GLAD_INCLUDE_DIRS})
+target_link_libraries(bbloc PRIVATE ${GLAD_LIBRARIES})
 
 # NRO config
 nx_generate_nacp(bbloc.nacp
