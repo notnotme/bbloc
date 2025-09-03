@@ -168,8 +168,7 @@ void ApplicationWindow::mainLoop() {
 
     SDL_Event event;
     while (is_running) {
-        // fixme: needs testing: AFAIR this seems to not play well with the switch port of SDL (100% CPU usage)
-        /* SDL_WaitEvent(nullptr); */
+        SDL_WaitEvent(nullptr);
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
                 case SDL_QUIT:
