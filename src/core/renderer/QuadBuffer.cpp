@@ -13,19 +13,24 @@ QuadBuffer::QuadBuffer()
 void QuadBuffer::create(const uint32_t capacity) {
     m_capacity = capacity;
 
-    glCreateBuffers(1, &m_vertex_buffer);
+    glGenBuffers(1, &m_vertex_buffer);
     if (m_vertex_buffer == 0) {
         throw std::runtime_error("Failed to create vertex buffer");
     }
 
     const auto size_in_bytes = static_cast<GLsizeiptr>(sizeof(QuadVertex) * m_capacity);
-    glNamedBufferData(m_vertex_buffer, size_in_bytes, nullptr, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
+    glBufferData(GL_ARRAY_BUFFER, size_in_bytes, nullptr, GL_DYNAMIC_DRAW);
+}
+
+void QuadBuffer::bind() const {
+    glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
 }
 
 void QuadBuffer::map(const uint32_t start, const uint32_t count) {
     const auto map_offset_in_byte = static_cast<GLintptr>(start * sizeof(QuadVertex));
     const auto count_size_in_byte = static_cast<GLsizeiptr>(count * sizeof(QuadVertex));
-    const auto raw_buffer_data = glMapNamedBufferRange(m_vertex_buffer, map_offset_in_byte, count_size_in_byte,
+    const auto raw_buffer_data = glMapBufferRange(GL_ARRAY_BUFFER, map_offset_in_byte, count_size_in_byte,
                                                 GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT |
                                                 GL_MAP_FLUSH_EXPLICIT_BIT);
 
@@ -39,8 +44,8 @@ void QuadBuffer::map(const uint32_t start, const uint32_t count) {
 
 void QuadBuffer::unmap() const {
     const auto count_size_in_bytes = static_cast<GLsizeiptr>(m_count * sizeof(QuadVertex));
-    glFlushMappedNamedBufferRange(m_vertex_buffer, 0, count_size_in_bytes);
-    glUnmapNamedBuffer(m_vertex_buffer);
+    glFlushMappedBufferRange(GL_ARRAY_BUFFER, 0, count_size_in_bytes);
+    glUnmapBuffer(GL_ARRAY_BUFFER);
 }
 
 void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, const uint16_t height, const uint8_t tint_r, const uint8_t tint_g, const uint8_t tint_b, const uint8_t tint_a) {
