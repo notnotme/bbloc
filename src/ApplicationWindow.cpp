@@ -64,7 +64,7 @@ void ApplicationWindow::updateOrthogonal(const int32_t width, const int32_t heig
 
 void ApplicationWindow::create(const std::string_view title, const int32_t width, const int32_t height) {
     // Init SDL
-    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) != 0) {
         throw std::runtime_error(std::string("Failed to initialize SDL: ").append(SDL_GetError()));
     }
 
@@ -72,7 +72,7 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
@@ -110,12 +110,13 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
     // Create the theme
-    const auto path = std::string("romfs/");
+    const auto path = std::string("romfs:/");
     m_theme.create(m_command_manager, path);
 
     // Create the quad buffer
     updateOrthogonal(width, height);
     m_quad_buffer.create(MAX_QUADS);
+    m_quad_buffer.bind();
 
     // Create the quad shader
     m_quad_program.create();
@@ -156,6 +157,8 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
 void ApplicationWindow::mainLoop() {
     // Request performance query used to calculate dt time
     const auto performanceQuery = static_cast<float>(SDL_GetPerformanceFrequency());
+    const auto controller = SDL_GameControllerOpen(0);
+
     auto window_width = 0;
     auto window_height = 0;
     auto is_running = true;
@@ -171,6 +174,11 @@ void ApplicationWindow::mainLoop() {
             switch (event.type) {
                 case SDL_QUIT:
                     is_running = false;
+                break;
+                case SDL_CONTROLLERBUTTONDOWN:
+                    if (event.cbutton.which == 0 && event.cbutton.button == SDL_CONTROLLER_BUTTON_START) {
+                        is_running = false;
+                    }
                 break;
                 case SDL_WINDOWEVENT:
                     switch (event.window.event) {
@@ -301,6 +309,8 @@ void ApplicationWindow::mainLoop() {
             m_draw_time->m_value = frame_time_elapsed;
         }
     }
+
+    SDL_GameControllerClose(controller);
 }
 
 void ApplicationWindow::getCommandCompletions(const std::u16string_view input, const AutoCompleteCallback &itemCallback) {

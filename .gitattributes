@@ -1,0 +1,12 @@
+# Does not let other branch modify this
+src/core/renderer/QuadBuffer.cpp merge=ours
+src/core/renderer/QuadBuffer.h merge=ours
+src/core/renderer/QuadProgram.cpp merge=ours
+src/core/renderer/QuadProgram.h merge=ours
+src/core/renderer/QuadTexture.cpp merge=ours
+SDL2-2.28.5.patch_usbkbd.diff merge=ours
+
+# Needs to deal with small conflict eventually, but its worth it
+# src/ApplicationWindow.cpp merge=ours
+# CMakeLists.txt merge=ours
+

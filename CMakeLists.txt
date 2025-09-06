@@ -68,14 +68,6 @@ target_link_libraries(bbloc PRIVATE OpenGL::GL)
 find_package(utf8cpp REQUIRED)
 target_link_libraries(bbloc PRIVATE utf8::cpp utf8cpp::utf8cpp)
 
-# Freetype2
-find_package(Freetype REQUIRED)
-target_link_libraries(bbloc PRIVATE Freetype::Freetype)
-
-# glad
-find_package(glad CONFIG REQUIRED)
-target_link_libraries(bbloc PRIVATE glad::glad)
-
 # tree-sitter
 pkg_check_modules(TREE_SITTER REQUIRED tree-sitter)
 target_include_directories(bbloc PRIVATE ${TREE_SITTER_INCLUDE_DIRS})
@@ -90,6 +82,28 @@ target_link_libraries(bbloc PRIVATE ${TREE_SITTER_CPP_LIBRARIES})
 pkg_check_modules(TREE_SITTER_JSON REQUIRED tree-sitter-json)
 target_include_directories(bbloc PRIVATE ${TREE_SITTER_JSON_INCLUDE_DIRS})
 target_link_libraries(bbloc PRIVATE ${TREE_SITTER_JSON_LIBRARIES})
+
+# Freetype2
+pkg_check_modules(FREETYPE2 REQUIRED freetype2)
+target_include_directories(bbloc PRIVATE ${FREETYPE2_INCLUDE_DIRS})
+target_link_libraries(bbloc PRIVATE ${FREETYPE2_LIBRARIES})
+
+# glad
+pkg_check_modules(GLAD REQUIRED libglad)
+target_include_directories(bbloc PRIVATE ${GLAD_INCLUDE_DIRS})
+target_link_libraries(bbloc PRIVATE ${GLAD_LIBRARIES})
+
+# NRO config
+nx_generate_nacp(bbloc.nacp
+    NAME ${CMAKE_PROJECT_NAME}
+    VERSION ${CMAKE_PROJECT_VERSION}
+    AUTHOR "romain337"
+)
+nx_create_nro(bbloc
+    NACP bbloc.nacp
+    ROMFS romfs
+    ICON icon.jpg
+)
 
 # get_cmake_property(_variableNames VARIABLES)
 # list (SORT _variableNames)
