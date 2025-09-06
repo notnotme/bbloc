@@ -45,6 +45,9 @@ public:
     /** @brief Destroys the buffer and releases GPU resources. */
     void destroy();
 
+    /** @brief Binds this buffer to the OpenGL pipeline. */
+    void bind() const;
+
     /**
      * @brief Maps a portion of the buffer to CPU address space.
      *

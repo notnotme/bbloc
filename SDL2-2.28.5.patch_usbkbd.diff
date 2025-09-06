@@ -1,0 +1,695 @@
+diff -urN SDL2-2.28.5/src/joystick/switch/SDL_sysjoystick.c SDL2-2.28.5P/src/joystick/switch/SDL_sysjoystick.c
+--- SDL2-2.28.5/src/joystick/switch/SDL_sysjoystick.c	2025-05-20 14:16:17.387919755 +0200
++++ SDL2-2.28.5P/src/joystick/switch/SDL_sysjoystick.c	2025-05-20 14:15:33.343695913 +0200
+@@ -267,7 +267,7 @@
+ static void SWITCH_JoystickUpdate(SDL_Joystick *joystick) {
+     u64 diff;
+     int index = (int) SDL_JoystickInstanceID(joystick);
+-    if (index >= JOYSTICK_COUNT || SDL_IsTextInputActive()) {
++    if (index >= JOYSTICK_COUNT) {
+         return;
+     }
+ 
+diff -urN SDL2-2.28.5/src/video/switch/SDL_switchkeyboard.c SDL2-2.28.5P/src/video/switch/SDL_switchkeyboard.c
+--- SDL2-2.28.5/src/video/switch/SDL_switchkeyboard.c	2025-05-20 14:16:17.388629942 +0200
++++ SDL2-2.28.5P/src/video/switch/SDL_switchkeyboard.c	2025-05-20 14:11:02.566756215 +0200
+@@ -26,37 +26,149 @@
+ 
+ #include "SDL_events.h"
+ #include "SDL_log.h"
++#include "SDL_timer.h"
+ #include "SDL_switchvideo.h"
+ #include "SDL_switchkeyboard.h"
++#include "SDL_switchmaps.h"
+ #include "../../events/SDL_keyboard_c.h"
+ 
+-static bool keys[SDL_NUM_SCANCODES] = {0};
++#define KEY_REPEAT_DELAY 500
++
++static bool keys[SDL_NUM_SCANCODES];
++static Uint64 repeat_start;
++static Uint64 repeat_next;
++static SDL_Scancode repeat_scancode = SDL_SCANCODE_UNKNOWN;
++static SetKeyboardLayout keyboard_layout = SetKeyboardLayout_EnglishUs;
++
++const char*
++HIDToString(const HidKeyboardState* state, SDL_Scancode scancode) {
++    KeyboardKeyEntry* entry;
++    bool shift_held = state->modifiers & HidKeyboardModifier_Shift;
++    bool altgr_held = state->modifiers & HidKeyboardModifier_RightAlt;
++    bool caps_lock = state->modifiers & HidKeyboardModifier_CapsLock;
++    bool num_lock = state->modifiers & HidKeyboardModifier_NumLock;
++
++    if (!num_lock && scancode >= SDL_SCANCODE_KP_1 && scancode <= SDL_SCANCODE_KP_0) {
++        // Handle some special case with num pad
++        if (scancode == SDL_SCANCODE_KP_5) {
++            // KP_5 shift +/or altgr = ↔ / ⇔
++            if (!altgr_held && !shift_held) {
++                return NULL;
++            }
++        } 
++        else if (!shift_held) {
++            // NumLock off + shift = 123 ...
++            return NULL;
++        }
++    }
++
++    switch (keyboard_layout) {
++        case SetKeyboardLayout_French:
++            entry = &azerty_kbd_table[scancode];
++        break;
++        case SetKeyboardLayout_Japanese:
++        case SetKeyboardLayout_EnglishUs:
++        case SetKeyboardLayout_EnglishUsInternational:
++        case SetKeyboardLayout_EnglishUk:
++        case SetKeyboardLayout_FrenchCa:
++        case SetKeyboardLayout_Spanish:
++        case SetKeyboardLayout_SpanishLatin:
++        case SetKeyboardLayout_German:
++        case SetKeyboardLayout_Italian:
++        case SetKeyboardLayout_Portuguese:
++        case SetKeyboardLayout_Russian:
++        case SetKeyboardLayout_Korean:
++        case SetKeyboardLayout_ChineseSimplified:
++        case SetKeyboardLayout_ChineseTraditional:
++        default:
++            entry = &qwerty_kbd_table[scancode];
++        break;
++    }
++
++    if (shift_held && altgr_held && entry->shift_altgr) return entry->shift_altgr;
++    if (shift_held && caps_lock && entry->shift_capslock) return entry->shift_capslock;
++    if (altgr_held && entry->altgr) return entry->altgr;
++    if (shift_held && entry->shift) return entry->shift;
++    if (caps_lock && entry->caps_lock) return entry->caps_lock;
++    return entry->normal;
++}
+ 
+ void
+ SWITCH_InitKeyboard(void) {
++    Result rc;
+     hidInitializeKeyboard();
++
++    rc = setsysGetKeyboardLayout(&keyboard_layout);
++    if(R_SUCCEEDED(rc)) {
++        switch (keyboard_layout) {
++            case SetKeyboardLayout_French:
++                // Change the default SDL keymap to AZERTY
++                SDL_SetKeymap(0, azerty_sdl_keymap, SDL_NUM_SCANCODES, false);
++            break;
++            case SetKeyboardLayout_Japanese:
++            case SetKeyboardLayout_EnglishUs:
++            case SetKeyboardLayout_EnglishUsInternational:
++            case SetKeyboardLayout_EnglishUk:
++            case SetKeyboardLayout_FrenchCa:
++            case SetKeyboardLayout_Spanish:
++            case SetKeyboardLayout_SpanishLatin:
++            case SetKeyboardLayout_German:
++            case SetKeyboardLayout_Italian:
++            case SetKeyboardLayout_Portuguese:
++            case SetKeyboardLayout_Russian:
++            case SetKeyboardLayout_Korean:
++            case SetKeyboardLayout_ChineseSimplified:
++            case SetKeyboardLayout_ChineseTraditional:
++            default:
++            break;
++        }
++    }
+ }
+ 
+ void
+ SWITCH_PollKeyboard(void) {
+     HidKeyboardState state;
+     SDL_Scancode scancode;
++    const char* ch = NULL;
++    Uint64 now = SDL_GetTicks64();
+ 
+     if (SDL_GetFocusWindow() == NULL) {
+         return;
+     }
+ 
+     if (hidGetKeyboardStates(&state, 1)) {
++        // Send SDL key event from keyboard
+         for (scancode = SDL_SCANCODE_UNKNOWN; scancode < (SDL_Scancode) HidKeyboardKey_RightGui; scancode++) {
+             bool pressed = hidKeyboardStateGetKey(&state, (int) scancode);
+             if (pressed && !keys[scancode]) {
+                 SDL_SendKeyboardKey(pressed, scancode);
+                 keys[scancode] = true;
++                repeat_scancode = scancode;
++                repeat_start = now + KEY_REPEAT_DELAY;
++                repeat_next = repeat_start;
++
++                // Compose text from keyboard
++                ch = HIDToString(&state, scancode);
++                if (ch != NULL) {
++                    SDL_SendKeyboardText(ch);
++                }
+             } else if (!pressed && keys[scancode]) {
+                 SDL_SendKeyboardKey(pressed, scancode);
+                 keys[scancode] = false;
+             }
+         }
++
++        // Handle repeat logic
++        if (repeat_scancode != SDL_SCANCODE_UNKNOWN && keys[repeat_scancode]) {
++            if (now >= repeat_start && now >= repeat_next) {
++                repeat_next = now + KEY_REPEAT_DELAY / 6;
++                SDL_SendKeyboardKey(true, repeat_scancode);
++                ch = HIDToString(&state, repeat_scancode);
++                if (ch != NULL) {
++                    SDL_SendKeyboardText(ch);
++                }
++            }
++        }
+     }
+ }
+ 
+diff -urN SDL2-2.28.5/src/video/switch/SDL_switchmaps.h SDL2-2.28.5P/src/video/switch/SDL_switchmaps.h
+--- SDL2-2.28.5/src/video/switch/SDL_switchmaps.h	1970-01-01 01:00:00.000000000 +0100
++++ SDL2-2.28.5P/src/video/switch/SDL_switchmaps.h	2025-05-20 14:10:00.277093337 +0200
+@@ -0,0 +1,298 @@
++/*
++  Simple DirectMedia Layer
++  Copyright (C) 1997-2018 Sam Lantinga <slouken@libsdl.org>
++
++  This software is provided 'as-is', without any express or implied
++  warranty.  In no event will the authors be held liable for any damages
++  arising from the use of this software.
++
++  Permission is granted to anyone to use this software for any purpose,
++  including commercial applications, and to alter it and redistribute it
++  freely, subject to the following restrictions:
++
++  1. The origin of this software must not be misrepresented; you must not
++     claim that you wrote the original software. If you use this software
++     in a product, an acknowledgment in the product documentation would be
++     appreciated but is not required.
++  2. Altered source versions must be plainly marked as such, and must not be
++     misrepresented as being the original software.
++  3. This notice may not be removed or altered from any source distribution.
++*/
++#include "../../SDL_internal.h"
++#include <string.h>
++
++/**
++ * SDL keymap for AZERTY keyboard layout
++ */
++SDL_Keycode azerty_sdl_keymap[SDL_NUM_SCANCODES] = {
++    [SDL_SCANCODE_A] = 'q',
++    [SDL_SCANCODE_B] = 'b',
++    [SDL_SCANCODE_C] = 'c',
++    [SDL_SCANCODE_D] = 'd',
++    [SDL_SCANCODE_E] = 'e',
++    [SDL_SCANCODE_F] = 'f',
++    [SDL_SCANCODE_G] = 'g',
++    [SDL_SCANCODE_H] = 'h',
++    [SDL_SCANCODE_I] = 'i',
++    [SDL_SCANCODE_J] = 'j',
++    [SDL_SCANCODE_K] = 'k',
++    [SDL_SCANCODE_L] = 'l',
++    [SDL_SCANCODE_M] = ',',
++    [SDL_SCANCODE_N] = 'n',
++    [SDL_SCANCODE_O] = 'o',
++    [SDL_SCANCODE_P] = 'p',
++    [SDL_SCANCODE_Q] = 'a',
++    [SDL_SCANCODE_R] = 'r',
++    [SDL_SCANCODE_S] = 's',
++    [SDL_SCANCODE_T] = 't',
++    [SDL_SCANCODE_U] = 'u',
++    [SDL_SCANCODE_V] = 'v',
++    [SDL_SCANCODE_W] = 'z',
++    [SDL_SCANCODE_X] = 'x',
++    [SDL_SCANCODE_Y] = 'y',
++    [SDL_SCANCODE_Z] = 'w',
++
++    [SDL_SCANCODE_1] = '&',
++    [SDL_SCANCODE_2] = u'é',
++    [SDL_SCANCODE_3] = '"',
++    [SDL_SCANCODE_4] = '\'',
++    [SDL_SCANCODE_5] = '(',
++    [SDL_SCANCODE_6] = '-',
++    [SDL_SCANCODE_7] = u'è',
++    [SDL_SCANCODE_8] = '_',
++    [SDL_SCANCODE_9] = u'ç',
++    [SDL_SCANCODE_0] = u'à',
++
++    [SDL_SCANCODE_RETURN] = SDLK_RETURN,
++    [SDL_SCANCODE_ESCAPE] = SDLK_ESCAPE,
++    [SDL_SCANCODE_BACKSPACE] = SDLK_BACKSPACE,
++    [SDL_SCANCODE_TAB] = SDLK_TAB,
++    [SDL_SCANCODE_SPACE] = SDLK_SPACE,
++
++    [SDL_SCANCODE_MINUS] = ')',
++    [SDL_SCANCODE_EQUALS] = '=',
++    [SDL_SCANCODE_LEFTBRACKET] = '^',
++    [SDL_SCANCODE_RIGHTBRACKET] = '$',
++    [SDL_SCANCODE_BACKSLASH] = '*',
++    [SDL_SCANCODE_SEMICOLON] = 'm',
++    [SDL_SCANCODE_APOSTROPHE] = u'ù',
++    [SDL_SCANCODE_GRAVE] = '`',
++    [SDL_SCANCODE_COMMA] = ';',
++    [SDL_SCANCODE_PERIOD] = ':',
++    [SDL_SCANCODE_SLASH] = '!',
++
++    [SDL_SCANCODE_CAPSLOCK] = SDLK_CAPSLOCK,
++
++    [SDL_SCANCODE_F1] = SDLK_F1,
++    [SDL_SCANCODE_F2] = SDLK_F2,
++    [SDL_SCANCODE_F3] = SDLK_F3,
++    [SDL_SCANCODE_F4] = SDLK_F4,
++    [SDL_SCANCODE_F5] = SDLK_F5,
++    [SDL_SCANCODE_F6] = SDLK_F6,
++    [SDL_SCANCODE_F7] = SDLK_F7,
++    [SDL_SCANCODE_F8] = SDLK_F8,
++    [SDL_SCANCODE_F9] = SDLK_F9,
++    [SDL_SCANCODE_F10] = SDLK_F10,
++    [SDL_SCANCODE_F11] = SDLK_F11,
++    [SDL_SCANCODE_F12] = SDLK_F12,
++
++    [SDL_SCANCODE_PRINTSCREEN] = SDLK_PRINTSCREEN,
++    [SDL_SCANCODE_SCROLLLOCK] = SDLK_SCROLLLOCK,
++    [SDL_SCANCODE_PAUSE] = SDLK_PAUSE,
++    [SDL_SCANCODE_INSERT] = SDLK_INSERT,
++    [SDL_SCANCODE_HOME] = SDLK_HOME,
++    [SDL_SCANCODE_PAGEUP] = SDLK_PAGEUP,
++    [SDL_SCANCODE_DELETE] = SDLK_DELETE,
++    [SDL_SCANCODE_END] = SDLK_END,
++    [SDL_SCANCODE_PAGEDOWN] = SDLK_PAGEDOWN,
++    [SDL_SCANCODE_RIGHT] = SDLK_RIGHT,
++    [SDL_SCANCODE_LEFT] = SDLK_LEFT,
++    [SDL_SCANCODE_DOWN] = SDLK_DOWN,
++    [SDL_SCANCODE_UP] = SDLK_UP,
++
++    [SDL_SCANCODE_NUMLOCKCLEAR] = SDLK_NUMLOCKCLEAR,
++    [SDL_SCANCODE_KP_DIVIDE] = SDLK_KP_DIVIDE,
++    [SDL_SCANCODE_KP_MULTIPLY] = SDLK_KP_MULTIPLY,
++    [SDL_SCANCODE_KP_MINUS] = SDLK_KP_MINUS,
++    [SDL_SCANCODE_KP_PLUS] = SDLK_KP_PLUS,
++    [SDL_SCANCODE_KP_ENTER] = SDLK_KP_ENTER,
++    [SDL_SCANCODE_KP_1] = SDLK_KP_1,
++    [SDL_SCANCODE_KP_2] = SDLK_KP_2,
++    [SDL_SCANCODE_KP_3] = SDLK_KP_3,
++    [SDL_SCANCODE_KP_4] = SDLK_KP_4,
++    [SDL_SCANCODE_KP_5] = SDLK_KP_5,
++    [SDL_SCANCODE_KP_6] = SDLK_KP_6,
++    [SDL_SCANCODE_KP_7] = SDLK_KP_7,
++    [SDL_SCANCODE_KP_8] = SDLK_KP_8,
++    [SDL_SCANCODE_KP_9] = SDLK_KP_9,
++    [SDL_SCANCODE_KP_0] = SDLK_KP_0,
++    [SDL_SCANCODE_KP_PERIOD] = SDLK_KP_PERIOD,
++
++    [SDL_SCANCODE_LCTRL] = SDLK_LCTRL,
++    [SDL_SCANCODE_LSHIFT] = SDLK_LSHIFT,
++    [SDL_SCANCODE_LALT] = SDLK_LALT,
++    [SDL_SCANCODE_LGUI] = SDLK_LGUI,
++    [SDL_SCANCODE_RCTRL] = SDLK_RCTRL,
++    [SDL_SCANCODE_RSHIFT] = SDLK_RSHIFT,
++    [SDL_SCANCODE_RALT] = SDLK_RALT,
++    [SDL_SCANCODE_RGUI] = SDLK_RGUI,
++};
++
++
++/**
++ * Structure to store keyboard keys "strings" value. According to keyboard states.
++ * 
++ * This could use another type of struct, like an array of "const char*", where the index of the character to print
++ * can be found by oring the key modifiers, but to keep everything ultra simple and readable, I choose to use this dumb struct.
++ */
++typedef struct {
++    const char* normal;
++    const char* caps_lock;
++    const char* shift;
++    const char* altgr;
++    const char* shift_capslock;
++    const char* shift_altgr;
++
++} KeyboardKeyEntry;
++
++// AZERTY Keyboard table
++KeyboardKeyEntry azerty_kbd_table[256] = {
++    [SDL_SCANCODE_A] = { "q", "Q", "Q", "ä", "q", "Ä"},
++    [SDL_SCANCODE_B] = { "b", "B", "B", "↓", "b", "↑" },
++    [SDL_SCANCODE_C] = { "c", "C", "C", "©", "c", "®" },
++    [SDL_SCANCODE_D] = { "d", "D", "D", "ë", "d", "Ë" },
++    [SDL_SCANCODE_E] = { "e", "E", "E", "€", "e", "¢" },
++    [SDL_SCANCODE_F] = { "f", "F", "F", "‘", "f", "‚" },
++    [SDL_SCANCODE_G] = { "g", "G", "G", "’", "g", "¥" },
++    [SDL_SCANCODE_H] = { "h", "H", "H", "ð", "h", "Ð" },
++    [SDL_SCANCODE_I] = { "i", "I", "I", "î", "i", "Î" },
++    [SDL_SCANCODE_J] = { "j", "J", "J", "ü", "j", "Ü" },
++    [SDL_SCANCODE_K] = { "k", "K", "K", "ï", "k", "Ï" },
++    [SDL_SCANCODE_L] = { "l", "L", "L", "ŀ", "l", "Ŀ" },
++    [SDL_SCANCODE_M] = { ",", ",", "?", "¿", "?", "…" },
++    [SDL_SCANCODE_N] = { "n", "N", "N", "¬", "n", "→" },
++    [SDL_SCANCODE_O] = { "o", "O", "O", "œ", "o", "Œ" },
++    [SDL_SCANCODE_P] = { "p", "P", "P", "ô", "p", "Ô" },
++    [SDL_SCANCODE_Q] = { "a", "A", "A", "æ", "q", "Æ" },
++    [SDL_SCANCODE_R] = { "r", "R", "R", "ê", "r", "Ê" },
++    [SDL_SCANCODE_S] = { "s", "S", "S", "ß", "s", "„" },
++    [SDL_SCANCODE_T] = { "t", "T", "T", "þ", "t", "Þ" },
++    [SDL_SCANCODE_U] = { "u", "U", "U", "û", "u", "Û" },
++    [SDL_SCANCODE_V] = { "v", "V", "V", " ", "v", "←" },
++    [SDL_SCANCODE_W] = { "z", "Z", "Z", "â", "z", "Â" },
++    [SDL_SCANCODE_X] = { "x", "X", "X", "»", "x", "”" },
++    [SDL_SCANCODE_Y] = { "y", "Y", "Y", "ÿ", "y", "Ÿ" },
++    [SDL_SCANCODE_Z] = { "w", "W", "W", "«", "w", "“" },
++
++    [SDL_SCANCODE_1] = { "&", "&", "1", "ˇ", "1", "˛" },
++    [SDL_SCANCODE_2] = { "é", "É", "2", "~", "2", "É" },
++    [SDL_SCANCODE_3] = { "\"", "\"", "3", "#", "3", "˘" },
++    [SDL_SCANCODE_4] = { "'", "'", "4", "{", "4", "—" },
++    [SDL_SCANCODE_5] = { "(", "(", "5", "[", "5", "–" },
++    [SDL_SCANCODE_6] = { "-", "-", "6", "|", "6", "‑" },
++    [SDL_SCANCODE_7] = { "è", "È", "7", "`", "7", "È" },
++    [SDL_SCANCODE_8] = { "_", "_", "8", "\\", "8", "™" },
++    [SDL_SCANCODE_9] = { "ç", "Ç", "9", "^", "9", "Ç" },
++    [SDL_SCANCODE_0] = { "à", "À", "0", "@", "0", "À" },
++
++    [SDL_SCANCODE_KP_1] = { "1", "1", "1", "↙", "1", "⇙" },
++    [SDL_SCANCODE_KP_2] = { "2", "2", "2", "↓", "2", "⇓" },
++    [SDL_SCANCODE_KP_3] = { "3", "3", "3", "↘", "3", "⇘" },
++    [SDL_SCANCODE_KP_4] = { "4", "4", "4", "←", "4", "⇐" },
++    [SDL_SCANCODE_KP_5] = { "5", "5", "5", "↔", "5", "⇔" },
++    [SDL_SCANCODE_KP_6] = { "6", "6", "6", "→", "6", "⇒" },
++    [SDL_SCANCODE_KP_7] = { "7", "7", "7", "↖", "7", "⇖" },
++    [SDL_SCANCODE_KP_8] = { "8", "8", "8", "↑", "8", "⇑" },
++    [SDL_SCANCODE_KP_9] = { "9", "9", "9", "↗", "9", "⇗" },
++    [SDL_SCANCODE_KP_0] = { "0", "0", "0", "↕", "0", "⇕" },
++    [SDL_SCANCODE_KP_PERIOD] = { ".", ".", 0, ",", " "},
++    [SDL_SCANCODE_KP_DIVIDE] = { "/", "/", "∕", "÷", "∕", 0},
++    [SDL_SCANCODE_KP_MULTIPLY] = { "*", "*", "⋅", "×", "⋅", 0 },
++    [SDL_SCANCODE_KP_MINUS] = { "-", "-", "−", "−", "−", 0 },
++    [SDL_SCANCODE_KP_PLUS] = { "+", "+", "+", "+", "+", 0 },
++
++    [SDL_SCANCODE_SPACE] = { " ", " ", " ", " ", " ", " " },
++    [SDL_SCANCODE_MINUS] = { ")", ")", "°", "]", "°", "≠" },
++    [SDL_SCANCODE_EQUALS] = { "=", "=", "+", "}", "+", "±" },
++
++    [SDL_SCANCODE_LEFTBRACKET] = { "^", "^", "¨", "~", "¨", "˚" },
++    [SDL_SCANCODE_RIGHTBRACKET] = { "$", "$", "£", "ø", "£", "Ø" },
++    [SDL_SCANCODE_APOSTROPHE] = { "ù", "Ù", "%", "´", "%", "Ù" },
++    [SDL_SCANCODE_BACKSLASH] = { "*", "*", "µ", "`", "µ", "¯¯" },
++    [SDL_SCANCODE_SEMICOLON] = { "m", "M", "M", "ö", "m", "Ö" },
++    [SDL_SCANCODE_COMMA] = { ";", ";", ".", "×", ".", "⋅" },
++    [SDL_SCANCODE_PERIOD] = { ":", ":", "/", "÷", "/", "∕" },
++    [SDL_SCANCODE_SLASH] = { "!", "!", "§", "¡", "§", "−" },
++    [SDL_SCANCODE_NONUSBACKSLASH] = { "<", "<", ">", "≤", ">", "≥" }
++};
++
++// QWERTY Keyboard table
++KeyboardKeyEntry qwerty_kbd_table[256] = {
++    [SDL_SCANCODE_A] = { "a", "A", "A", 0, "a", 0 },
++    [SDL_SCANCODE_B] = { "b", "B", "B", 0, "b", 0 },
++    [SDL_SCANCODE_C] = { "c", "C", "C", 0, "c", 0 },
++    [SDL_SCANCODE_D] = { "d", "D", "D", 0, "d", 0 },
++    [SDL_SCANCODE_E] = { "e", "E", "E", 0, "e", 0 },
++    [SDL_SCANCODE_F] = { "f", "F", "F", 0, "f", 0 },
++    [SDL_SCANCODE_G] = { "g", "G", "G", 0, "g", 0 },
++    [SDL_SCANCODE_H] = { "h", "H", "H", 0, "h", 0 },
++    [SDL_SCANCODE_I] = { "i", "I", "I", 0, "i", 0 },
++    [SDL_SCANCODE_J] = { "j", "J", "J", 0, "j", 0 },
++    [SDL_SCANCODE_K] = { "k", "K", "K", 0, "k", 0 },
++    [SDL_SCANCODE_L] = { "l", "L", "L", 0, "l", 0 },
++    [SDL_SCANCODE_M] = { "m", "M", "M", 0, "m", 0 },
++    [SDL_SCANCODE_N] = { "n", "N", "N", 0, "n", 0 },
++    [SDL_SCANCODE_O] = { "o", "O", "O", 0, "o", 0 },
++    [SDL_SCANCODE_P] = { "p", "P", "P", 0, "p", 0 },
++    [SDL_SCANCODE_Q] = { "q", "Q", "Q", 0, "q", 0 },
++    [SDL_SCANCODE_R] = { "r", "R", "R", 0, "r", 0 },
++    [SDL_SCANCODE_S] = { "s", "S", "S", 0, "s", 0 },
++    [SDL_SCANCODE_T] = { "t", "T", "T", 0, "t", 0 },
++    [SDL_SCANCODE_U] = { "u", "U", "U", 0, "u", 0 },
++    [SDL_SCANCODE_V] = { "v", "V", "V", 0, "v", 0 },
++    [SDL_SCANCODE_W] = { "w", "W", "W", 0, "w", 0 },
++    [SDL_SCANCODE_X] = { "x", "X", "X", 0, "x", 0 },
++    [SDL_SCANCODE_Y] = { "y", "Y", "Y", 0, "y", 0 },
++    [SDL_SCANCODE_Z] = { "z", "Z", "Z", 0, "z", 0 },
++
++    [SDL_SCANCODE_1] = { "1", "!", "!", 0, "1", 0 },
++    [SDL_SCANCODE_2] = { "2", "@", "@", 0, "2", 0 },
++    [SDL_SCANCODE_3] = { "3", "#", "#", 0, "3", 0 },
++    [SDL_SCANCODE_4] = { "4", "$", "$", 0, "4", 0 },
++    [SDL_SCANCODE_5] = { "5", "%", "%", 0, "5", 0 },
++    [SDL_SCANCODE_6] = { "6", "^", "^", 0, "6", 0 },
++    [SDL_SCANCODE_7] = { "7", "&", "&", 0, "7", 0 },
++    [SDL_SCANCODE_8] = { "8", "*", "*", 0, "8", 0 },
++    [SDL_SCANCODE_9] = { "9", "(", "(", 0, "9", 0 },
++    [SDL_SCANCODE_0] = { "0", ")", ")", 0, "0", 0 },
++
++    [SDL_SCANCODE_KP_1] = { "1", "1", "1", 0, "1", 0 },
++    [SDL_SCANCODE_KP_2] = { "2", "2", "2", 0, "2", 0 },
++    [SDL_SCANCODE_KP_3] = { "3", "3", "3", 0, "3", 0 },
++    [SDL_SCANCODE_KP_4] = { "4", "4", "4", 0, "4", 0 },
++    [SDL_SCANCODE_KP_5] = { "5", "5", "5", 0, "5", 0 },
++    [SDL_SCANCODE_KP_6] = { "6", "6", "6", 0, "6", 0 },
++    [SDL_SCANCODE_KP_7] = { "7", "7", "7", 0, "7", 0 },
++    [SDL_SCANCODE_KP_8] = { "8", "8", "8", 0, "8", 0 },
++    [SDL_SCANCODE_KP_9] = { "9", "9", "9", 0, "9", 0 },
++    [SDL_SCANCODE_KP_0] = { "0", "0", "0", 0, "0", 0 },
++    [SDL_SCANCODE_KP_PERIOD] = { ".", ".", ".", 0, ".", 0},
++    [SDL_SCANCODE_KP_DIVIDE] = { "/", "/", "/", 0, "/", 0 },
++    [SDL_SCANCODE_KP_MULTIPLY] = { "*", "*", "*", 0, "*", 0 },
++    [SDL_SCANCODE_KP_MINUS] = { "-", "-", "-", 0, "-", 0 },
++    [SDL_SCANCODE_KP_PLUS] = { "+", "+", "+", 0, "+", 0 },
++
++    [SDL_SCANCODE_SPACE] = { " ", " ", " ", " ", " ", " " },
++    [SDL_SCANCODE_MINUS] = { "-", "_", "-", 0, "-", 0 },
++    [SDL_SCANCODE_EQUALS] = { "=", "=", "+", 0, "=", 0 },
++
++    [SDL_SCANCODE_LEFTBRACKET] = { "[", "{", "[", 0, "[", 0 },
++    [SDL_SCANCODE_RIGHTBRACKET] = { "]", "}", "]", 0, "]", 0 },
++    [SDL_SCANCODE_APOSTROPHE] = { "'", "\"", "'", 0, "'", 0 },
++    [SDL_SCANCODE_BACKSLASH] = { "\\", "|", "\\", 0, "\\", 0 },
++    [SDL_SCANCODE_SEMICOLON] = { ";", ";", ":", 0, ":", 0 },
++    [SDL_SCANCODE_COMMA] = { ",", ",", "<", 0, ",", 0 },
++    [SDL_SCANCODE_PERIOD] = { ".", ".", ">", 0, ".", 0 },
++    [SDL_SCANCODE_SLASH] = { "/", "/", "?", 0, "/", 0 },
++    [SDL_SCANCODE_NONUSBACKSLASH] = { "<", ">", ">", "|", "<", "¦" }
++};
+diff -urN SDL2-2.28.5/src/video/switch/SDL_switchswkb.c SDL2-2.28.5P/src/video/switch/SDL_switchswkb.c
+--- SDL2-2.28.5/src/video/switch/SDL_switchswkb.c	2025-05-20 14:16:17.388856051 +0200
++++ SDL2-2.28.5P/src/video/switch/SDL_switchswkb.c	1970-01-01 01:00:00.000000000 +0100
+@@ -1,111 +0,0 @@
+-//
+-// Created by cpasjuste on 22/04/2020.
+-//
+-
+-#include "../../SDL_internal.h"
+-
+-#if SDL_VIDEO_DRIVER_SWITCH
+-
+-#include <switch.h>
+-#include "SDL_switchswkb.h"
+-
+-static SwkbdInline kbd;
+-static SwkbdAppearArg kbdAppearArg;
+-static bool kbdInited = SDL_FALSE;
+-static bool kbdShown = SDL_FALSE;
+-
+-void
+-SWITCH_InitSwkb()
+-{
+-}
+-
+-void
+-SWITCH_PollSwkb(void)
+-{
+-    if(kbdInited) {
+-        if(kbdShown) {
+-            swkbdInlineUpdate(&kbd, NULL);
+-        } else if(SDL_IsTextInputActive()) {
+-            SDL_StopTextInput();
+-        }
+-    }
+-}
+-
+-void
+-SWITCH_QuitSwkb()
+-{
+-    if(kbdInited) {
+-        swkbdInlineClose(&kbd);
+-        kbdInited = false;
+-    }
+-}
+-
+-SDL_bool
+-SWITCH_HasScreenKeyboardSupport(_THIS)
+-{
+-    return SDL_TRUE;
+-}
+-
+-SDL_bool
+-SWITCH_IsScreenKeyboardShown(_THIS, SDL_Window *window)
+-{
+-    return kbdShown;
+-}
+-
+-static void
+-SWITCH_EnterCb(const char *str, SwkbdDecidedEnterArg* arg)
+-{
+-    if(arg->stringLen > 0) {
+-        SDL_SendKeyboardText(str);
+-    }
+-
+-    kbdShown = false;
+-}
+-
+-static void
+-SWITCH_CancelCb(void)
+-{
+-    SDL_StopTextInput();
+-}
+-
+-void
+-SWITCH_StartTextInput(_THIS)
+-{
+-    Result rc;
+-
+-    if(!kbdInited) {
+-        rc = swkbdInlineCreate(&kbd);
+-        if (R_SUCCEEDED(rc)) {
+-            rc = swkbdInlineLaunchForLibraryApplet(&kbd, SwkbdInlineMode_AppletDisplay, 0);
+-            if(R_SUCCEEDED(rc)) {
+-                swkbdInlineSetDecidedEnterCallback(&kbd, SWITCH_EnterCb);
+-                swkbdInlineSetDecidedCancelCallback(&kbd, SWITCH_CancelCb);
+-                swkbdInlineMakeAppearArg(&kbdAppearArg, SwkbdType_Normal);
+-                swkbdInlineAppearArgSetOkButtonText(&kbdAppearArg, "Submit");
+-                kbdAppearArg.dicFlag = 1;
+-                kbdAppearArg.returnButtonFlag = 1;
+-                kbdInited = true;
+-            }
+-        }
+-    }
+-
+-    if(kbdInited) {
+-        swkbdInlineSetInputText(&kbd, "");
+-        swkbdInlineSetCursorPos(&kbd, 0);
+-        swkbdInlineUpdate(&kbd, NULL);
+-        swkbdInlineAppear(&kbd, &kbdAppearArg);
+-        kbdShown = true;
+-    }
+-}
+-
+-void
+-SWITCH_StopTextInput(_THIS)
+-{
+-    if(kbdInited) {
+-        swkbdInlineDisappear(&kbd);
+-    }
+-
+-    kbdShown = false;
+-}
+-
+-#endif
+diff -urN SDL2-2.28.5/src/video/switch/SDL_switchswkb.h SDL2-2.28.5P/src/video/switch/SDL_switchswkb.h
+--- SDL2-2.28.5/src/video/switch/SDL_switchswkb.h	2025-05-20 14:16:17.388898061 +0200
++++ SDL2-2.28.5P/src/video/switch/SDL_switchswkb.h	1970-01-01 01:00:00.000000000 +0100
+@@ -1,20 +0,0 @@
+-//
+-// Created by cpasjuste on 22/04/2020.
+-//
+-
+-#ifndef SDL2_SDL_SWITCHSWKB_H
+-#define SDL2_SDL_SWITCHSWKB_H
+-
+-#include "../../events/SDL_events_c.h"
+-
+-extern void SWITCH_InitSwkb();
+-extern void SWITCH_PollSwkb();
+-extern void SWITCH_QuitSwkb();
+-
+-extern SDL_bool SWITCH_HasScreenKeyboardSupport(_THIS);
+-extern SDL_bool SWITCH_IsScreenKeyboardShown(_THIS, SDL_Window * window);
+-
+-extern void SWITCH_StartTextInput(_THIS);
+-extern void SWITCH_StopTextInput(_THIS);
+-
+-#endif //SDL2_SDL_SWITCHSWKB_H
+diff -urN SDL2-2.28.5/src/video/switch/SDL_switchvideo.c SDL2-2.28.5P/src/video/switch/SDL_switchvideo.c
+--- SDL2-2.28.5/src/video/switch/SDL_switchvideo.c	2025-05-20 14:16:17.389022670 +0200
++++ SDL2-2.28.5P/src/video/switch/SDL_switchvideo.c	2025-05-20 14:08:13.245508958 +0200
+@@ -34,7 +34,6 @@
+ #include "SDL_switchtouch.h"
+ #include "SDL_switchkeyboard.h"
+ #include "SDL_switchmouse_c.h"
+-#include "SDL_switchswkb.h"
+ 
+ /* Currently only one window */
+ static SDL_Window *switch_window = NULL;
+@@ -101,11 +100,6 @@
+     device->GL_DeleteContext = SWITCH_GLES_DeleteContext;
+     device->GL_DefaultProfileConfig = SWITCH_GLES_DefaultProfileConfig;
+ 
+-    device->StartTextInput = SWITCH_StartTextInput;
+-    device->StopTextInput = SWITCH_StopTextInput;
+-    device->HasScreenKeyboardSupport = SWITCH_HasScreenKeyboardSupport;
+-    device->IsScreenKeyboardShown = SWITCH_IsScreenKeyboardShown;
+-
+     device->PumpEvents = SWITCH_PumpEvents;
+ 
+     return device;
+@@ -139,16 +133,18 @@
+     display.driverdata = NULL;
+     SDL_AddVideoDisplay(&display, SDL_FALSE);
+ 
+-    // init psm service
++    // init services
+     psmInitialize();
++    romfsInit();
++    setInitialize();
++    setsysInitialize();
++
+     // init touch
+     SWITCH_InitTouch();
+     // init keyboard
+     SWITCH_InitKeyboard();
+     // init mouse
+     SWITCH_InitMouse();
+-    // init software keyboard
+-    SWITCH_InitSwkb();
+ 
+     return 0;
+ }
+@@ -169,10 +165,12 @@
+     SWITCH_QuitKeyboard();
+     // exit mouse
+     SWITCH_QuitMouse();
+-    // exit software keyboard
+-    SWITCH_QuitSwkb();
+-    // exit psm service
++
++    // exit service
+     psmExit();
++    romfsExit();
++    setExit();
++    setsysExit();
+ }
+ 
+ void
+@@ -354,12 +352,9 @@
+     }
+ 
+     // we don't want other inputs overlapping with software keyboard
+-    if(!SDL_IsTextInputActive()) {
+-        SWITCH_PollTouch();
+-        SWITCH_PollKeyboard();
+-        SWITCH_PollMouse();
+-    }
+-    SWITCH_PollSwkb();
++    SWITCH_PollTouch();
++    SWITCH_PollKeyboard();
++    SWITCH_PollMouse();
+ 
+     // handle docked / un-docked modes
+     // note that SDL_WINDOW_RESIZABLE is only possible in windowed mode,
+@@ -370,8 +365,10 @@
+             operationMode = om;
+             if(operationMode == AppletOperationMode_Handheld) {
+                 SDL_SetWindowSize(switch_window, 1280, 720);
++                SDL_SendWindowEvent(switch_window, SDL_WINDOWEVENT_RESIZED, 1280, 720);
+             } else {
+                 SDL_SetWindowSize(switch_window, 1920, 1080);
++                SDL_SendWindowEvent(switch_window, SDL_WINDOWEVENT_RESIZED, 1920, 1080);
+             }
+         }
+     }
