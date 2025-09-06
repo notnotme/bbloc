@@ -32,13 +32,14 @@ QuadBuffer::QuadBuffer()
 void QuadBuffer::create(const uint32_t capacity) {
     m_capacity = capacity;
 
-    glCreateBuffers(1, &m_vertex_buffer);
+    glGenBuffers(1, &m_vertex_buffer);
     if (m_vertex_buffer == 0) {
         throw std::runtime_error("Failed to create vertex buffer");
     }
 
     const auto size_in_bytes = static_cast<GLsizeiptr>(sizeof(QuadVertex) * m_capacity);
-    glNamedBufferData(m_vertex_buffer, size_in_bytes, nullptr, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
+    glBufferData(GL_ARRAY_BUFFER, size_in_bytes, nullptr, GL_DYNAMIC_DRAW);
     m_staging.reserve(m_capacity);
 }
 
@@ -59,18 +60,19 @@ uint32_t QuadBuffer::beginBatch(const uint32_t reserveHint) {
 uint32_t QuadBuffer::endBatch() {
     const auto batch_count = static_cast<uint32_t>(m_staging.size());
     const auto needed_capacity = m_batch_start + batch_count;
+    glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
     if (needed_capacity > m_capacity) {
         // Regrow by orphaning: previous batches of this frame are already drawn, their storage
         // is kept alive by the driver until those draws complete.
         m_capacity = std::max(needed_capacity, m_capacity * 2);
         const auto capacity_in_bytes = static_cast<GLsizeiptr>(sizeof(QuadVertex) * m_capacity);
-        glNamedBufferData(m_vertex_buffer, capacity_in_bytes, nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, capacity_in_bytes, nullptr, GL_DYNAMIC_DRAW);
     }
 
     if (batch_count > 0) {
         const auto batch_offset_in_bytes = static_cast<GLintptr>(m_batch_start * sizeof(QuadVertex));
         const auto batch_size_in_bytes = static_cast<GLsizeiptr>(batch_count * sizeof(QuadVertex));
-        glNamedBufferSubData(m_vertex_buffer, batch_offset_in_bytes, batch_size_in_bytes, m_staging.data());
+        glBufferSubData(GL_ARRAY_BUFFER, batch_offset_in_bytes, batch_size_in_bytes, m_staging.data());
     }
 
     m_frame_count = needed_capacity;

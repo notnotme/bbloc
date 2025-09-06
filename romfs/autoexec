@@ -80,5 +80,5 @@ bind Ctrl g goto_line
 
 # temporary shortcut to set color theme (does not work on switch: must use romfs:/)
 # This will be removed before next switch release, as theme will adapt according to switch theme
-bind Ctrl+Shift l "exec romfs/light_theme"
-bind Ctrl+Shift d "exec romfs/dark_theme"
+bind Ctrl+Shift l "exec romfs:/light_theme"
+bind Ctrl+Shift d "exec romfs:/dark_theme"
