@@ -27,6 +27,7 @@
 #include "command/ValidateCommand.h"
 #include "core/cursor/buffer/StringBuffer.h"
 #include "core/cursor/buffer/VectorBuffer.h"
+#include "core/cursor/buffer/LineBuffer.h"
 #include "core/theme/DimensionId.h"
 #include "core/FocusTarget.h"
 
@@ -34,7 +35,7 @@
 ApplicationWindow::ApplicationWindow()
     : p_sdl_window(nullptr),
       m_sdl_gl_context(nullptr),
-      m_cursor_context(*this, m_theme, m_prompt_cursor, std::make_unique<VectorBuffer>()),
+      m_cursor_context(*this, m_theme, m_prompt_cursor, std::make_unique<LineBuffer>()),
       m_info_bar(m_command_manager, m_theme, m_quad_program, m_quad_buffer),
       m_editor(m_command_manager, m_theme, m_quad_program, m_quad_buffer),
       m_prompt(m_command_manager, m_theme, m_quad_program, m_quad_buffer),

@@ -10,6 +10,7 @@ add_executable(bbloc
         src/core/base/Command.h
         src/core/cursor/buffer/StringBuffer.cpp
         src/core/cursor/buffer/VectorBuffer.cpp
+        src/core/cursor/buffer/LineBuffer.cpp
         src/core/cursor/Cursor.cpp
         src/core/cursor/PromptCursor.cpp
         src/core/cvar/CVarBool.cpp
