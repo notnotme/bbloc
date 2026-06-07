@@ -155,12 +155,14 @@ BufferEdit StringBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd,
     edit.start.column = column;
     edit.old_end.line = lineEnd;
     edit.old_end.column = columnEnd;
+    edit.new_end.line = line;
+    edit.new_end.column = column;
 
     // Get the iterator from first nd last line to erase in the range, and the column offset (in character count)
     const auto &start_line = m_line_data.begin() + line;
     const auto &end_line = m_line_data.begin() + lineEnd;
-    const auto &start_offset = start_line->start + column;
-    const auto &end_offset = end_line->start + columnEnd;
+    const auto start_offset = start_line->start + column;
+    const auto end_offset = end_line->start + columnEnd;
 
     // Compute erase length and remove from the buffer
     const auto erase_length = end_offset - start_offset;
@@ -181,8 +183,6 @@ BufferEdit StringBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd,
         it->start -= erase_length;
     }
 
-    edit.new_end.line = line;
-    edit.new_end.column = column;
     return edit;
 }
 
