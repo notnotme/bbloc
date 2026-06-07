@@ -99,10 +99,8 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     SDL_GL_SetSwapInterval(1);
     gladLoadGL();
     // Set our default OpenGL states
-    glDisable(GL_DEPTH_WRITEMASK);
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_SCISSOR_TEST);
-    glEnable(GL_TEXTURE_2D);
     glEnable(GL_CULL_FACE);
     glEnable(GL_BLEND);
     glCullFace(GL_BACK);
