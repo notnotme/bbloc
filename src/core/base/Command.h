@@ -33,16 +33,6 @@ public:
     virtual ~Command() = default;
 
     /**
-     * @brief Checks whether the command is allowed to run with the given payload.
-     *
-     * Override this in derived classes if specific constraints are needed. Returns true by default.
-     *
-     * @param payload The payload to test.
-     * @return true if the command can be run.
-     */
-    [[nodiscard]] virtual bool isRunnable(const TPayload &payload);
-
-    /**
      * @brief Executes the command using the provided payload and arguments.
      *
      * @param payload The payload to use for running this command.
@@ -60,12 +50,6 @@ public:
      */
     virtual void provideAutoComplete(int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const = 0;
 };
-
-template<class TPayload>
-bool Command<TPayload>::isRunnable(const TPayload &payload) {
-    // By default, an action is not restricted to run.
-    return true;
-}
 
 
 #endif //COMMAND_H

@@ -27,8 +27,3 @@ std::optional<std::u16string> ActivatePromptCommand::run(CursorContext &payload,
 
     return std::nullopt;
 }
-
-bool ActivatePromptCommand::isRunnable(const CursorContext &payload) {
-    // Only the editor focused can trigger this command
-    return payload.focus_target == FocusTarget::Editor;
-}

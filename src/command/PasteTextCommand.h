@@ -43,17 +43,6 @@ public:
      * @return An optional message indicating the result of the operation.
      */
     [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, const std::vector<std::u16string_view> &args) override;
-
-    /**
-     * @brief Determines if the paste command can be executed.
-     *
-     * Checks if the current context allows for pasting operations.
-     * This command only runs if the focus is on the Editor.
-     *
-     * @param payload The cursor context to check for paste availability.
-     * @return true if paste operation can be performed, false otherwise.
-     */
-    [[nodiscard]] bool isRunnable(const CursorContext &payload) override;
 };
 
 

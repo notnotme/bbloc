@@ -74,16 +74,6 @@ public:
      * @return An optional message indicating the result of the operation.
      */
     [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, const std::vector<std::u16string_view> &args) override;
-
-    /**
-     * @brief Determines if the auto-completion command can be executed.
-     *
-     * Checks if auto-completion is available in the current context.
-     *
-     * @param payload The cursor context to check for auto-completion availability.
-     * @return true if auto-completion can be triggered, false otherwise.
-     */
-    [[nodiscard]] bool isRunnable(const CursorContext &payload) override;
 };
 
 

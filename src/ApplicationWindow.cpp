@@ -12,7 +12,6 @@
 #include "command/ActivatePromptCommand.h"
 #include "command/AutoCompleteCommand.h"
 #include "command/BindCommand.h"
-#include "command/CancelCommand.h"
 #include "command/CopyTextCommand.h"
 #include "command/CutTextCommand.h"
 #include "command/ExecCommand.h"
@@ -24,7 +23,6 @@
 #include "command/ResetCVarFloatCommand.h"
 #include "command/SaveFileCommand.h"
 #include "command/SetHighLightCommand.h"
-#include "command/ValidateCommand.h"
 #include "core/cursor/buffer/StringBuffer.h"
 #include "core/cursor/buffer/VectorBuffer.h"
 #include "core/cursor/buffer/LineBuffer.h"
@@ -144,8 +142,6 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     m_command_manager.registerCommand(u"cut", std::make_shared<CutTextCommand>());
     m_command_manager.registerCommand(u"move", std::make_shared<MoveCursorCommand>(m_prompt_state));
     m_command_manager.registerCommand(u"exec", std::make_shared<ExecCommand>());
-    m_command_manager.registerCommand(u"cancel", std::make_shared<CancelCommand>(m_prompt_state));
-    m_command_manager.registerCommand(u"validate", std::make_shared<ValidateCommand>(m_prompt_state));
     m_command_manager.registerCommand(u"auto_complete", std::make_shared<AutoCompleteCommand>(m_prompt_state));
 
     // Don't run it "from prompt", so its not added to history
@@ -188,7 +184,28 @@ void ApplicationWindow::mainLoop() {
                     }
                 break;
                 case SDL_KEYDOWN: {
-                    // Try to run command binding first
+                    bool consumed = false;
+                    switch (m_cursor_context.focus_target) {
+                        case FocusTarget::Editor:
+                            if (m_editor.onKeyDown(m_cursor_context, m_editor_state, event.key.keysym.sym, event.key.keysym.mod)) {
+                                // If the view return true, then redraw the views
+                                m_cursor_context.wants_redraw = true;
+                                consumed = true;
+                            }
+                        break;
+                        case FocusTarget::Prompt:
+                            if (m_prompt.onKeyDown(m_cursor_context, m_prompt_state, event.key.keysym.sym, event.key.keysym.mod)) {
+                                // If the view return true, then redraw the views
+                                m_cursor_context.wants_redraw = true;
+                                consumed = true;
+                            }
+                        break;
+                    }
+
+                    if (consumed) {
+                        break;
+                    }
+
                     if (const auto command = m_bind_command->getBinding(event.key.keysym.sym, event.key.keysym.mod)) {
                         const auto currentTime = SDL_GetPerformanceCounter();
                         if (runCommand(command.value(), false)) {
@@ -198,22 +215,6 @@ void ApplicationWindow::mainLoop() {
                             }
                             break;
                         }
-                    }
-
-                    // Fallback to the focus target
-                    switch (m_cursor_context.focus_target) {
-                        case FocusTarget::Editor:
-                            if (m_editor.onKeyDown(m_cursor_context, m_editor_state, event.key.keysym.sym, event.key.keysym.mod)) {
-                                // If the view return true, then redraw the views
-                                m_cursor_context.wants_redraw = true;
-                            }
-                        break;
-                        case FocusTarget::Prompt:
-                            if (m_prompt.onKeyDown(m_cursor_context, m_prompt_state, event.key.keysym.sym, event.key.keysym.mod)) {
-                                // If the view return true, then redraw the views
-                                m_cursor_context.wants_redraw = true;
-                            }
-                        break;
                     }
                 }
                 break;
@@ -346,13 +347,6 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
     } else {
         const auto &tokens = CommandManager::tokenize(command);
         if (tokens.empty()) {
-            return false;
-        }
-
-        const auto command_name = tokens[0];
-        const auto allowed_to_run = m_command_manager.isRunnable(m_cursor_context, command_name);
-        if (!allowed_to_run) {
-            // Nothing to process
             return false;
         }
 

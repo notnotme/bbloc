@@ -92,15 +92,6 @@ public:
     void getArgumentsCompletion(std::u16string_view command, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback);
 
     /**
-     * @brief Check if a command can be run.
-     *
-     * @param payload A payload to help decide.
-     * @param name The name of the command to test.
-     * @return An optional result string for displaying messages in the prompt.
-     */
-    [[nodiscard]] bool isRunnable(const CursorContext &payload, std::u16string_view name);
-
-    /**
      * @brief Tokenizes a UTF-16 input string for command parsing. Splits the input into a list of arguments.
      *
      * Quoted arguments are preserved as single tokens.

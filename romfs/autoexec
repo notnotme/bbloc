@@ -50,10 +50,6 @@ bind Shift PageUp "move page_up true"
 bind None PageDown "move page_down"
 bind Shift PageDown "move page_down true"
 
-# Cancel and validate action
-bind None escape cancel
-bind None return validate
-
 # auto complete
 bind None tab "auto_complete forward"
 bind Shift tab "auto_complete backward"

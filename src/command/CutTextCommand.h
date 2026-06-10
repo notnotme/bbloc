@@ -44,17 +44,6 @@ public:
      * @return An optional message indicating the result of the cut operation.
      */
     [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, const std::vector<std::u16string_view> &args) override;
-
-    /**
-     * @brief Determines if the cut command can be executed.
-     *
-    * Checks if there is the selected text that can be cut in the current context.
-     * Checks if the editor is focused.
-     *
-     * @param payload The cursor context to check for cuttable content.
-     * @return true if cutting is possible, false otherwise.
-     */
-    [[nodiscard]] bool isRunnable(const CursorContext &payload) override;
 };
 
 

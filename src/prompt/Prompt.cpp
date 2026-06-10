@@ -32,6 +32,29 @@ void Prompt::render(CursorContext &context, PromptState &viewState, float dt) {
 
 bool Prompt::onKeyDown(CursorContext &context, PromptState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
     switch (keyCode) {
+        case SDLK_RETURN: {
+            // runCommand can also update the prompt state, set the prompt to Idle before running the command.
+            viewState.setRunningState(PromptState::RunningState::Idle);
+            viewState.setPromptText(PromptState::PROMPT_READY);
+            viewState.clearCompletions();
+            viewState.clearHistoryIndex();
+
+            // The return value of runCommand can be ignored in this use case,
+            // and because we just check the current focus inside Command::isRunnable to block commands, in facts.
+            const auto prompt_command = context.prompt_cursor.getString();
+            context.command_runner.runCommand(prompt_command, true);
+            context.prompt_cursor.clear();
+        }
+        return true;
+        case SDLK_ESCAPE:
+            // Set the prompt state to Idle, then the command processing logic will take care of the rest.
+            viewState.setRunningState(PromptState::RunningState::Idle);
+            viewState.setPromptText(PromptState::PROMPT_READY);
+            viewState.clearCompletions();
+            viewState.clearHistoryIndex();
+            context.prompt_cursor.clear();
+            context.focus_target = FocusTarget::Editor;
+        return true;
         case SDLK_BACKSPACE:
             // Reset completions as soon as the user typed a new text
             viewState.clearCompletions();

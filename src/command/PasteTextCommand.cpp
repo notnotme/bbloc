@@ -45,8 +45,3 @@ std::optional<std::u16string> PasteTextCommand::run(CursorContext &payload, cons
     payload.follow_indicator = true;
     return std::nullopt;
 }
-
-bool PasteTextCommand::isRunnable(const CursorContext &payload) {
-    // This command only pastes text in the editor view
-    return payload.focus_target == FocusTarget::Editor;
-}

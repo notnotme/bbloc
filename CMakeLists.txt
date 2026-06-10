@@ -40,8 +40,6 @@ add_executable(bbloc
         src/command/CutTextCommand.cpp
         src/command/MoveCursorCommand.cpp
         src/command/ExecCommand.cpp
-        src/command/CancelCommand.cpp
-        src/command/ValidateCommand.cpp
         src/command/AutoCompleteCommand.cpp
         src/editor/Editor.cpp
         src/infobar/InfoBar.cpp

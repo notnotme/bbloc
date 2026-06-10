@@ -60,17 +60,6 @@ void CommandManager::getArgumentsCompletion(const std::u16string_view command, c
     }
 }
 
-bool CommandManager::isRunnable(const CursorContext &payload, const std::u16string_view name) {
-    const auto name_str = std::u16string(name.begin(), name.end());
-    if (const auto &cmd = m_commands.find(name_str); cmd != m_commands.end()) {
-        return cmd->second->isRunnable(payload);
-    }
-
-    // Let the command pass through if we don't know it, so if this command name tries to "run", it will
-    // end up with the unknown command message in return.
-    return true;
-}
-
 void CommandManager::getPathCompletions(const std::u16string_view input, const bool foldersOnly, const AutoCompleteCallback &itemCallback) {
     const auto path_input = std::filesystem::path(input);
     const auto path_input_string = path_input.filename().string();

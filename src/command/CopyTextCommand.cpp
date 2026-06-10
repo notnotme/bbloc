@@ -40,7 +40,3 @@ std::optional<std::u16string> CopyTextCommand::run(CursorContext &payload, const
 
     return std::nullopt;
 }
-
-bool CopyTextCommand::isRunnable(const CursorContext &payload) {
-    return payload.focus_target == FocusTarget::Editor;
-}

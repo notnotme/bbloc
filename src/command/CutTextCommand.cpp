@@ -49,7 +49,3 @@ std::optional<std::u16string> CutTextCommand::run(CursorContext &payload, const 
 
     return std::nullopt;
 }
-
-bool CutTextCommand::isRunnable(const CursorContext &payload) {
-    return payload.focus_target == FocusTarget::Editor;
-}

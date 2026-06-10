@@ -52,18 +52,6 @@ public:
      * @return An optional message indicating the result of the operation.
      */
     [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, const std::vector<std::u16string_view> &args) override;
-
-    /**
-     * @brief Determines if the prompt activation command can be executed.
-     *
-     * Checks if the current cursor context allows for prompt activation.
-     * Only the editor can activate the prompt (this command works via key-binding), it has no effect inside the prompt
-     * itself.
-     *
-     * @param payload The cursor context to check.
-     * @return true if the prompt can be activated, false otherwise.
-     */
-    [[nodiscard]] bool isRunnable(const CursorContext &payload) override;
 };
 
 

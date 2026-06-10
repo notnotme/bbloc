@@ -1,7 +1,6 @@
 #include "AutoCompleteCommand.h"
 
 #include "../core/CommandManager.h"
-#include "../core/FocusTarget.h"
 
 
 const std::unordered_map<std::u16string, AutoCompleteCommand::Direction> AutoCompleteCommand::DIRECTION_MAP = {
@@ -124,11 +123,6 @@ std::optional<std::u16string> AutoCompleteCommand::run(CursorContext &payload, c
     }
 
     return std::nullopt;
-}
-
-bool AutoCompleteCommand::isRunnable(const CursorContext &payload) {
-    // Auto complete is only available from the prompt perspective
-    return payload.focus_target == FocusTarget::Prompt;
 }
 
 AutoCompleteCommand::Direction AutoCompleteCommand::mapDirection(const std::u16string_view direction) {
