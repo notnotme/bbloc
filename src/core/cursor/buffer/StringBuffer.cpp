@@ -3,7 +3,7 @@
 
 StringBuffer::StringBuffer() {
     // Push one empty line
-    m_line_data.push_back({ .start = 0, .count = 0 });
+    m_line_data.emplace_back(0, 0);
 }
 
 std::u16string_view StringBuffer::getString(const uint32_t line) const {
@@ -194,7 +194,7 @@ BufferEdit StringBuffer::clear() {
 
     m_buffer.clear();
     m_line_data.clear();
-    m_line_data.push_back({ .start = 0, .count = 0 });
+    m_line_data.emplace_back(0, 0);
     return {
         .start_byte = buffer_size,
         .old_end_byte = buffer_size,

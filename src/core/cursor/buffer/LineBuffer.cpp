@@ -5,7 +5,7 @@
 
 LineBuffer::LineBuffer() {
     // Push one empty line and make it the current line.
-    m_line_data.push_back({ .start = 0, .count = 0 });
+    m_line_data.emplace_back(0, 0);
     m_current_line_index = 0;
 }
 
@@ -295,7 +295,7 @@ BufferEdit LineBuffer::clear() {
     m_buffer.clear();
     m_current_line.clear();
     m_line_data.clear();
-    m_line_data.push_back({ .start = 0, .count = 0 });
+    m_line_data.emplace_back(0, 0);
     m_current_line_index = 0;
 
     return {
