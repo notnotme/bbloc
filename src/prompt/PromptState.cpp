@@ -129,7 +129,6 @@ void PromptState::registerMaxHistoryCVar() {
                 // Resize the container if needed
                 m_command_history.pop_front();
             }
-            m_command_history.resize(new_size);
         }
     });
 }
