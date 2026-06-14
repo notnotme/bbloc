@@ -1,149 +1,404 @@
 # bbloc
 
-bbloc is a minimalist toy text editor developed in C++ using SDL2, OpenGL, glad, Freetype, utfcpp, and tree-sitter.
+bbloc is a minimalist text editor developed in C++ using SDL2, OpenGL, glad, Freetype, utfcpp, and tree-sitter. It features a command-driven interface, syntax highlighting, and a layered UI with real-time configuration via CVars.
 
-There are missing key features but most importantly:
+## Table of Contents
 
-- Undo/Redo
+- [Features](#features)
+- [Concept](#concept)
+- [Architecture](#architecture)
+- [UI Components](#ui-components)
+- [Key Bindings](#key-bindings)
+- [Commands](#commands)
+- [CVars](#cvars)
+- [Dependencies](#dependencies)
+- [Building](#building)
+- [Screenshots](#screenshots)
+
+## Features
+
+- **Syntax Highlighting**: Built on tree-sitter for C++ and JSON syntax highlighting (more to come)
+- **Command-Driven Interface**: Execute operations via text commands with auto-completion
+- **Real-Time Configuration**: Change colors, dimensions, and settings at runtime
+- **Customizable Key Bindings**: Rebind any key combination to commands
+
+## Concept
+
+The application window is divided into three distinct areas:
+
+### Top Bar (InfoBar)
+Displays information about the current text buffer:
+- Cursor position (line, column)
+- Current syntax highlight mode
+- Font size settings
+- File information
+
+### Center Area (Editor)
+The main text editing area featuring:
+- Syntax-highlighted text rendering
+- Line numbers display
+- Cursor tracking and movement
+- Selection support
+- Scrollable content
+
+### Bottom Bar (Prompt)
+An interactive command-line interface serving as both:
+- Command input/output console
+- Status bar for feedback messages
+- Auto-completion interface for commands and files
+
+### Command System
+Every action beyond basic text typing is implemented as a command. The prompt allows executing commands using text input. By default, the key combination `Ctrl+Shift+space` opens the prompt for command entry.
+
+### Key Bindings
+Actions can be mapped to keystrokes using the `bind` command. The editor includes comprehensive default key bindings covering navigation, editing, and system operations.
+
+## Architecture
+
+### Core Components
+
+#### Command System
+- **Command Pattern**: Template-based command implementation with `Command<TPayload>`
+- **CommandManager**: Central registry managing command execution and auto-completion
+- **CommandRunner Interface**: Abstract interface for command execution from different contexts
+- **CommandFeedback**: Interactive confirmation system for user prompts (e.g., "Overwrite? [y/n]")
+
+#### Configuration Variables (CVar)
+- **Type-Safe Storage**: Support for int32_t, bool, float, and Color types
+- **Runtime Modification**: Change configuration at runtime through the command prompt
+- **Callback System**: Reactive updates when CVars change
+
+#### Cursor Management
+- **TextBuffer**: Interface for text storage operations
+- **Cursor**: Manages caret location, insert/delete operations, and selection
+- **PromptCursor**: Specialized cursor for command prompt input
+- **BufferEdit**: Data structure returned after edits for syntax highlighting updates
+
+#### Syntax Highlighting
+- **Tree-sitter Integration**: Parse text for syntax patterns
+- **Language Parsers**: Support for C++ (tree-sitter-cpp) and JSON (tree-sitter-json)
+- **Dynamic Switching**: Change highlight modes based on file extensions
+- **Real-time Updates**: Re-parse incrementaly changed text segments
+
+#### Theme System
+- **Font Rendering**: FreeType-based glyph atlas generation and caching
+- **Color Configuration**: Runtime-modifiable UI and syntax colors
+- **Dimension Settings**: Layout dimensions (padding, borders, tabs, scroll amounts)
+- **Texture Atlas**: Layered texture storage with naive packing algorithm
+
+#### Renderer
+- **OpenGL Integration**: Dynamic function loading via glad
+- **Batched Quad Rendering**: Efficient vertex buffer rendering with QuadBuffer
+- **Shader System**: Custom QuadProgram for textured quad rendering
+- **Orthogonal Projection**: Coordinate system for UI layout
+
+#### Views
+- **View Pattern**: Base class with common rendering and input handling
+- **View Subclasses**: InfoBar, Editor, and Prompt implementations
+- **Focus Management**: Handles focus switching between Editor and Prompt
+- **State Management**: ViewState hierarchy for view-specific state
+
+#### Application Window
+- **Lifecycle Management**: SDL window creation and OpenGL context handling
+- **Event Loop**: SDL event processing and input routing
+- **Rendering Pipeline**: Coordination of view rendering and syntax parsing
+- **Command Integration**: Connects CommandRunner with UI and state
+
+### Data Flow
+
+1. **User Input**: SDL events routed to focused view (Editor or Prompt)
+2. **Command Processing**: CommandManager executes registered commands
+3. **State Updates**: CVars and theme attributes reflect changes
+4. **Rendering**: Views render based on current state and syntax highlighting
+5. **Feedback**: Prompts and status messages communicate to user
+
+### Design Patterns
+
+- **Command Pattern**: For operations and actions
+- **Singleton-like**: Global Theme and CommandManager instances
+- **Observer Pattern**: CVars and callbacks for reactive updates
+- **Factory Pattern**: Lazy glyph generation and command instantiation
+- **Template Method**: TypedCVar for type-safe configuration
+- **Registry Pattern**: Centralized storage for commands and CVars
+
+## UI Components
+
+### View Hierarchy
+
+```
+ApplicationWindow
+├── InfoBar (InfoBarState)
+├── Editor (EditorState)
+└── Prompt (PromptState)
+```
+
+### View Layout
+
+- **InfoBar**: Top bar, occupies top portion of window
+- **Prompt**: Bottom bar, occupies bottom portion of window
+- **Editor**: Central area, fills remaining space between bars
+
+### Focus Management
+
+- Default focus on Editor
+- `activate_prompt` command switches focus to Prompt
+- Return/Enter in prompt switches back to Editor
+- Escape in prompt switches back to Editor
+- Commands from prompt reset focus to Editor
+
+## Key Bindings
+
+### Navigation
+| Keys | Command | Description |
+|------|---------|-------------|
+| Escape | cancel | Cancel current action (e.g., close prompt) |
+| Down | move down | Move cursor down one line |
+| Shift+Down | move down true | Move down with text selection |
+| Left | move left | Move cursor left one character |
+| Shift+Left | move left true | Move left with selection |
+| Right | move right | Move cursor right one character |
+| Shift+Right | move right true | Move right with selection |
+| Home | move bol | Move to beginning of line |
+| Shift+Home | move bol true | Select to beginning of line |
+| End | move eol | Move to end of line |
+| Shift+End | move eol true | Select to end of line |
+| PageUp | move page_up | Move up one page |
+| Shift+PageUp | move page_up true | Select page up |
+| PageDown | move page_down | Move down one page |
+| Shift+PageDown | move page_down true | Select page down |
+
+### Editing
+| Keys | Command | Description |
+|------|---------|-------------|
+| Ctrl+C | copy | Copy selection to clipboard |
+| Ctrl+X | cut | Cut selection to clipboard |
+| Ctrl+V | paste | Paste from clipboard |
+| Tab | auto_complete forward | Auto-complete input forward |
+| Shift+Tab | auto_complete backward | Auto-complete input backward |
+
+### System
+| Keys | Command | Description |
+|------|---------|-------------|
+| Ctrl+T | cvar inf_draw_time | Display max render time |
+| Ctrl+Shift+T | reset_draw_time | Reset render time to 0 |
+| Ctrl+Y | cvar inf_command_time | Display max command time |
+| Ctrl+Shift+Y | reset_command_time | Reset command time to 0 |
+| Ctrl+Keypad+ | set_font_size + | Increase font size by 1 |
+| Ctrl+Keypad- | set_font_size - | Decrease font size by 1 |
+| Ctrl+Shift+S | save | Save current buffer to file |
+| Ctrl+Shift+Space | activate_prompt | Open command prompt |
+| Ctrl+Shift+Q | quit | Quit application (no save) |
+
+## Commands
+
+### File Operations
+| Command | Arguments | Description |
+|---------|-----------|-------------|
+| `open <filename>` | filename | Open file in editor, sets highlight mode by extension |
+| `save <filename> -f` | filename, -f | Save buffer with optional overwrite flag |
+| `quit` | - | Exit application without saving |
+| `exec <filename>` | filename | Execute commands from file line by line |
+
+### Configuration
+| Command | Arguments | Description |
+|---------|-----------|-------------|
+| `cvar <name> [value1] [value2] ...` | cvar name, values | Print/set CVar value |
+| `reset_render_time` | - | Reset render time CVar to 0 |
+| `reset_command_time` | - | Reset command time CVar to 0 |
+| `set_font_size <size>` | size, +, - | Set font size (absolute or relative) |
+| `set_hl_mode <mode>` | mode | Set syntax highlight mode (cpp, json, etc.) |
+| `bind <modifiers>+<modifiers> <key> "<command>"` | modifiers, key, command | Bind key to command |
+
+### Cursor
+| Command | Arguments | Description |
+|---------|-----------|-------------|
+| `move <direction> <expand_selection>` | direction, bool | Move cursor (up/down/left/right/bol/eol/bof/eof/page_up/page_down) |
+
+### System
+| Command | Arguments | Description |
+|---------|-----------|-------------|
+| `activate_prompt` | - | Open command prompt |
+| `copy` | - | Copy selection to clipboard |
+| `paste` | - | Paste from clipboard |
+| `cut` | - | Cut selection to clipboard |
+| `auto_complete <direction>` | direction | Provide command/argument completion |
+
+### Auto-Completion
+- Commands: Type command name and press Tab
+- Arguments: Type command with incomplete argument and press Tab
+- File paths: Type `open` or `save` with filename and press Tab
+
+## CVars
+
+### System
+| Variable | Type | Description |
+|----------|------|-------------|
+| `tab_to_space` | bool | Insert tab or spaces up to `dim_tab_to_space` |
+
+### Read-Only Metrics
+| Variable | Type | Description |
+|----------|------|-------------|
+| `inf_render_time` | float | Maximum render time in seconds (reset-able) |
+| `inf_command_time` | float | Maximum command processing time (reset-able) |
+
+### Theme Colors
+| Variable | Type | Description |
+|----------|------|-------------|
+| `col_margin_background` | Color | Margin background color |
+| `col_info_bar_background` | Color | Info bar background color |
+| `col_editor_background` | Color | Editor background color |
+| `col_prompt_background` | Color | Prompt background color |
+| `col_line_background` | Color | Current line highlight color |
+| `col_selected_text_background` | Color | Selected text background |
+| `col_line_number` | Color | Line number color |
+| `col_info_bar_text` | Color | Info bar text color |
+| `col_prompt_text` | Color | Prompt text color |
+| `col_prompt_input_text` | Color | Prompt input text color |
+| `col_border` | Color | Border color |
+| `col_cursor_indicator` | Color | Cursor indicator color |
+
+### Highlight Colors
+| Variable | Type | Description |
+|----------|------|-------------|
+| `hl_comment` | Color | Comment syntax color |
+| `hl_string` | Color | String syntax color |
+| `hl_preprocessor` | Color | Preprocessor syntax color |
+| `hl_number` | Color | Number syntax color |
+| `hl_keyword` | Color | Keyword syntax color |
+| `hl_statement` | Color | Statement syntax color |
+
+### Dimensions
+| Variable | Type | Description |
+|----------|------|-------------|
+| `dim_padding_width` | int | Padding width in pixels |
+| `dim_indicator_width` | int | Indicator width in pixels |
+| `dim_border_size` | int | Border size in pixels |
+| `dim_tab_to_space` | int | Spaces per tab character |
+| `dim_page_up_down` | int | Lines per page scroll |
+| `dim_font_size` | int | Font size in pixels (runtime) |
+
+### Usage
+- Get value: `cvar <name>`
+- Set value: `cvar <name> <value>`
+- Example: `cvar col_editor_background 250 250 250 255`
+
+## Dependencies
+
+### Core Libraries
+- **SDL2**: Input handling and window management
+- **OpenGL 4.3+**: Graphics rendering
+- **glad**: Dynamic OpenGL function loader
+- **Freetype**: Font glyph rendering
+- **utfcpp**: UTF-8/UTF-16 string conversion
+
+### Syntax Highlighting
+- **tree-sitter**: General parser framework
+- **tree-sitter-cpp**: C/C++ language parser
+- **tree-sitter-json**: JSON language parser
+
+### Fonts
+- **JetBrains Mono**: Default font included in repository
+
+## Building
+
+### Linux (VCPKG + CLion)
+1. Import project in CLion
+2. Configure VCPKG as toolchain
+3. Import necessary libraries from VCPKG
+4. To run it, set working directory to `$ProjectFileDir$`
+5. Compile and debug
+
+### Nintendo Switch (Manual Build)
+Requires:
+- devkitpro
+- devkitA64
+- SDL2 with specific patch
+- Manual compilation of utfcpp, tree-sitter, and parsers
+
+Note: Game controller and IME not yet supported. USB keyboard partially supported.
+
+```bash
+mkdir nx && cd nx
+source $DEVKITPRO/switchvars.sh
+cmake -G"Unix Makefiles" -DCMAKE_C_FLAGS="$CFLAGS $CPPFLAGS" -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake ..
+make
+```
+
+## Screenshots
+
+**Default Theme**
+![Default theme](./capture.png)
+
+**Light Theme**
+![Light theme](./light_theme.png)
+
+**Dark Theme**
+![Dark theme](./dark_theme.png)
+
+## Technical Implementation Details
+
+### Rendering Pipeline
+- OpenGL 4.6 (4.3 on Nintendo Switch) Core profile with double-buffered rendering
+- Batched quad rendering via QuadBuffer (8192 quads capacity)
+- Custom QuadProgram shader for textured quad drawing
+- Orthogonal projection matrix for UI coordinates
+- Scissor test to confine rendering per view
+
+### Texture Atlas
+- FreeType-generated layered glyph atlas (256x256x256 pixels)
+- Lazy glyph loading (generated on-demand)
+- AtlasArray for tracking character positions and layers
+
+### Performance Optimization
+- Texture atlas caching for glyphs
+- Batched rendering (single draw call per view)
+- Delta time calculation via high-resolution performance counters
+- Metrics tracking for render and command times
+
+### UTF-8/UTF-16 Conversion
+- utfcpp library for bidirectional string conversion
+- Consistent use of UTF-16 internally for prompt system
+- UTF-8 for file I/O operations
+
+### State Management
+- Single-threaded event loop architecture
+- CursorContext for runtime cursor state
+- ViewState hierarchy for view-specific data
+- FocusTarget for input routing
+- CommandFeedback for interactive prompts
+
+### Error Handling
+- Optional error messages from command execution
+- Type conversion validation in CVar operations
+- Exception handling for initialization failures
+- Graceful handling of malformed input
+
+## Project Status
+
+### Implemented
+- Text editing with cursor management
+- Syntax highlighting (C++, JSON)
+- Command-driven interface with auto-completion
+- Real-time CVar configuration
+- Customizable key bindings
+- Tab handling (space expansion)
+- Selection and clipboard operations
+
+### Known Limitations
+- Tab alignment may not be perfect with mixed spaces
+- Basic error handling
+- No undo/redo support
+
+### Future Enhancements (no ordering)
+- Inline documentation needs improvement, to be re-done
+- Code base need a good cleanup as there is a lots of comments all over the place
+- Undo/Redo system
+- Additional language support
 - Search/Replace
-- "\t" does not align on columns (does not align well when mixing with spaces).
-- More and better syntax highlight.
-- Better error handling.
-- Better inline documentation.
+- Better keyboard layouts for Nintendo Switch
+- Better tab alignment ?
 
-### Concept
-The application window is divided into three parts:  
+## Contributing
 
-- The information top bar.  
-  Displays information about the current text buffer, like its position, current highlight mode, font size, ect.
-
-- The text area.  
-  That is the area that display the content of the text buffer.
-
-- The prompt bottom bar.  
-  That is the area where users can type command to run specific actions.
-
-Every action but text typing is implemented into a command. To enter a command, the prompt must be opened. **With the default configuration, the key combination to open the prompt is _"Ctrl+Shift+space"_.**
-
-Action can be tied to keystrokes. For this, the "bind" command allows customizing how the editor reacts to keystrokes.  
-Here is a list of the default key binding (see below for command description):
-
-| Keys                 | Command                | Description                                                                                     |
-|----------------------|------------------------|-------------------------------------------------------------------------------------------------|
-| escape               | cancel                 | Cancel the current action (e.g. Prompt opened).                                                 |
-| return               | validate               | Validate the current prompt string and try to run the command.                                  |
-| Down                 | move down              | Try to move the cursor one line below.                                                          |
-| Shift + Down         | move down true         | Try to move the cursor one line below, selecting all text in the process.                       |
-| Left                 | move left              | Try to move the cursor one character left.                                                      |
-| Shift + Left         | move left true         | Try to move the cursor one character left. Selecting the character in the process.              |
-| Right                | move right             | Try to move the cursor one character right.                                                     |
-| Shift + Right        | move right true        | Try to move the cursor one character right. Selecting the character in the process.             |
-| Home                 | move bol               | Move the Cursor to the beginning of the current line.                                           |
-| Shift + Home         | move bol true          | Move the Cursor to the beginning of the current line, selecting all text in the process.        |
-| End                  | move eol               | Move the Cursor to the end of the current line.                                                 |
-| Shift + End          | move eol true          | Move the Cursor to the end of the current line, selecting all text in the process.              |
-| PageUp               | move page_up           | Move the cursor one page up. Amount of line is configurable via Cvar.                           |
-| Shift + PageUp       | move page_up true      | Move the cursor one page up, selecting all text in the process.                                 |
-| PageDown             | move page_down         | Move the cursor one page down. Amount of line is configurable via Cvar.                         |
-| Shift + PageDown     | move page_down true    | Move the cursor one page down, selecting all text in the process.                               |
-| Ctrl + c             | copy                   | Copy the current selected text into the systrem clipboard.                                      |
-| Ctrl + x             | cut                    | Cut the current selected text from the buffer and copy it into thesystem clipboard.             |
-| Ctrl + v             | paste                  | Paste the current text living in the system clipboard into the text buffer.                     |
-| Ctrl + t             | cvar inf_draw_time     | Display the highest render time since reset.                                                    |
-| Ctrl + Shift + t     | reset_draw_time        | Reset the highest render time to 0.0.                                                           |
-| Ctrl + y             | cvar inf_command_time  | Display the highest command processing time.                                                    |
-| Ctrl + Shift + y     | reset_command_time     | Reset the highest command processing time to 0.0.                                               |
-| Ctrl + "Keypad +"    | set_font_size +        | Increase the font size by 1 unit.                                                               |
-| Ctrl + "Keypad -"    | set_font_size -        | Decrease the font size by 1 unit.                                                               |
-| Ctrl + Shift + s     | save                   | Save the current text buffer into a file. Will ask the user before overwrite any existing file. |
-| Ctrl + Shift + space | activate_prompt        | Activate the prompt.                                                                            |
-| Ctrl + Shift + q     | quit                   | Quit the application. Without saving.                                                           |
-| tab                  | auto_complete forward  | Auto-complete the current prompt (if possible) in the forward direction.                        |
-| Shift + tab          | auto_complete backward | Auto-complete the current prompt (if possible) in the backward direction.                       |
-
-### Main components:
-
-- **CommandManager**  
-Commands can be registered to become available in the prompt. There is also a CVar system inspired from game engines. They are shared pointers living in random parts of the code and accessible from the CommandManager. Some variables and theme attributes can be changed at runtime using this system. The command prompt also supports a simple feedback from the user (depth: 1), and eventually displays one message after command execution. It also features auto-completion for commands and arguments and also provides some utilities like strings tokenization.
-
-Current commands implemented are:
-
-  | Command                                     | Description                                                                                                                                                                                                                                                                       |
-  |---------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-  | **open \<filename\>**                       | Open the said file in the editor. This will try to set the highlight mode the corresponding language (via file extension).                                                                                                                                                        |
-  | **save \<filename\> -f**                    | Save the current editor to disk with the said filename. Will ask for feedback if the file exists.<br/>If "**-f**" is used, will not ask for feedback and save directly (overwrite the existing file).                                                                             |
-  | **quit**                                    | No arguments, exit the program without saving.                                                                                                                                                                                                                                    |
-  | **cvar \<name\> [value1] [value2] ...**     | If only the cvar name is provided, prints its value in the prompt. Otherwise, will try to set the new value on the CVar.                                                                                                                                                          |
-  | **reset_render_time**                       | No arguments. The CVar **inf_render_time** is read-only, and this command set its value back to 0. You can later check the value to see how much time was spent for rendering the window.                                                                                         |
-  | **reset_command_time**                      | No arguments. The CVar **inf_command_time** is read-only, and this command set its value back to 0. You can later check the value to see how much time was spent for processing a command.                                                                                        |
-  | **exec \<filename\>**                       | This will read the said file line by line and execute each command in it.<br/>There is some limitation: the exec will stop if feedback is needed, or if a message is returned from one the command in the list. (this is not well tested).                                        |
-  | **set_hl_mode \<mode\>**                    | Change highlight mode in the editor.                                                                                                                                                                                                                                              |
-  | **bind \<modifier\> \<key\> \<command\>**   | Bind key press to a command.<br/>Modifiers are "+" separated (e.g: Ctrl+Shift).<br/>If the command take some arguments, quote it.                                                                                                                                                 |
-  | **set_font_size \<size\>**                  | Set the font size. Take "**-**", "**+**", or a size (e.g. 27) as argument.                                                                                                                                                                                                        |
-  | **activate_prompt**                         | Activate the prompt.                                                                                                                                                                                                                                                              |
-  | **copy**                                    | Copy the current selected text by the cursor to the clipboard.                                                                                                                                                                                                                    |
-  | **paste**                                   | Paste the current text in the clipboard into the buffer.                                                                                                                                                                                                                          |
-  | **cut**                                     | Cut the current selected text by the cursor, and put it in the clipboard.                                                                                                                                                                                                         |
-  | **move \<direction\> \<expand_selection\>** | Move the cursor by some units. Direction is one of "**up**", "**down**", "**left**", "**righ**", "**bol**", "**eol**", "**bof**", "**eof**", "**page_up**", "**page_down**".<br/>If **expand_selection** is true, then the current move activate and or expand the selected text. |
-  | **cancel**                                  | Cancel the current action (e.g. Will close the prompt if opened).                                                                                                                                                                                                                 |
-  | **validate**                                | Validate the current action (e.g. Will validate the prompt and tries to run the input as a command).                                                                                                                                                                              |
-  | **auto_complete \<direction\>**             | Provide auto-completion of the input string in the prompt, if possible. Direction can be "**forward**", "**backward**".                                                                                                                                                           |
-
-  Current available CVar are:
-
-  | Variable             | Type      | Description                                                                    |
-  |----------------------|-----------|--------------------------------------------------------------------------------|
-  | **inf_render_time**  | 1 float   | **Read-only.** Holds the maximum render time in seconds since last reset.      |
-  | **inf_command_time** | 1 float   | **Read-only.** Holds the maximum command time in seconds since last reset.     |
-  | **tab_to_space**     | 1 boolean | If true "\t" character is replaced by **dim_tab_to_space** space character(s). |
-  | **col_\***           | 4 bytes   | Holds a theme color attribute. Each component (R, G, B, A) is **uint8_t**.     |
-  | **dim_\***           | 1 int     | Holds a theme dimension attribute.                                             |
-
-- **Cursor**  
-The cursor holds a unique pointer to a TextBuffer implementation, which is responsible for storing the text data, insert and delete operation on it. In addition, the Cursor provides the caret location, and move functions, insert and delete functions (which use the TextBuffer implementation), and some utilities. After each operation on the Cursor that changes the underlying text, a BufferEdit struct is returned (backed by TextBuffer) so it can be passed to the highlighter to update its internal parse tree.
-
-- **HighLighter**  
-This uses tree-sitter for the text highlight feature. Nothing fancy, the most simplistic approach is used: tint character by their symbol representation. This is not ideal (like JSON showing same color for key:value, with strings) but seems to be working for now. The HighLighter is bound to a Cursor so it can read text from it. If the Cursor's text is edited, pass the BufferEdit object to the HighLighter so it can re-read the changed part and update the syntax color.
-
-- **Renderer**  
-The renderer use OpenGL and instantiated rendering. The glyph atlas is generated on the fly using the freetype library and populate a texture array used by the OpenGL renderer. One generated vertex in the application results in a textured and tinted quad on screen.
-
-- **Theme**  
-This holds convenient functions to access theme attributes like background or highlight colors and dimensions. It allows changing the font size, measure text width in pixels, and provide characters information (texture coordinates, size, ect).
-
-- **Views**  
-There is no real view system, but a base class that holds common data for the rendering parts of the application (info bar, editor, and prompt). They are tied to a ViewState which holds the data that the View needs for its purpose. SDL input events are passed to Views to they can manage user inputs.
-
-- **ApplicationWindow**  
-Manages the application resources, SDL main loop, and pump events to update the views accordingly.
-
-### Dependencies
-
-This use some external libray:
-
-- [**SDL2**](https://github.com/libsdl-org/SDL) is used for the input and windowing system.
-- [**Glad**](https://glad.dav1d.de/) is used as dynamic function loader for OpenGL.
-- [**Freetype**](https://github.com/freetype) is used to generate font glyphs.
-- [**utfcpp**](https://github.com/nemtrif/utfcpp) is used to convert text back and forth from UTF-8 to UTF-16.
-- [**tree-sitter**](https://github.com/tree-sitter/tree-sitter) is used for syntax highlighting.
-    - [**tree-sitter-cpp**](https://github.com/tree-sitter/tree-sitter-cpp) language for c/cpp syntax highlight.
-    - [**tree-sitter-json**](https://github.com/tree-sitter/tree-sitter-json) language for JSON syntax highlight.
-- This repository ships with [**JetBrains Mono**](https://www.jetbrains.com/lp/mono/) ttf font.
-
-### How to build
-For linux, using CLion and the VCPKG integration should be straightforward (import project, set vcpkg, import necessary libraries, compile and debug.).
-
-The Nintendo Switch version needs devkitpro with devkitA64 and utilities + libraries. You'll need to compile and install *utfcpp*, *tree-sitter* and the *tree-sitter parsers* yourself. Also apply the SDL patch on top of the SDL2 patch provided by the pacman package SDL2.
-
-Assuming your using Linux to build the Nintendo Switch version:
-```
-$ mkdir nx && cd nx
-$ source $DEVKITPRO/switchvars.sh
-$ cmake -G"Unix Makefiles" -DCMAKE_C_FLAGS="$CFLAGS $CPPFLAGS" -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake ..
-$ make
-```
-
-The game controller and IME is not yet supported (you can press "+" to quit the program however).  
-USB keyboard is partially supported for basic text typing and key binds (no text composition, key mapping may be out of place).
-
-![img](./capture.png)
+This is a hobby project. Contriution are not yet open (code cleanup are more than necessary before).
+If you use it on Nintendo Switch and see bugs, reporting them are welcome.
