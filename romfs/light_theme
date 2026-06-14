@@ -1,0 +1,22 @@
+cvar col_margin_background            245 246 248 255
+cvar col_info_bar_background          238 240 244 255
+cvar col_editor_background            252 252 253 255
+cvar col_prompt_background            246 248 250 255
+cvar col_current_line_background      235 240 248 255
+cvar col_selected_text_background     180 210 255 120
+cvar col_line_number                  140 150 165 255
+cvar col_info_bar_text               40 45 55 255
+cvar col_prompt_text                 35 40 50 255
+cvar col_prompt_input_text           20 25 35 255
+cvar col_border                      210 215 225 255
+cvar col_cursor_indicator            255 140 0 255
+
+cvar hl_text                         30 35 45 255
+cvar hl_comment                      120 130 145 255
+cvar hl_string                       20 140 90 255
+cvar hl_preprocessor                 200 90 40 255
+cvar hl_number                       60 90 200 255
+cvar hl_keyword                      170 60 140 255
+cvar hl_statement                    60 110 200 255
+cvar hl_type                         30 120 160 255
+cvar hl_constant                     120 80 180 255

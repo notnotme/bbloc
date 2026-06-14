@@ -9,12 +9,14 @@
  */
 enum class TokenId {
     None,         ///< Default value for unclassified or irrelevant tokens.
-    Comment,      ///< A comment (single-line, multi-line, or documentation).
-    Preprocessor, ///< A preprocessor directive (e.g., #include, #define).
+    Keyword,      ///< A language keyword (e.g., class, public, protected, void).
+    Statement,    ///< A structural statement or control flow construct (e.g., if, else, switch, return).
     String,       ///< A string literal.
     Number,       ///< A numeric literal (integer, float, etc.).
-    Keyword,      ///< A language keyword (e.g., class, public, protected, void).
-    Statement     ///< A structural statement or control flow construct (e.g., if, else, switch, return).
+    Comment,      ///< A comment (single-line, multi-line, or documentation).
+    Preprocessor, ///< A preprocessor directive (e.g., #include, #define).
+    Type,         ///< A type identifier.
+    Constant      ///< A constant or macro.
 };
 
 

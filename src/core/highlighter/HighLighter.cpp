@@ -6,8 +6,8 @@
 #include <tree_sitter/tree-sitter-cpp.h>
 #include <tree_sitter/tree-sitter-json.h>
 
-#include "mapper/CppMapper.h"
-#include "mapper/JsonMapper.h"
+#include "query/cpp_query.h"
+#include "query/json_query.h"
 
 
 const std::unordered_map<HighLightId, HighLighter::Parser> HighLighter::PARSERS = {
@@ -16,18 +16,16 @@ const std::unordered_map<HighLightId, HighLighter::Parser> HighLighter::PARSERS 
         .name               = "JSON",
         .argument_value     = "json",
         .files_format       = {".json", ".JSON"},
-        .mapper_function    = [](const uint16_t symbol) {
-            return mapJsonToken(symbol);
-        }
+        .query_source       = json_query,
+        .query              = nullptr
     }},
     { HighLightId::Cpp, {
         .language           = tree_sitter_cpp(),
-        .name               = "C",
-        .argument_value     = "c",
+        .name               = "C++",
+        .argument_value     = "cpp",
         .files_format       = {".c", ".C", ".cc", ".CC", ".cpp", ".CPP", ".h", ".H", ".hpp", ".HPP", ".cxx", ".CXX"},
-        .mapper_function    = [](const uint16_t symbol) {
-            return mapCppToken(symbol);
-        }
+        .query_source       = cpp_query,
+        .query              = nullptr
     }}
 };
 
@@ -36,8 +34,28 @@ HighLighter::HighLighter(Cursor &cursor)
       p_current_parser(nullptr),
       p_ts_parser(ts_parser_new()),
       p_ts_tree(nullptr),
+      p_ts_query_cursor(ts_query_cursor_new()),
       m_input(this, inputCallback, TSInputEncodingUTF16LE),
-      m_high_light(HighLightId::None) {}
+      m_high_light(HighLightId::None),
+      m_is_dirty(false) {
+
+    // Compile queries
+    for (auto& [id, parser] : const_cast<std::unordered_map<HighLightId, Parser>&>(PARSERS)) {
+        uint32_t error_offset;
+        TSQueryError error_type;
+        parser.query = ts_query_new(
+            parser.language,
+            parser.query_source.data(),
+            parser.query_source.length(),
+            &error_offset,
+            &error_type
+        );
+        if (parser.query == nullptr) {
+            // In a real app we might want to handle this better, but for now:
+            throw std::runtime_error("Tree-sitter query error");
+        }
+    }
+}
 
 HighLighter::~HighLighter() {
     // Cleanup tree
@@ -50,13 +68,25 @@ HighLighter::~HighLighter() {
     ts_parser_delete(p_ts_parser);
     p_ts_parser = nullptr;
     p_current_parser = nullptr;
+
+    // Cleanup query cursor
+    ts_query_cursor_delete(p_ts_query_cursor);
+    p_ts_query_cursor = nullptr;
+
+    // Cleanup queries
+    for (auto& [id, parser] : const_cast<std::unordered_map<HighLightId, Parser>&>(PARSERS)) {
+        if (parser.query != nullptr) {
+            ts_query_delete(parser.query);
+            parser.query = nullptr;
+        }
+    }
 }
 
 void HighLighter::setMode(const HighLightId highLight) {
     m_high_light = highLight;
+    m_is_dirty = true;
 
     auto *old_language = ts_parser_language(p_ts_parser);
-    ts_parser_set_language(p_ts_parser, nullptr);
     if (old_language != nullptr) {
         // Free dynamic allocation done by the language
         ts_language_delete(old_language);
@@ -69,7 +99,7 @@ void HighLighter::setMode(const HighLightId highLight) {
         // Set new mode
         const auto &parser = PARSERS.at(highLight);
         if (! ts_parser_set_language(p_ts_parser, parser.language)) {
-            throw std::runtime_error("Could not set language");
+            throw std::runtime_error("Could not set parser for language highlight");
         }
 
         p_current_parser = &parser;
@@ -80,6 +110,8 @@ void HighLighter::setMode(const HighLightId highLight) {
         ts_tree_delete(p_ts_tree);
         p_ts_tree = nullptr;
     }
+
+    m_line_cache.clear();
 }
 
 void HighLighter::setMode(const std::string_view extension) {
@@ -105,16 +137,75 @@ std::string_view HighLighter::getModeString() const {
 }
 
 void HighLighter::parse() {
-    if (p_current_parser != nullptr) {
+    if (p_current_parser != nullptr && m_is_dirty) {
         // Reuse the old tree to parse create a new one, if p_ts_tree is nullptr, start from scratch
         auto *new_tree = ts_parser_parse(p_ts_parser, p_ts_tree, m_input);
         // Delete the old tree and set the new as the current one
-        ts_tree_delete(p_ts_tree);
+        if (p_ts_tree != nullptr) {
+            ts_tree_delete(p_ts_tree);
+        }
         p_ts_tree = new_tree;
+        updateCache();
+
+        m_is_dirty = false;
     }
 }
 
-void HighLighter::edit(const BufferEdit &edit) const {
+void HighLighter::updateCache() const {
+    const auto line_count = m_cursor.getLineCount();
+
+    m_line_cache.clear();
+    m_line_cache.resize(line_count);
+
+    if (p_ts_tree == nullptr || p_current_parser == nullptr || p_current_parser->query == nullptr) {
+        return;
+    }
+
+    const auto root_node = ts_tree_root_node(p_ts_tree);
+    ts_query_cursor_exec(p_ts_query_cursor, p_current_parser->query, root_node);
+
+    TSQueryMatch match;
+    while (ts_query_cursor_next_match(p_ts_query_cursor, &match)) {
+        for (auto i = 0; i < match.capture_count; ++i) {
+            const auto capture = match.captures[i];
+            const auto node = capture.node;
+            const auto start_point = ts_node_start_point(node);
+            const auto end_point = ts_node_end_point(node);
+
+            uint32_t capture_name_len;
+            const auto capture_name = ts_query_capture_name_for_id(
+                p_current_parser->query,
+                capture.index,
+                &capture_name_len
+            );
+
+            auto token_id = TokenId::None;
+
+            const auto name = std::string_view(capture_name, capture_name_len);
+            if (name == "keyword") token_id = TokenId::Keyword;
+            else if (name == "statement") token_id = TokenId::Statement;
+            else if (name == "string") token_id = TokenId::String;
+            else if (name == "number") token_id = TokenId::Number;
+            else if (name == "comment") token_id = TokenId::Comment;
+            else if (name == "preprocessor") token_id = TokenId::Preprocessor;
+            else if (name == "type") token_id = TokenId::Type;
+            else if (name == "constant") token_id = TokenId::Constant;
+            if (token_id == TokenId::None) continue;
+
+            for (auto line = start_point.row; line <= end_point.row && line < line_count; ++line) {
+                const auto current_line = m_cursor.getString(line);
+                const auto start_col = line == start_point.row ? start_point.column / sizeof(char16_t) : 0;
+                const auto end_col = line == end_point.row ? end_point.column / sizeof(char16_t) : current_line.length();
+
+                if (start_col < end_col) {
+                    m_line_cache[line].emplace_back(start_col, end_col, token_id);
+                }
+            }
+        }
+    }
+}
+
+void HighLighter::edit(const BufferEdit &edit) {
     if (p_ts_tree != nullptr) {
         // This just converts and relays the object coming from the cursor
         const auto ts_edit = TSInputEdit {
@@ -127,6 +218,7 @@ void HighLighter::edit(const BufferEdit &edit) const {
         };
 
         ts_tree_edit(p_ts_tree, &ts_edit);
+        m_is_dirty = true;
     }
 }
 
@@ -155,24 +247,18 @@ void HighLighter::getParserCompletions(const AutoCompleteCallback &callback) {
 }
 
 TokenId HighLighter::getHighLightAtPosition(const uint32_t line, const uint32_t column) const {
-    if (p_ts_tree == nullptr || m_high_light == HighLightId::None) {
+    if (m_high_light == HighLightId::None || line >= m_line_cache.size()) {
         return TokenId::None;
     }
 
-    // Find the node at the line and column position
-    const auto point = TSPoint(line, column * sizeof(char16_t));
-    const auto &root_node = ts_tree_root_node(p_ts_tree);
-    const auto &target_node = ts_node_descendant_for_point_range(root_node, point, point);
-    if (ts_node_is_null(target_node)) {
-        return TokenId::None;
+    // Search the spans for the current line
+    for (const auto &span : m_line_cache[line]) {
+        if (column >= span.start_column && column < span.end_column) {
+            return span.token_id;
+        }
     }
 
-    // todo: Uncomment for debug purpose
-    // std::cout << "node: " << ts_node_type(target_node) << " " << ts_node_symbol(target_node) << " " << std::endl;
-    const auto symbol = ts_node_symbol(target_node);
-
-    // Return the mapped token
-    return p_current_parser->mapper_function(symbol);
+    return TokenId::None;
 }
 
 std::optional<std::u16string_view> HighLighter::readCallback(const uint32_t line, const uint32_t column) const {

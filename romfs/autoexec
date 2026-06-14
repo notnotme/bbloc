@@ -53,3 +53,8 @@ bind Shift PageDown "move page_down true"
 # auto complete
 bind None tab "auto_complete forward"
 bind Shift tab "auto_complete backward"
+
+# temporary shortcut to set color theme (does not work on switch: must use romfs:/)
+# This will be removed before next switch release, as theme will adapt according to switch theme
+bind Ctrl+Shift l "exec romfs/light_theme"
+bind Ctrl+Shift d "exec romfs/dark_theme"
