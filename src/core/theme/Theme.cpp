@@ -37,7 +37,10 @@ void Theme::destroy() {
 void Theme::setFontSize(int32_t size) {
     size = std::clamp(size, MIN_FONT_SIZE, MAX_FONT_SIZE);
     FT_Size_RequestRec font_size_req = {FT_SIZE_REQUEST_TYPE_NOMINAL, 0, size * 64, 96, 96};
-    FT_Request_Size(m_font, &font_size_req);
+    if (FT_Request_Size(m_font, &font_size_req) != FT_Err_Ok) {
+        // Keep the previous size and metrics rather than deriving them from a failed request
+        return;
+    }
 
     const auto bbox_y_max = FT_MulFix(m_font->bbox.yMax, m_font->size->metrics.y_scale) >> 6;
     const auto bbox_y_min = FT_MulFix(m_font->bbox.yMin, m_font->size->metrics.y_scale) >> 6;
@@ -55,19 +58,21 @@ int32_t Theme::getFontSize() const {
 }
 
 const Color &Theme::getColor(const ColorId id) const {
-    if (!m_colors.contains(id)) {
+    const auto color = m_colors.find(id);
+    if (color == m_colors.end()) {
         throw std::runtime_error("Theme::getColor color does not exists.");
     }
 
-    return m_colors.at(id)->m_value;
+    return color->second->m_value;
 }
 
 const Color &Theme::getColor(const TokenId id) const {
-    if (!m_highlight_colors.contains(id)) {
+    const auto color = m_highlight_colors.find(id);
+    if (color == m_highlight_colors.end()) {
         throw std::runtime_error("Theme::getColor color does not exists.");
     }
 
-    return m_highlight_colors.at(id)->m_value;
+    return color->second->m_value;
 }
 
 const AtlasEntry &Theme::getCharacter(const char16_t character) {
@@ -77,7 +82,7 @@ const AtlasEntry &Theme::getCharacter(const char16_t character) {
     }
 
     // Generate a new character
-    if(FT_Load_Char(m_font, character, FT_LOAD_RENDER | FT_LOAD_DEFAULT) != FT_Err_Ok) {
+    if(FT_Load_Char(m_font, character, FT_LOAD_RENDER) != FT_Err_Ok) {
         throw std::runtime_error("Theme::getCharacter FT_Load_Char failed");
     }
 
@@ -86,14 +91,14 @@ const AtlasEntry &Theme::getCharacter(const char16_t character) {
         character,
         m_font->glyph->bitmap.width,
         m_font->glyph->bitmap.rows,
-        static_cast<int8_t>(m_font->glyph->bitmap_left),
-        static_cast<int8_t>(m_font->glyph->bitmap_top));
+        m_font->glyph->bitmap_left,
+        m_font->glyph->bitmap_top);
 
     m_quad_texture.blit(
         atlas_entry.texture_s,
         atlas_entry.texture_t,
-        m_font->glyph->bitmap.width,
-        m_font->glyph->bitmap.rows,
+        atlas_entry.width,
+        atlas_entry.height,
         atlas_entry.layer,
         m_font->glyph->bitmap.buffer);
 
@@ -101,11 +106,12 @@ const AtlasEntry &Theme::getCharacter(const char16_t character) {
 }
 
 int32_t Theme::getDimension(const DimensionId id) const {
-    if (!m_dimensions.contains(id)) {
+    const auto dimension = m_dimensions.find(id);
+    if (dimension == m_dimensions.end()) {
         throw std::runtime_error("Theme::getDimension dimension does not exists.");
     }
 
-    return m_dimensions.at(id)->m_value;
+    return dimension->second->m_value;
 }
 
 int32_t Theme::getLineHeight() const {
@@ -120,15 +126,15 @@ int32_t Theme::getFontDescender() const {
     return m_font_descender;
 }
 
-int32_t Theme::measure(const std::u16string_view text, const bool ignoreTabs) {
+int32_t Theme::measure(const std::u16string_view text, const bool ignoreTabs) const {
     if (ignoreTabs) {
         return static_cast<int32_t>(text.length() * m_font_advance);
     }
 
-    const auto tab_to_space = m_dimensions[DimensionId::TabToSpace];
+    const auto tab_to_space = getDimension(DimensionId::TabToSpace);
     auto size = 0;
     for (const auto c : text) {
-        size += c == '\t' ? m_font_advance * tab_to_space->m_value : m_font_advance;
+        size += c == '\t' ? m_font_advance * tab_to_space : m_font_advance;
     }
     return size;
 }

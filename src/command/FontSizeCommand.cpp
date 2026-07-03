@@ -11,10 +11,15 @@ const std::unordered_map<std::u16string, FontSizeCommand::Size> FontSizeCommand:
 
 void FontSizeCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) previousArgs;
-    (void) input;
-    (void) argumentIndex;
+    if (argumentIndex != 0) {
+        // Only auto-complete the first argument (size direction)
+        return;
+    }
+
     for (const auto &item : std::views::keys(SIZE_MAP)) {
-        itemCallback(item);
+        if (item.starts_with(input)) {
+            itemCallback(item);
+        }
     }
 }
 

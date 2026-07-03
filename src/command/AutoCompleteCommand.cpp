@@ -20,9 +20,8 @@ void AutoCompleteCommand::provideAutoComplete(const std::vector<std::u16string_v
         return;
     }
 
-    const auto input_is_empty = input.empty();
     for (const auto &item : std::views::keys(DIRECTION_MAP)) {
-        if (item.starts_with(input) || input_is_empty) {
+        if (item.starts_with(input)) {
             itemCallback(item);
         }
     }

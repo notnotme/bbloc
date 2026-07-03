@@ -7,14 +7,9 @@
 
 
 void CVarCommand::registerCvar(const std::u16string_view name, std::shared_ptr<CVar> cvar, const CVarCallback &callback) {
-    const auto name_str = std::u16string(name.begin(), name.end());
-    if (m_cvars.contains(name_str)) {
-        throw std::runtime_error(std::string("CVar already registered: ").append(utf8::utf16to8(name)));
-    }
-
-    const auto &[new_entry, success] = m_cvars.insert({name_str, { std::move(cvar), callback } });
+    const auto &[new_entry, success] = m_cvars.insert({ std::u16string(name), { std::move(cvar), callback } });
     if (!success) {
-        throw std::runtime_error(std::string("Unable to register  CVar: ").append(utf8::utf16to8(name)));
+        throw std::runtime_error(std::string("CVar already registered: ").append(utf8::utf16to8(name)));
     }
 }
 
@@ -33,7 +28,7 @@ void CVarCommand::provideAutoComplete(const std::vector<std::u16string_view> &pr
 
         cvar_entry->second.cvar->provideValueCompletion(argumentIndex - 1,
             [&](const std::u16string_view completion) {
-                if (completion.starts_with(input) || input.empty()) {
+                if (completion.starts_with(input)) {
                     itemCallback(completion);
                 }
             });
@@ -41,10 +36,8 @@ void CVarCommand::provideAutoComplete(const std::vector<std::u16string_view> &pr
         return;
     }
 
-    const auto input_is_empty = input.empty();
     for (const auto &name : std::views::keys(m_cvars)) {
-        if (name.starts_with(input) || input_is_empty) {
-            // If input is empty, push everything to the list of possibilities
+        if (name.starts_with(input)) {
             itemCallback(name);
         }
     }

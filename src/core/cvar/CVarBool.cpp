@@ -26,9 +26,11 @@ std::optional<std::u16string> CVarBool::setValueFromStrings(const std::vector<st
         return u"Argument expected: <value>.";
     }
 
-    try {
-        m_value = args[0] == u"true";
-    } catch (...) {
+    if (args[0] == u"true") {
+        m_value = true;
+    } else if (args[0] == u"false") {
+        m_value = false;
+    } else {
         return u"Unable to convert argument to boolean";
     }
 

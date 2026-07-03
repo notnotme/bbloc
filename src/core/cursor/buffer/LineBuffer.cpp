@@ -52,10 +52,14 @@ uint32_t LineBuffer::getStringCount() const {
     return static_cast<uint32_t>(m_line_data.size());
 }
 
+uint32_t LineBuffer::detachedLengthBefore(const uint32_t line) const {
+    return line > m_current_line_index ? static_cast<uint32_t>(m_current_line.length()) : 0;
+}
+
 uint32_t LineBuffer::getByteOffset(const uint32_t line, const uint32_t column) const {
-    // m_line_data[line].start already accounts for the current line being absent from
-    // the buffer (its detached count is 0), so following offsets stay consistent.
-    const auto byte_offset = (m_line_data[line].start + column) * sizeof(char16_t);
+    // m_line_data[line].start excludes the detached current line's characters,
+    // so lines after it must be shifted by its length to stay consistent.
+    const auto byte_offset = (m_line_data[line].start + column + detachedLengthBefore(line)) * sizeof(char16_t);
     const auto line_ends = line * sizeof(char16_t); // "\n"
     return byte_offset + line_ends;
 }
@@ -73,8 +77,8 @@ uint32_t LineBuffer::getByteCount(uint32_t lineStart, uint32_t columnStart, uint
     }
 
     // Find the start and end point in the line metadata, then subtract their offsets. Take in account "\n".
-    const auto start_byte_offset = m_line_data[lineStart].start + columnStart;
-    const auto end_byte_offset = m_line_data[lineEnd].start + columnEnd;
+    const auto start_byte_offset = m_line_data[lineStart].start + columnStart + detachedLengthBefore(lineStart);
+    const auto end_byte_offset = m_line_data[lineEnd].start + columnEnd + detachedLengthBefore(lineEnd);
     const auto line_ends = lineEnd - lineStart; // "\n"
     return (end_byte_offset - start_byte_offset + line_ends) * sizeof(char16_t);
 }
@@ -197,7 +201,9 @@ BufferEdit LineBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd, u
         // Invert column coordinates
         std::swap(column, columnEnd);
     } else if (line == lineEnd && column == columnEnd) {
-        return {0,0,0, {0,0}, {0,0}, {0,0}};
+        // Empty range, describe the untouched position
+        const auto byte_offset = getByteOffset(line, column);
+        return {byte_offset, byte_offset, byte_offset, {line, column}, {line, column}, {line, column}};
     }
 
     // Fast path: erase within the current line only touches m_current_line.
@@ -288,9 +294,9 @@ BufferEdit LineBuffer::clear() {
     // Make sure the current line is folded back so the sizes below are exact.
     commitCurrentLine();
 
-    const auto &last_line_data = m_line_data.back();
-    const auto line_count = m_line_data.size();
-    const auto buffer_size = getByteOffset(line_count - 1, last_line_data.count);
+    const auto last_line = static_cast<uint32_t>(m_line_data.size()) - 1;
+    const auto last_column = m_line_data.back().count;
+    const auto buffer_size = getByteOffset(last_line, last_column);
 
     m_buffer.clear();
     m_current_line.clear();
@@ -299,16 +305,16 @@ BufferEdit LineBuffer::clear() {
     m_current_line_index = 0;
 
     return {
-        .start_byte = buffer_size,
+        .start_byte = 0,
         .old_end_byte = buffer_size,
         .new_end_byte = 0,
         .start = {
-            .line = static_cast<uint32_t>(line_count),
-            .column = static_cast<uint32_t>(last_line_data.count)
+            .line = 0,
+            .column = 0
         },
         .old_end = {
-            .line = static_cast<uint32_t>(line_count),
-            .column = static_cast<uint32_t>(last_line_data.count)
+            .line = last_line,
+            .column = last_column
         },
         .new_end = {
             .line = 0,

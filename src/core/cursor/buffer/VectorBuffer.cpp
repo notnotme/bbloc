@@ -44,27 +44,15 @@ uint32_t VectorBuffer::getByteCount(uint32_t lineStart, uint32_t columnStart, ui
         return (columnEnd - columnStart) * sizeof(char16_t);
     }
 
-    auto byte_count = 0u;
-    for (auto current_line = lineStart; current_line <= lineEnd; ++current_line) {
-        // Start to count, ! -> "\n" -> +1 length
-        const auto &string = m_lines[current_line];
-        if (current_line == lineStart) {
-            // The first line always contains the line end, and we add only from columnStart
-            const auto &remainder = string.substr(columnStart);
-            const auto remainder_length = remainder.length();
-            byte_count += (remainder_length + 1) * sizeof(char16_t);
-        } else if (current_line == lineEnd) {
-            // The last line does not contains any line end, we add only from 0 to columnEnd
-            const auto &noun = string.substr(0, columnEnd);
-            const auto noun_length = noun.length();
-            byte_count += noun_length * sizeof(char16_t);
-        } else {
-            // Every other line adds all the string plus the line end.
-            const auto string_length = string.length();
-            byte_count += (string_length + 1) * sizeof(char16_t);
-        }
+    // Start to count, ! -> "\n" -> +1 length
+    // The first line counts from columnStart and contains a line end, the last line
+    // counts up to columnEnd without a line end, every other line counts entirely.
+    auto unit_count = m_lines[lineStart].length() - columnStart + 1;
+    for (auto current_line = lineStart + 1; current_line < lineEnd; ++current_line) {
+        unit_count += m_lines[current_line].length() + 1;
     }
-    return byte_count;
+    unit_count += columnEnd;
+    return static_cast<uint32_t>(unit_count * sizeof(char16_t));
 }
 
 BufferEdit VectorBuffer::insert(uint32_t line, uint32_t column, const std::u16string_view characters) {
@@ -145,7 +133,9 @@ BufferEdit VectorBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd,
         // Invert column coordinates
         std::swap(column, columnEnd);
     } else if (line == lineEnd && column == columnEnd) {
-        return {0,0,0, {line, column}, {line, column}, {line, column}};
+        // Empty range, describe the untouched position
+        const auto byte_offset = getByteOffset(line, column);
+        return {byte_offset, byte_offset, byte_offset, {line, column}, {line, column}, {line, column}};
     }
 
     // Find the start byte and the byte count of the range to delete.
@@ -173,15 +163,11 @@ BufferEdit VectorBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd,
         const auto string = m_lines.begin() + lineEnd;
         string->erase(column, columnEnd - column);
     } else {
-        // Keep the remainder of the first and last line
-        const auto &first_part_to_append = (m_lines.begin() + line)->substr(0, column);
-        const auto &last_part_to_append = (m_lines.begin() + lineEnd)->substr(columnEnd);
-
-        // Remove all lines in between start / end.
-        m_lines.erase(m_lines.begin() + line, m_lines.begin() + lineEnd + 1);
-
-        // Add the remainder of the first and last line that we cut
-        m_lines.emplace(m_lines.begin() + line, first_part_to_append + last_part_to_append);
+        // Truncate the first line, append the remainder of the last line, then drop the lines in between
+        auto &first_line = m_lines[line];
+        first_line.resize(column);
+        first_line.append(m_lines[lineEnd], columnEnd);
+        m_lines.erase(m_lines.begin() + line + 1, m_lines.begin() + lineEnd + 1);
     }
 
     // We can finish filling the BufferEdit struct
@@ -192,24 +178,23 @@ BufferEdit VectorBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd,
 
 BufferEdit VectorBuffer::clear() {
     // Clear everything, push one empty line, keep some number in memory before so we can fill the BufferEdit struct.
-    const auto &last_string = m_lines.back();
-    const auto line_count = m_lines.size();
-    const auto last_string_length = last_string.length();
-    const auto buffer_size = getByteOffset(line_count - 1, last_string_length);
+    const auto last_line = static_cast<uint32_t>(m_lines.size()) - 1;
+    const auto last_column = static_cast<uint32_t>(m_lines.back().length());
+    const auto buffer_size = getByteOffset(last_line, last_column);
 
     m_lines.clear();
     m_lines.emplace_back();
     return {
-        .start_byte = buffer_size,
+        .start_byte = 0,
         .old_end_byte = buffer_size,
         .new_end_byte = 0,
         .start = {
-            .line = static_cast<uint32_t>(line_count),
-            .column = static_cast<uint32_t>(last_string_length)
+            .line = 0,
+            .column = 0
         },
         .old_end = {
-            .line = static_cast<uint32_t>(line_count),
-            .column = static_cast<uint32_t>(last_string_length)
+            .line = last_line,
+            .column = last_column
         },
         .new_end = {
             .line = 0,

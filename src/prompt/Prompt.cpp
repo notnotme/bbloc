@@ -47,11 +47,13 @@ bool Prompt::onKeyDown(CursorContext &context, PromptState &viewState, const SDL
         return true;
         case SDLK_ESCAPE:
             // Set the prompt state to Idle, then the command processing logic will take care of the rest.
+            // Escape also cancels a pending feedback, so the next command is not consumed as its answer.
             viewState.setRunningState(PromptState::RunningState::Idle);
             viewState.setPromptText(PromptState::PROMPT_READY);
             viewState.clearCompletions();
             viewState.clearHistoryIndex();
             context.prompt_cursor.clear();
+            context.command_feedback.reset();
             context.focus_target = FocusTarget::Editor;
         return true;
         case SDLK_BACKSPACE:

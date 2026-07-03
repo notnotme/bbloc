@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <system_error>
 
 #include <utf8.h>
 
@@ -32,21 +33,37 @@ std::optional<std::u16string> SaveFileCommand::run(CursorContext &payload, const
     // Check if the file can be saved.
     const auto arg_filename = std::filesystem::path(args.empty() ? "" : utf8::utf16to8(args[0]));
     const auto file_to_save = arg_filename.empty() ? cursor_name : arg_filename;
-    const auto file_exists = std::filesystem::exists(file_to_save);
-    const auto is_regular_file = std::filesystem::is_regular_file(file_to_save);
+    const auto file_to_save_utf16 = utf8::utf8to16(file_to_save.string());
+    auto error_code = std::error_code();
+    const auto file_exists = std::filesystem::exists(file_to_save, error_code);
+    const auto is_regular_file = std::filesystem::is_regular_file(file_to_save, error_code);
     if (file_exists && !is_regular_file) {
-        return std::u16string(u"Could not save ").append(args[0]).append(u".");
+        return std::u16string(u"Could not save ").append(file_to_save_utf16).append(u".");
     }
 
-    // CHeck if the file is overwritten by the operation
-    if (cursor_name.filename() != file_to_save.filename()
+    // Compare full canonical paths, so "./a.txt" and "a.txt" name the same file.
+    // On resolution failure, treat the paths as different: prompting is the safe default.
+    auto cursor_name_error = std::error_code();
+    auto file_to_save_error = std::error_code();
+    const auto canonical_cursor_name = std::filesystem::weakly_canonical(cursor_name, cursor_name_error);
+    const auto canonical_file_to_save = std::filesystem::weakly_canonical(file_to_save, file_to_save_error);
+    const auto is_same_file = !cursor_name_error && !file_to_save_error && canonical_cursor_name == canonical_file_to_save;
+
+    // Check if the file is overwritten by the operation
+    if (!is_same_file
         && file_exists
         && (args.size() == 1 || args[1] != u"-f")) {
+        // Re-quote a path containing spaces so the rerun tokenizes it back to one argument.
+        auto quoted_filename = file_to_save_utf16;
+        if (quoted_filename.find(u' ') != std::u16string::npos) {
+            quoted_filename = std::u16string(u"\"").append(quoted_filename).append(u"\"");
+        }
+
         // Needs user feedback to be able to overwrite it
         payload.command_feedback = CommandFeedback {
             .prompt_message = u"File already exists, overwrite ? [y/N]:",
             // This reuses the same command, but with "-f" argument to force overwriting.
-            .command_string = std::u16string(u"save ").append(args[0]).append(u" -f"),
+            .command_string = std::u16string(u"save ").append(quoted_filename).append(u" -f"),
             .completions_list = {u"n", u"y"},
             .on_validate_callback = [&](const std::u16string_view input, const std::u16string_view command) -> std::optional<std::u16string> {
                 if (input == u"y" || input == u"Y") {
@@ -62,23 +79,22 @@ std::optional<std::u16string> SaveFileCommand::run(CursorContext &payload, const
 
     // Prepare to output all the text.
     auto ofs = std::ofstream(file_to_save, std::ios::out);
-    if(!ofs || !ofs.is_open()) {
-        return std::u16string(u"Could not save ").append(args[0]).append(u".");
+    if (!ofs) {
+        return std::u16string(u"Could not save ").append(file_to_save_utf16).append(u".");
     }
 
     // Write all the text into the file.
-    const auto line_count = payload.cursor.getLineCount();
-    for (auto line = 0; line < line_count; ++line) {
-        const auto string = payload.cursor.getString(line);
-        ofs << utf8::utf16to8(string);
-        if(line < line_count - 1) {
-            // Append \n but at the end of the file.
-            ofs << "\n";
-        }
+    try {
+        ofs << utf8::utf16to8(payload.cursor.getText());
+    } catch (const utf8::exception &) {
+        return std::u16string(u"Could not encode ").append(file_to_save_utf16).append(u" as UTF-8.");
     }
 
-    // Close file and set cursor name.
+    // Close file, report a failed write, and set cursor name.
     ofs.close();
+    if (ofs.fail()) {
+        return std::u16string(u"Could not save ").append(file_to_save_utf16).append(u".");
+    }
     payload.cursor.setName(file_to_save.string());
 
     // We always want to redraw, in case we run from a prompt confirmation.

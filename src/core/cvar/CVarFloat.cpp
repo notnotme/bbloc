@@ -14,7 +14,14 @@ std::optional<std::u16string> CVarFloat::setValueFromStrings(const std::vector<s
 
     try {
         const auto arg = utf8::utf16to8(args[0]);
-        m_value = std::stof(arg);
+        auto parsed_length = std::size_t(0);
+        const auto value = std::stof(arg, &parsed_length);
+        if (parsed_length != arg.length()) {
+            // Reject trailing garbage such as "4x"
+            return u"Unable to convert argument to float";
+        }
+
+        m_value = value;
     } catch (...) {
         return u"Unable to convert argument to float";
     }

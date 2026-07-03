@@ -19,6 +19,23 @@ private:
     /** Current column position of the cursor in the buffer. */
     int32_t m_column;
 
+private:
+    /**
+     * @brief Measures the character ending at the given column.
+     *
+     * @param column The column just after the character.
+     * @return 2 when the character is a surrogate pair, 1 otherwise.
+     */
+    [[nodiscard]] int32_t charLengthBefore(int32_t column) const;
+
+    /**
+     * @brief Measures the character starting at the given column.
+     *
+     * @param column The column of the character.
+     * @return 2 when the character is a surrogate pair, 1 otherwise.
+     */
+    [[nodiscard]] int32_t charLengthAfter(int32_t column) const;
+
 public:
     /** @brief Deleted copy constructor. */
     PromptCursor(const PromptCursor &) = delete;

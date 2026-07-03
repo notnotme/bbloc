@@ -14,7 +14,14 @@ std::optional<std::u16string> CVarInt::setValueFromStrings(const std::vector<std
 
     try {
         const auto arg = utf8::utf16to8(args[0]);
-        m_value = std::stoi(arg);
+        auto parsed_length = std::size_t(0);
+        const auto value = std::stoi(arg, &parsed_length);
+        if (parsed_length != arg.length()) {
+            // Reject trailing garbage such as "4x"
+            return u"Unable to convert argument to int";
+        }
+
+        m_value = value;
     } catch (...) {
         return u"Unable to convert argument to int";
     }

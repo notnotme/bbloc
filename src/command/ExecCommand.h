@@ -16,6 +16,11 @@
  * potentially capturing their output and integrating it with the editor.
  */
 class ExecCommand final : public Command<CursorContext> {
+    /** @brief Maximum number of nested exec calls before execution is refused. */
+    static constexpr int32_t MAX_RECURSION_DEPTH = 8;
+
+    int32_t m_recursion_depth = 0; ///< Current number of nested exec calls, guards against script cycles.
+
 public:
     /** @brief Constructs an ExecCommand with default initialization. */
     explicit ExecCommand() = default;

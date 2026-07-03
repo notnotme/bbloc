@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <system_error>
 
 #include <utf8.h>
 
@@ -23,11 +24,17 @@ std::optional<std::u16string> ExecCommand::run(CursorContext &payload, const std
         return u"Usage: exec <filename>";
     }
 
+    // A script executing itself (or a cycle of scripts) would otherwise recurse forever.
+    if (m_recursion_depth >= MAX_RECURSION_DEPTH) {
+        return u"Max exec recursion depth reached.";
+    }
+
     // Get the path of the file and tries to open the file at this location
     const auto path = utf8::utf16to8(args[0]);
-    const auto is_regular_file = std::filesystem::is_regular_file(path);
+    auto error_code = std::error_code();
+    const auto is_regular_file = std::filesystem::is_regular_file(path, error_code);
     auto ifs = std::ifstream(path, std::ios::in);
-    if (!ifs || !ifs.is_open() || !is_regular_file) {
+    if (!ifs || !is_regular_file) {
         // That file cannot be opened
         return std::u16string(u"Could not open ").append(args[0]).append(u".");
     }
@@ -55,11 +62,13 @@ std::optional<std::u16string> ExecCommand::run(CursorContext &payload, const std
     }
     ifs.close();
 
+    ++m_recursion_depth;
     for (const auto &command : command_list) {
         // fixme?: At this point, any feedback needed will interrupt the command list execution
         // fixme!: This is not well tested at all.
         payload.command_runner.runCommand(command, false);
     }
+    --m_recursion_depth;
 
     return std::nullopt;
 }

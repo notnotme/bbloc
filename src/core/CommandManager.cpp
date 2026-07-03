@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <ranges>
+#include <system_error>
 
 #include <utf8.h>
 
@@ -12,14 +13,9 @@ CommandManager::CommandManager()
 }
 
 void CommandManager::registerCommand(const std::u16string_view name, std::shared_ptr<Command<CursorContext>> command) {
-    const auto name_str = name.data();
-    if (m_commands.contains(name_str)) {
-        throw std::runtime_error(std::string("Command already registered: ").append(utf8::utf16to8(name)));
-    }
-
-    const auto &[new_entry, success] = m_commands.insert({ name_str, command });
+    const auto &[new_entry, success] = m_commands.insert({ std::u16string(name), std::move(command) });
     if (!success) {
-        throw std::runtime_error(std::string("Unable to register command: ").append(utf8::utf16to8(name)));
+        throw std::runtime_error(std::string("Command already registered: ").append(utf8::utf16to8(name)));
     }
 }
 
@@ -44,10 +40,8 @@ std::optional<std::u16string> CommandManager::run(CursorContext &payload, const 
 }
 
 void CommandManager::getCommandCompletions(const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
-    const auto input_is_empty = input.empty();
     for (const auto &name : std::views::keys(m_commands)) {
-        if (name.starts_with(input) || input_is_empty) {
-            // If input is empty, push everything to the list of possibilities
+        if (name.starts_with(input)) {
             itemCallback(name);
         }
     }
@@ -64,24 +58,47 @@ void CommandManager::getPathCompletions(const std::u16string_view input, const b
     const auto path_input = std::filesystem::path(input);
     const auto path_input_string = path_input.filename().string();
     const auto parent_path = path_input.has_parent_path() ? path_input.parent_path() : ".";
-    const auto exists = std::filesystem::exists(parent_path);
-    const auto is_directory = std::filesystem::is_directory(parent_path);
-    if (exists && is_directory) {
-        for (const auto &entry : std::filesystem::directory_iterator(parent_path)) {
-            const auto &path = entry.path();
-            const auto &filename = path.filename().string();
-            if (filename.starts_with(path_input_string)) {
-                if (entry.is_directory() || (!foldersOnly && entry.is_regular_file())) {
-                    auto complete_path = path.string();
-                    if (entry.is_directory()) {
-                        // Mark directories so the next completion can descend into them
-                        complete_path.append("/");
-                    }
 
-                    const auto utf16_complete_path = utf8::utf8to16(complete_path);
-                    itemCallback(utf16_complete_path);
-                }
+    // Non-throwing filesystem overloads only: completing an unreadable path must never terminate the app.
+    auto error_code = std::error_code();
+    if (!std::filesystem::is_directory(parent_path, error_code)) {
+        return;
+    }
+
+    auto iterator = std::filesystem::directory_iterator(parent_path, error_code);
+    if (error_code) {
+        return;
+    }
+
+    for (const auto end = std::filesystem::directory_iterator(); iterator != end; iterator.increment(error_code)) {
+        if (error_code) {
+            return;
+        }
+
+        const auto &entry = *iterator;
+        const auto &path = entry.path();
+        const auto &filename = path.filename().string();
+        if (!filename.starts_with(path_input_string)) {
+            continue;
+        }
+
+        const auto entry_is_directory = entry.is_directory(error_code);
+        if (entry_is_directory || (!foldersOnly && entry.is_regular_file(error_code))) {
+            auto complete_path = path.string();
+            if (entry_is_directory) {
+                // Mark directories so the next completion can descend into them
+                complete_path.append("/");
             }
+
+            auto utf16_complete_path = std::u16string();
+            try {
+                utf16_complete_path = utf8::utf8to16(complete_path);
+            } catch (const utf8::exception &) {
+                // Skip filenames that are not valid UTF-8
+                continue;
+            }
+
+            itemCallback(utf16_complete_path);
         }
     }
 }

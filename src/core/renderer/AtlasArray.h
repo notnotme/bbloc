@@ -56,7 +56,7 @@ public:
      * @param bearingY Vertical bearing (offset from baseline).
      * @return Reference to the inserted AtlasEntry.
      */
-    [[nodiscard]] const AtlasEntry &insert(char16_t character, uint8_t width, uint8_t height, int8_t bearingX, int8_t bearingY);
+    [[nodiscard]] const AtlasEntry &insert(char16_t character, uint32_t width, uint32_t height, int32_t bearingX, int32_t bearingY);
 
     /**
      * @brief Retrieves a character entry from the atlas.

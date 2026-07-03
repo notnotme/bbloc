@@ -17,27 +17,33 @@ std::optional<std::u16string> CopyTextCommand::run(CursorContext &payload, const
         return u"Expected 0 argument.";
     }
 
+    return copySelectionToClipboard(payload);
+}
+
+std::optional<std::u16string> CopyTextCommand::copySelectionToClipboard(CursorContext &payload) {
     const auto &selection = payload.cursor.getSelectedText();
     if (!selection) {
         return u"Selection is empty.";
     }
 
-    // Using this to store all the text at once and converting it to utf8 later in one shot, for SDL.
+    // Because the selected text returns a vector, join the lines back with line endings.
     auto to_clipboard_text = std::u16string();
-
-    const auto &all_text = selection.value();
-    const auto all_text_size = all_text.size();
-    for (auto i = 0; i < all_text_size; ++i) {
-        to_clipboard_text = to_clipboard_text.append(all_text[i]);
-        if (i < all_text_size - 1) {
-            // Because the selected text returns a vector, we need to append line ending.
-            to_clipboard_text = to_clipboard_text.append(u"\n");
+    auto is_first_line = true;
+    for (const auto &line : selection.value()) {
+        if (!is_first_line) {
+            to_clipboard_text.append(u"\n");
         }
+        to_clipboard_text.append(line);
+        is_first_line = false;
     }
 
     // Need to convert the string to UTF-8 for SDL_SetClipboardText
-    const auto utf8_clipboard_text = utf8::utf16to8(to_clipboard_text);
-    SDL_SetClipboardText(utf8_clipboard_text.data());
+    try {
+        const auto utf8_clipboard_text = utf8::utf16to8(to_clipboard_text);
+        SDL_SetClipboardText(utf8_clipboard_text.data());
+    } catch (const utf8::exception &) {
+        return u"Could not encode selection as UTF-8.";
+    }
 
     return std::nullopt;
 }

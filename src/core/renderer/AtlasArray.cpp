@@ -13,20 +13,26 @@ void AtlasArray::create() {
     // No-op
 }
 
-const AtlasEntry &AtlasArray::insert(const char16_t character, const uint8_t width, const uint8_t height, const int8_t bearingX, const int8_t bearingY) {
-    if (width > UINT8_MAX || height > UINT8_MAX) {
+const AtlasEntry &AtlasArray::insert(const char16_t character, const uint32_t width, const uint32_t height, const int32_t bearingX, const int32_t bearingY) {
+    if (width > UINT8_MAX || height > UINT8_MAX
+        || bearingX < INT8_MIN || bearingX > INT8_MAX
+        || bearingY < INT8_MIN || bearingY > INT8_MAX) {
         throw std::runtime_error("AtlasArray::insert Glyph does not fit the texture.");
     }
 
+    const auto glyph_width = static_cast<int32_t>(width);
+    const auto glyph_height = static_cast<int32_t>(height);
+
     // Use a single-neuron algorythm to see if we have room for this character
-    if (m_next_character_x + width > UINT8_MAX) {
+    if (m_next_character_x + glyph_width > UINT8_MAX) {
         // Does not fit the horizontal axis, increment Y and return to the left
         m_next_character_x = 0;
         m_next_character_y += m_max_row_height;
+        m_max_row_height = 0;
     }
 
     // Check if fits in vertical axis
-    if (m_next_character_y + height > UINT8_MAX) {
+    if (m_next_character_y + glyph_height > UINT8_MAX) {
         // Does not fit the vertical axis, increment Z and return to the top-left
         m_next_character_x = 0;
         m_next_character_y = 0;
@@ -48,15 +54,15 @@ const AtlasEntry &AtlasArray::insert(const char16_t character, const uint8_t wid
         .texture_s = static_cast<uint8_t>(m_next_character_x),
         .texture_t = static_cast<uint8_t>(m_next_character_y),
         .layer = m_character_layer,
-        .width = width,
-        .height = height,
-        .bearing_x = bearingX,
-        .bearing_y = bearingY
+        .width = static_cast<uint8_t>(width),
+        .height = static_cast<uint8_t>(height),
+        .bearing_x = static_cast<int8_t>(bearingX),
+        .bearing_y = static_cast<int8_t>(bearingY)
     };
 
-    m_next_character_x += width;
-    if (height > m_max_row_height) {
-        m_max_row_height = height;
+    m_next_character_x += glyph_width;
+    if (glyph_height > m_max_row_height) {
+        m_max_row_height = static_cast<uint8_t>(glyph_height);
     }
 
     const auto &[new_entry, success] = m_characters.insert({character, entry});
@@ -68,11 +74,12 @@ const AtlasEntry &AtlasArray::insert(const char16_t character, const uint8_t wid
 }
 
 const AtlasEntry* AtlasArray::get(const char16_t character) const {
-    if (!m_characters.contains(character)) {
+    const auto entry = m_characters.find(character);
+    if (entry == m_characters.end()) {
         return nullptr;
     }
 
-    return &m_characters.at(character);
+    return &entry->second;
 }
 
 uint8_t AtlasArray::getCurrentLayer() const {

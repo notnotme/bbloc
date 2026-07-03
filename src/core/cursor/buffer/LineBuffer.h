@@ -68,6 +68,9 @@ private:
     /** @return The real character count of a line (using m_current_line for the current one). */
     [[nodiscard]] uint32_t lineLength(uint32_t line) const;
 
+    /** @return The detached current line's length when it lies before the given line, 0 otherwise. */
+    [[nodiscard]] uint32_t detachedLengthBefore(uint32_t line) const;
+
 public:
     /** @brief Constructs an empty LineBuffer. */
     explicit LineBuffer();

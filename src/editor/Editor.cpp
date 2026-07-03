@@ -34,7 +34,7 @@ void Editor::render(CursorContext &context, ViewState &viewState, const float dt
     const auto scroll_x = context.scroll_x;
     const auto scroll_y = context.scroll_y;
 
-    // Map the buffer at offset 1024, keep a variable to know how many quads we have before the cursor text
+    // Map the editor buffer region, keep a variable to know how many quads we have before the cursor text
     m_quad_buffer.map(ApplicationWindow::EDITOR_BUFFER_QUAD_OFFSET, ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT);
     drawBackground(viewState, margin_width);
     drawMarginText(context, viewState, cursor_line_count_width, scroll_y);
@@ -283,8 +283,9 @@ void Editor::drawMarginText(const CursorContext &context, const ViewState &viewS
 
             pen_position_x = position_x + padding_width + lineCountWidth - string_line_number_width;
             for (const auto c : string_line_number) {
-                if (quad_in_buffer == ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT) {
-                    throw std::runtime_error("Not enough quad allowed to render the prompt.");
+                if (quad_in_buffer >= ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT) {
+                    // The editor quad region is full, truncate the remaining text for this frame
+                    return;
                 }
 
                 const auto &character = m_theme.getCharacter(c);
@@ -346,8 +347,9 @@ void Editor::drawText(const CursorContext &context, const ViewState &viewState, 
             const auto is_cursor_line = cursor_line == line_index;
 
             if (is_cursor_line) {
-                if (quad_in_buffer == ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT) {
-                    throw std::runtime_error("Not enough quad allowed to render the prompt.");
+                if (quad_in_buffer >= ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT) {
+                    // The editor quad region is full, truncate the remaining text for this frame
+                    return;
                 }
                 ++quad_in_buffer;
 
@@ -357,8 +359,8 @@ void Editor::drawText(const CursorContext &context, const ViewState &viewState, 
             }
 
             if (const auto &selected_range = context.cursor.getSelectedRange()) {
-                if (quad_in_buffer > ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT) {
-                    throw std::runtime_error("Not enough quad allowed to render the prompt.");
+                if (quad_in_buffer >= ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT) {
+                    return;
                 }
 
                 // Check if the selected range is in the viewport
@@ -398,8 +400,8 @@ void Editor::drawText(const CursorContext &context, const ViewState &viewState, 
                     break;
                 }
 
-                if (quad_in_buffer > ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT) {
-                    throw std::runtime_error("Not enough quad allowed to render the prompt.");
+                if (quad_in_buffer >= ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT) {
+                    return;
                 }
 
                 switch (const auto c = string[character_column]) {
@@ -428,8 +430,8 @@ void Editor::drawText(const CursorContext &context, const ViewState &viewState, 
             }
 
             if (is_cursor_line) {
-                if (quad_in_buffer > ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT) {
-                    throw std::runtime_error("Not enough quad allowed to render the prompt.");
+                if (quad_in_buffer >= ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT) {
+                    return;
                 }
                 ++quad_in_buffer;
 

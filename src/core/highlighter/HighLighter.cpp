@@ -177,13 +177,13 @@ TokenId HighLighter::getHighLightAtPosition(const uint32_t line, const uint32_t 
 
 std::optional<std::u16string_view> HighLighter::readCallback(const uint32_t line, const uint32_t column) const {
     const auto line_count = m_cursor.getLineCount();
-    if (line > line_count - 1) {
+    if (line >= line_count) {
         return std::nullopt;
     }
 
     const auto string = m_cursor.getString(line);
-    if (line < line_count && column < string.length()) {
-        return m_cursor.getString(line).substr(column);
+    if (column < string.length()) {
+        return string.substr(column);
     }
 
     // Tells the parser there is more

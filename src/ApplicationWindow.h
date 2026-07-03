@@ -113,6 +113,15 @@ private:
     void updateOrthogonal(int32_t width, int32_t height);
 
     /**
+     * @brief Resets the prompt line to display the given text.
+     *
+     * Clears the completions, the history navigation and the prompt cursor, then requests a redraw.
+     *
+     * @param promptText New prompt label text.
+     */
+    void resetPrompt(std::u16string_view promptText);
+
+    /**
      * @brief Run the said command.
      *
      * @param command The command string to rexecute by m_command_manager.

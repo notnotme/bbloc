@@ -171,7 +171,7 @@ public:
      * @param ignoreTabs If true, tabs are ignored in the measurement.
      * @return Width in pixels.
      */
-    [[nodiscard]] int32_t measure(std::u16string_view text, bool ignoreTabs);
+    [[nodiscard]] int32_t measure(std::u16string_view text, bool ignoreTabs) const;
 };
 
 template<typename TPayload>
@@ -181,7 +181,10 @@ void Theme::create(GlobalRegistry<TPayload> &commandController, const std::strin
     m_quad_texture.create(0);
 
     // Set up the FT library and load theme text font
-    FT_Init_FreeType(&m_ft_library);
+    if (FT_Init_FreeType(&m_ft_library) != FT_Err_Ok) {
+        throw std::runtime_error("Theme::create: FT_Init_FreeType failed.");
+    }
+
     const auto font_file_path = std::string(path).append(FONT_FILE);
     if (FT_New_Face(m_ft_library, font_file_path.data(), 0, &m_font) != 0) {
         throw std::runtime_error(std::string("Theme::create: FT_New_Face failed: ").append(FONT_FILE));

@@ -27,9 +27,8 @@ void BindCommand::provideAutoComplete(const std::vector<std::u16string_view> &pr
         const auto combo_prefix = last_plus_index == std::u16string_view::npos ? std::u16string_view() : input.substr(0, last_plus_index + 1);
         const auto modifier_input = last_plus_index == std::u16string_view::npos ? input : input.substr(last_plus_index + 1);
 
-        const auto input_is_empty = modifier_input.empty();
         for (const auto &name : std::views::keys(MODIFIER_MAP)) {
-            if (name.starts_with(modifier_input) || input_is_empty) {
+            if (name.starts_with(modifier_input)) {
                 itemCallback(std::u16string(combo_prefix).append(name));
             }
         }
@@ -48,7 +47,7 @@ void BindCommand::provideAutoComplete(const std::vector<std::u16string_view> &pr
             }
 
             const auto utf16_key_name = utf8::utf8to16(key_name);
-            if (utf16_key_name.starts_with(input) || input.empty()) {
+            if (utf16_key_name.starts_with(input)) {
                 itemCallback(utf16_key_name);
             }
         }
@@ -59,7 +58,7 @@ void BindCommand::provideAutoComplete(const std::vector<std::u16string_view> &pr
 
 std::optional<std::u16string> BindCommand::run(CursorContext &payload, const std::vector<std::u16string_view> &args) {
     (void) payload;
-    if (args.size() < 3 || (!args.empty() && args[1].empty())) {
+    if (args.size() != 3 || args[1].empty()) {
         return u"Usage: bind <modifiers> <key> <command>";
     }
 
@@ -76,16 +75,15 @@ std::optional<std::u16string> BindCommand::run(CursorContext &payload, const std
         modifier |= mapped_modifier;
     }
 
-    // Check the keycode name and if we have it in the map.
+    // Check that SDL knows the key name.
     const auto keycode_utf8 = utf8::utf16to8(args[1]);
     const auto key = SDL_GetKeyFromName(keycode_utf8.data());
-    if (! m_bindings.contains(key)) {
-        // If the binding to this key does not exist yet, create a map for this key.
-        m_bindings.emplace(key, std::unordered_map<uint16_t, std::u16string>());
+    if (key == SDLK_UNKNOWN) {
+        return std::u16string(u"Unknown key: ").append(args[1]);
     }
 
     // Insert the command "as-it".
-    m_bindings.at(key).insert_or_assign(modifier, args[2]);
+    m_bindings[key].insert_or_assign(modifier, args[2]);
     return std::nullopt;
 }
 

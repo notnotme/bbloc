@@ -94,10 +94,6 @@ void InfoBar::drawText(const CursorContext &context, const ViewState &viewState)
     auto quad_in_buffer = m_quad_buffer.getCount();
     const auto pen_position_y = position_y + line_height + font_descender;
     for (const auto &[x_offset, string] : strings) {
-        if (quad_in_buffer == ApplicationWindow::INFO_BAR_BUFFER_QUAD_COUNT) {
-            throw std::runtime_error("Not enough quad allowed to render the prompt.");
-        }
-
         auto pen_position_x = position_x + x_offset;
         for (const auto c : string) {
             switch (c) {
@@ -108,6 +104,11 @@ void InfoBar::drawText(const CursorContext &context, const ViewState &viewState)
                     pen_position_x += font_advance * tab_to_space;
                 break;
                 default:
+                    if (quad_in_buffer >= ApplicationWindow::INFO_BAR_BUFFER_QUAD_COUNT) {
+                        // The info bar quad region is full, truncate the remaining text for this frame
+                        return;
+                    }
+
                     const auto &character = m_theme.getCharacter(c);
                     drawCharacter(pen_position_x, pen_position_y, character, text_color);
                     pen_position_x += font_advance;

@@ -111,70 +111,53 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
                 case Movement::UP:
                     payload.cursor.moveUp();
                     stickToColumn(payload);
-                    payload.follow_indicator = true;
-                    payload.wants_redraw = true;
                 break;
                 case Movement::DOWN:
                     payload.cursor.moveDown();
                     stickToColumn(payload);
-                    payload.follow_indicator = true;
-                    payload.wants_redraw = true;
                 break;
                 case Movement::LEFT:
                     payload.cursor.moveLeft();
                     payload.stick_column_index = payload.cursor.getColumn();
-                    payload.follow_indicator = true;
-                    payload.wants_redraw = true;
                 break;
                 case Movement::RIGHT:
                     payload.cursor.moveRight();
                     payload.stick_column_index = payload.cursor.getColumn();
-                    payload.follow_indicator = true;
-                    payload.wants_redraw = true;
                 break;
                 case Movement::BEGIN_LINE:
                     payload.cursor.moveToStartOfLine();
                     payload.stick_column_index = payload.cursor.getColumn();
-                    payload.follow_indicator = true;
-                    payload.wants_redraw = true;
                 break;
                 case Movement::END_LINE:
                     payload.cursor.moveToEndOfLine();
                     payload.stick_column_index = payload.cursor.getColumn();
-                    payload.follow_indicator = true;
-                    payload.wants_redraw = true;
                 break;
                 case Movement::PAGE_UP: {
                     const auto line_count = payload.theme.getDimension(DimensionId::PageUpDown);
                     payload.cursor.pageUp(line_count);
                     stickToColumn(payload);
-                    payload.follow_indicator = true;
-                    payload.wants_redraw = true;
                 }
                 break;
                 case Movement::PAGE_DOWN: {
                     const auto line_count = payload.theme.getDimension(DimensionId::PageUpDown);
                     payload.cursor.pageDown(line_count);
                     stickToColumn(payload);
-                    payload.follow_indicator = true;
-                    payload.wants_redraw = true;
                 }
                 break;
                 case Movement::BEGIN_FILE:
                     payload.cursor.moveToStartOfFile();
                     payload.stick_column_index = payload.cursor.getColumn();
-                    payload.follow_indicator = true;
-                    payload.wants_redraw = true;
                 break;
                 case Movement::END_FILE:
                     payload.cursor.moveToEndOfFile();
                     payload.stick_column_index = payload.cursor.getColumn();
-                    payload.follow_indicator = true;
-                    payload.wants_redraw = true;
                 break;
                 default:
                     return std::nullopt;
             }
+
+            payload.follow_indicator = true;
+            payload.wants_redraw = true;
         break;
         default:
         return std::nullopt;

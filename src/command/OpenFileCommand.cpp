@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <system_error>
 
 #include <utf8.h>
 
@@ -25,19 +26,13 @@ std::optional<std::u16string> OpenFileCommand::run(CursorContext &payload, const
 
     // Get the path of the file and tries to open the file at this location
     const auto path = utf8::utf16to8(args[0]);
-    const auto is_regular_file = std::filesystem::is_regular_file(path);
+    auto error_code = std::error_code();
+    const auto is_regular_file = std::filesystem::is_regular_file(path, error_code);
     auto ifs = std::ifstream(path, std::ios::in);
-    if (!ifs || !ifs.is_open() || !is_regular_file) {
+    if (!ifs || !is_regular_file) {
         // That file cannot be opened
         return std::u16string(u"Could not open ").append(args[0]).append(u".");
     }
-
-    // Clear the cursor, find the file extension to set the highlight mode, and read the file line by line.
-    const auto &edit_clear = payload.cursor.clear();
-    payload.highlighter.edit(edit_clear);
-
-    const auto file_extension = std::filesystem::path(path).extension().string();
-    payload.highlighter.setMode(file_extension);
 
     // Start to count the lines from 1
     auto line_count = 1u;
@@ -45,8 +40,13 @@ std::optional<std::u16string> OpenFileCommand::run(CursorContext &payload, const
     auto line = std::string();
     auto all_line = std::u16string();
     while (getline(ifs, line)) {
+        if (!line.empty() && line.back() == '\r') {
+            // Strip the carriage return of CRLF line endings
+            line.pop_back();
+        }
+
         if (const auto &end_it = utf8::find_invalid(line.begin(), line.end()); end_it != line.end()) {
-            // Invalid sequence: stop reading the file
+            // Invalid sequence: stop reading the file, before the buffer is touched
             const auto line_count_str = std::to_string(line_count);
             const auto utf16_line_count_str = utf8::utf8to16(line_count_str);
             return std::u16string(u"Invalid UTF-8 encoding detected at line ").append(utf16_line_count_str);
@@ -62,6 +62,13 @@ std::optional<std::u16string> OpenFileCommand::run(CursorContext &payload, const
         ++line_count;
     }
     ifs.close();
+
+    // The whole content is validated: it is now safe to replace the buffer and switch the highlight mode.
+    const auto &edit_clear = payload.cursor.clear();
+    payload.highlighter.edit(edit_clear);
+
+    const auto file_extension = std::filesystem::path(path).extension().string();
+    payload.highlighter.setMode(file_extension);
 
     // Insert all text at once.
     const auto &edit_insert = payload.cursor.insert(all_line);

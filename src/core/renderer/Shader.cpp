@@ -16,6 +16,7 @@ GLuint compileShader(const GLenum type, const std::string_view src) {
     if (!success) {
         GLchar info_log[512] = {};
         glGetShaderInfoLog(id, 512, nullptr, info_log);
+        glDeleteShader(id);
         throw std::runtime_error(info_log);
     }
 

@@ -1,5 +1,6 @@
 #include "ApplicationWindow.h"
 
+#include <algorithm>
 #include <filesystem>
 
 #include <memory>
@@ -69,11 +70,11 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
         throw std::runtime_error(std::string("Failed to initialize SDL: ").append(SDL_GetError()));
     }
 
-    // Set OpenGL 4.3 Core context and double buffered RGB8 surface
+    // Set OpenGL 4.5 Core context (the renderer uses direct state access) and double buffered RGB8 surface
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
@@ -223,8 +224,8 @@ void ApplicationWindow::mainLoop() {
                 }
                 break;
                 case SDL_TEXTINPUT: {
-                    // Don't process key input if of these modifiers are held
-                    const auto block_text_input = SDL_GetModState() & KMOD_CTRL; // KMOD_SHIFT / KMOD_ALT ?
+                    // Don't type text for shortcut chords: X11 still delivers TEXTINPUT for Ctrl/Alt+letter
+                    const auto block_text_input = SDL_GetModState() & (KMOD_CTRL | KMOD_LALT);
                     if (!block_text_input) {
                         // Redirect to input focus. We always redraw new characters.
                         m_cursor_context.wants_redraw = true;
@@ -270,7 +271,7 @@ void ApplicationWindow::mainLoop() {
             m_prompt_state.setSize(bar_width, bar_height);
 
             m_editor_state.setPosition(0, bar_height);
-            m_editor_state.setSize(bar_width, static_cast<uint16_t>(window_height - bar_height * 2));
+            m_editor_state.setSize(bar_width, static_cast<uint16_t>(std::max(0, window_height - bar_height * 2)));
 
             glViewport(0, 0, window_width, window_height);
             glScissor(0, 0, window_width, window_height);
@@ -332,10 +333,19 @@ void ApplicationWindow::destroy() {
     m_orthogonal = {};
 }
 
+void ApplicationWindow::resetPrompt(const std::u16string_view promptText) {
+    m_prompt_state.setPromptText(promptText);
+    m_prompt_state.clearCompletions();
+    m_prompt_state.clearHistoryIndex();
+    m_prompt_cursor.clear();
+    m_cursor_context.wants_redraw = true;
+}
+
 bool ApplicationWindow::runCommand(const std::u16string_view command, const bool fromPrompt) {
     std::optional<std::u16string> result;
-    if (m_cursor_context.command_feedback) {
-        // Before executing the command, check if feedback exists
+    const auto feedback_was_pending = m_cursor_context.command_feedback.has_value();
+    if (fromPrompt && feedback_was_pending) {
+        // The prompt input answers the pending feedback instead of being a command.
         // Copy the feedback object so the string is still valid after reset is called.
         const auto feedback = m_cursor_context.command_feedback.value();
         const auto feedback_answer = m_prompt_cursor.getString();
@@ -366,48 +376,35 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
     }
 
     if (result) {
-        // Show the error message in the prompt, if any.
+        // Show the error message in the prompt, if any. The message replaces a pending
+        // feedback, so drop it to not consume the next prompt input as its answer.
+        m_cursor_context.command_feedback.reset();
         m_prompt_state.setRunningState(PromptState::RunningState::Message);
-        m_prompt_state.setPromptText(*result);
-        m_prompt_state.clearCompletions();
-        m_prompt_state.clearHistoryIndex();
-        m_prompt_cursor.clear();
-        m_cursor_context.wants_redraw = true;
+        resetPrompt(*result);
 
         // Focus go to the editor
         m_cursor_context.focus_target = FocusTarget::Editor;
-    } else {
-        // After command execution, we need to know if feedback is available,
-        // so query the feedback again.
-        if (m_cursor_context.command_feedback) {
-            // The prompt needs a feedback, so let it running and update the
-            // prompt text with the feedback
+    } else if (m_cursor_context.command_feedback) {
+        // A feedback pending before this call survives a bound command untouched:
+        // the prompt already shows it. Only a newly requested feedback updates the prompt.
+        if (!feedback_was_pending) {
             m_prompt_state.setRunningState(PromptState::RunningState::Running);
-            m_prompt_state.setPromptText(m_cursor_context.command_feedback->prompt_message);
-            m_prompt_state.clearCompletions();
-            m_prompt_state.clearHistoryIndex();
-            m_prompt_cursor.clear();
-            m_cursor_context.wants_redraw = true;
+            resetPrompt(m_cursor_context.command_feedback->prompt_message);
 
             // Focus go to the prompt
             m_cursor_context.focus_target = FocusTarget::Prompt;
-        } else {
-            // The prompt state can change while command execution (e.g: activate_prompt, cancel), check it again.
-            switch (m_prompt_state.getRunningState()) {
-                case PromptState::RunningState::Idle:
-                    m_cursor_context.command_feedback.reset();
-                    m_prompt_state.clearCompletions();
-                    m_prompt_state.clearHistoryIndex();
-                    m_prompt_state.setPromptText(PromptState::PROMPT_READY);
-                    m_prompt_cursor.clear();
-                    m_cursor_context.wants_redraw = true;
+        }
+    } else {
+        // The prompt state can change while command execution (e.g: activate_prompt, cancel), check it again.
+        switch (m_prompt_state.getRunningState()) {
+            case PromptState::RunningState::Idle:
+                resetPrompt(PromptState::PROMPT_READY);
 
-                    m_cursor_context.focus_target = FocusTarget::Editor;
-                break;
-                default:
-                    // Don't change anything
-                break;
-            }
+                m_cursor_context.focus_target = FocusTarget::Editor;
+            break;
+            default:
+                // Don't change anything
+            break;
         }
     }
 

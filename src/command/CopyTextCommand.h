@@ -43,6 +43,17 @@ public:
      * @return An optional message indicating the result of the copy operation.
      */
     [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, const std::vector<std::u16string_view> &args) override;
+
+    /**
+     * @brief Copies the currently selected text to the system clipboard.
+     *
+     * Joins the selected lines with line feeds and hands the UTF-8 text to SDL.
+     * Shared with CutTextCommand, which erases the selection afterwards.
+     *
+     * @param payload The cursor context containing the current selection.
+     * @return An optional message describing why the copy failed, or std::nullopt on success.
+     */
+    [[nodiscard]] static std::optional<std::u16string> copySelectionToClipboard(CursorContext &payload);
 };
 
 

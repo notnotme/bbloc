@@ -80,10 +80,27 @@ QuadProgram::QuadProgram()
 
 void QuadProgram::create() {
     // Create the fragment and vertex shader
-    const auto fragment_shader = compileShader(GL_FRAGMENT_SHADER, FRAGMENT_SRC);
-    const auto vertex_shader = compileShader(GL_VERTEX_SHADER, VERTEX_SRC);
+    GLuint fragment_shader = 0;
+    GLuint vertex_shader = 0;
+    try {
+        fragment_shader = compileShader(GL_FRAGMENT_SHADER, FRAGMENT_SRC);
+        vertex_shader = compileShader(GL_VERTEX_SHADER, VERTEX_SRC);
+    } catch (...) {
+        if (fragment_shader != 0) {
+            glDeleteShader(fragment_shader);
+        }
+
+        if (vertex_shader != 0) {
+            glDeleteShader(vertex_shader);
+        }
+
+        throw;
+    }
+
     m_program = glCreateProgram();
     if (m_program == 0) {
+        glDeleteShader(vertex_shader);
+        glDeleteShader(fragment_shader);
         throw std::runtime_error("Failed to create program");
     }
 

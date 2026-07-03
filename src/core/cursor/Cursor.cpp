@@ -101,38 +101,23 @@ std::u16string_view Cursor::getString() const {
 }
 
 std::optional<std::vector<std::u16string_view>> Cursor::getSelectedText() const {
-    if (!m_is_selection_active) {
+    const auto &range = getSelectedRange();
+    if (!range) {
         return std::nullopt;
     }
 
-    auto start_line = m_selected_line_start;
-    auto start_column = m_selected_column_start;
-    auto end_line = m_line;
-    auto end_column = m_column;
-
-    if (start_line > end_line) {
-        // Invert coordinates totally
-        std::swap(start_line, end_line);
-        std::swap(start_column, end_column);
-    } else if (start_line == end_line && start_column > end_column) {
-        // Invert column coordinates
-        std::swap(start_column, end_column);
-    } else if (start_line == end_line && start_column == end_column) {
-        return std::nullopt;
-    }
-
-    if (start_line == end_line) {
+    if (range->line_start == range->line_end) {
         // Results fit in one line
-        return std::vector { m_buffer->getString(start_line).substr(start_column, end_column - start_column) };
+        return std::vector { m_buffer->getString(range->line_start).substr(range->column_start, range->column_end - range->column_start) };
     }
 
     auto result = std::vector<std::u16string_view>();
-    for (auto line = start_line; line <= end_line; ++line) {
-        if (line == start_line) {
-            result.emplace_back(m_buffer->getString(line).substr(start_column));
-        } else if (line == end_line) {
-            result.emplace_back(m_buffer->getString(line).substr(0, end_column));
-        }else {
+    for (auto line = range->line_start; line <= range->line_end; ++line) {
+        if (line == range->line_start) {
+            result.emplace_back(m_buffer->getString(line).substr(range->column_start));
+        } else if (line == range->line_end) {
+            result.emplace_back(m_buffer->getString(line).substr(0, range->column_end));
+        } else {
             result.emplace_back(m_buffer->getString(line));
         }
     }
@@ -150,7 +135,7 @@ void Cursor::moveLeft() {
             --m_line;
         }
     } else {
-        --m_column;
+        m_column -= charLengthBefore(m_column);
     }
 }
 
@@ -165,7 +150,7 @@ void Cursor::moveRight() {
             ++m_line;
         }
     } else {
-        ++m_column;
+        m_column += charLengthAfter(m_column);
     }
 }
 
@@ -277,7 +262,7 @@ std::optional<BufferEdit> Cursor::eraseLeft() {
     if (m_column > 0) {
         // We can erase on the left since column > 0
         recordBeforeEdit();
-        const auto &edit = m_buffer->erase(m_line, m_column, m_line, m_column - 1);
+        const auto &edit = m_buffer->erase(m_line, m_column, m_line, m_column - charLengthBefore(m_column));
         m_column = edit.new_end.column;
         return edit;
     }
@@ -301,7 +286,7 @@ std::optional<BufferEdit> Cursor::eraseRight() {
     if (m_column < m_buffer->getString(m_line).length()) {
         // We can erase on the right since column < string_length
         recordBeforeEdit();
-        return m_buffer->erase(m_line, m_column, m_line, m_column + 1);
+        return m_buffer->erase(m_line, m_column, m_line, m_column + charLengthAfter(m_column));
     }
 
     if (m_line < m_buffer->getStringCount() - 1) {
@@ -314,13 +299,15 @@ std::optional<BufferEdit> Cursor::eraseRight() {
 }
 
 std::optional<BufferEdit> Cursor::eraseSelection() {
-    if (!m_is_selection_active) {
+    const auto &range = getSelectedRange();
+    if (!range) {
+        // No selection, or a degenerate one: nothing to erase, nothing to record
         return std::nullopt;
     }
 
     recordBeforeEdit();
     const auto previous_line = m_line;
-    const auto &edit = m_buffer->erase(m_selected_line_start, m_selected_column_start, m_line, m_column);
+    const auto &edit = m_buffer->erase(range->line_start, range->column_start, range->line_end, range->column_end);
     m_line = edit.new_end.line;
     m_column = edit.new_end.column;
     if (m_line != previous_line) {
@@ -330,6 +317,10 @@ std::optional<BufferEdit> Cursor::eraseSelection() {
 }
 
 BufferEdit Cursor::clear() {
+    // Close the current undo group; the wipe itself is intentionally not snapshotted,
+    // callers replace the whole content afterwards and clear the history themselves.
+    m_history.markBoundary();
+
     // Reset everything
     m_column = 0;
     m_line = 0;
@@ -358,6 +349,24 @@ void Cursor::recordBeforeEdit() {
     if (m_history.isAtBoundary()) {
         m_history.push({getText(), m_line, m_column});
     }
+}
+
+uint32_t Cursor::charLengthBefore(const uint32_t column) const {
+    const auto &string = m_buffer->getString(m_line);
+    if (column >= 2 && (string[column - 1] & 0xFC00) == 0xDC00 && (string[column - 2] & 0xFC00) == 0xD800) {
+        // Never split a surrogate pair
+        return 2;
+    }
+    return 1;
+}
+
+uint32_t Cursor::charLengthAfter(const uint32_t column) const {
+    const auto &string = m_buffer->getString(m_line);
+    if (column + 1 < string.length() && (string[column] & 0xFC00) == 0xD800 && (string[column + 1] & 0xFC00) == 0xDC00) {
+        // Never split a surrogate pair
+        return 2;
+    }
+    return 1;
 }
 
 BufferEdit Cursor::restore(const UndoHistory::Snapshot &snapshot) {

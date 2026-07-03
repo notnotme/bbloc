@@ -56,11 +56,24 @@ private:
      */
     [[nodiscard]] BufferEdit erase(uint32_t lineStart, uint32_t columnStart, uint32_t lineEnd, uint32_t columnEnd) const;
 
-    /** @brief Returns the entire buffer content as a single string, lines joined with line breaks. */
-    [[nodiscard]] std::u16string getText() const;
-
     /** @brief Pushes a snapshot of the current state when the history is at a boundary. */
     void recordBeforeEdit();
+
+    /**
+     * @brief Measures the character ending at the given column on the current line.
+     *
+     * @param column The column just after the character.
+     * @return 2 when the character is a surrogate pair, 1 otherwise.
+     */
+    [[nodiscard]] uint32_t charLengthBefore(uint32_t column) const;
+
+    /**
+     * @brief Measures the character starting at the given column on the current line.
+     *
+     * @param column The column of the character.
+     * @return 2 when the character is a surrogate pair, 1 otherwise.
+     */
+    [[nodiscard]] uint32_t charLengthAfter(uint32_t column) const;
 
     /**
      * @brief Replaces the buffer content and cursor position with a snapshot.
@@ -84,6 +97,9 @@ public:
      * @param buffer Pointer to the text buffer to manage.
      */
     explicit Cursor(std::unique_ptr<TextBuffer> buffer);
+
+    /** @brief Returns the entire buffer content as a single string, lines joined with line breaks. */
+    [[nodiscard]] std::u16string getText() const;
 
     /** @brief Moves the cursor up by a number of lines. */
     void pageUp(uint32_t lineCount);

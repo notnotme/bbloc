@@ -24,7 +24,7 @@ public:
     explicit QuadTexture();
 
     /**
-     * @brief Creates the OpenGL texture array of 256x256x256 pixels and bind it to the OpenGL pipeline.
+     * @brief Creates the OpenGL texture array of 255x255x255 pixels and bind it to the OpenGL pipeline.
      *
      * @param bindUnit The unit to bind the texture to.
      */
@@ -44,13 +44,6 @@ public:
      * @param pixels Pointer to pixel data (expected to be 8-bit grayscale).
      */
     void blit(uint8_t x, uint8_t y, uint8_t width, uint8_t height, uint8_t layer, const void* pixels) const;
-
-    /**
-     * @brief Clears a texture layer by setting all pixels to zero.
-     *
-     * @param layer Index of the texture layer to clear.
-     */
-    void clearLayer(uint8_t layer) const;
 };
 
 

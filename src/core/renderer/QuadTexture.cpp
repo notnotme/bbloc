@@ -1,7 +1,6 @@
 #include "QuadTexture.h"
 
 #include <stdexcept>
-#include <vector>
 
 
 QuadTexture::QuadTexture()
@@ -31,9 +30,4 @@ void QuadTexture::destroy() {
 
 void QuadTexture::blit(const uint8_t x, const uint8_t y, const uint8_t width, const uint8_t height, const uint8_t layer, const void *pixels) const {
     glTextureSubImage3D(m_texture, 0, x, y, layer, width, height, 1, GL_RED, GL_UNSIGNED_BYTE, pixels);
-}
-
-void QuadTexture::clearLayer(const uint8_t layer) const {
-    const auto pixels = std::vector<uint8_t>(UINT8_MAX * UINT8_MAX, 0);
-    glTextureSubImage3D(m_texture, 0, 0, 0, layer, UINT8_MAX, UINT8_MAX, 1, GL_RED, GL_UNSIGNED_BYTE, pixels.data());
 }

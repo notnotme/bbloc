@@ -137,7 +137,9 @@ BufferEdit StringBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd,
         // Invert column coordinates
         std::swap(column, columnEnd);
     } else if (line == lineEnd && column == columnEnd) {
-        return {0,0,0, {0,0}, {0,0}, {0,0}};
+        // Empty range, describe the untouched position
+        const auto byte_offset = getByteOffset(line, column);
+        return {byte_offset, byte_offset, byte_offset, {line, column}, {line, column}, {line, column}};
     }
 
     // Find start and end byte
@@ -188,24 +190,24 @@ BufferEdit StringBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd,
 
 BufferEdit StringBuffer::clear() {
      // Clear everything, push one empty line, keep some number in memory before so we can fill the BufferEdit struct.
-    const auto &last_line_data = m_line_data.back();
-    const auto line_count = m_line_data.size();
-    const auto buffer_size = getByteOffset(line_count - 1, last_line_data.count);
+    const auto last_line = static_cast<uint32_t>(m_line_data.size()) - 1;
+    const auto last_column = m_line_data.back().count;
+    const auto buffer_size = getByteOffset(last_line, last_column);
 
     m_buffer.clear();
     m_line_data.clear();
     m_line_data.emplace_back(0, 0);
     return {
-        .start_byte = buffer_size,
+        .start_byte = 0,
         .old_end_byte = buffer_size,
         .new_end_byte = 0,
         .start = {
-            .line = static_cast<uint32_t>(line_count),
-            .column = static_cast<uint32_t>(last_line_data.count)
+            .line = 0,
+            .column = 0
         },
         .old_end = {
-            .line = static_cast<uint32_t>(line_count),
-            .column = static_cast<uint32_t>(last_line_data.count)
+            .line = last_line,
+            .column = last_column
         },
         .new_end = {
             .line = 0,
