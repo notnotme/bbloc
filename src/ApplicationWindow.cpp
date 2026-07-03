@@ -35,6 +35,7 @@
 #include "command/CutTextCommand.h"
 #include "command/ExecCommand.h"
 #include "command/FontSizeCommand.h"
+#include "command/GotoLineCommand.h"
 #include "command/MoveCursorCommand.h"
 #include "command/OpenFileCommand.h"
 #include "command/PasteTextCommand.h"
@@ -177,6 +178,7 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     m_command_manager.registerCommand(u"undo", std::make_shared<UndoCommand>());
     m_command_manager.registerCommand(u"redo", std::make_shared<RedoCommand>());
     m_command_manager.registerCommand(u"move", std::make_shared<MoveCursorCommand>(m_prompt_state));
+    m_command_manager.registerCommand(u"goto_line", std::make_shared<GotoLineCommand>());
     m_command_manager.registerCommand(u"search", std::make_shared<SearchCommand>(SearchCommand::Action::SEARCH, m_search_case_sensitive));
     m_command_manager.registerCommand(u"find_next", std::make_shared<SearchCommand>(SearchCommand::Action::FIND_NEXT, m_search_case_sensitive));
     m_command_manager.registerCommand(u"find_prev", std::make_shared<SearchCommand>(SearchCommand::Action::FIND_PREV, m_search_case_sensitive));
@@ -408,6 +410,7 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
             m_cursor_context.focus_target = FocusTarget::Editor;
         }
 
+        m_cursor_context.from_prompt = fromPrompt;
         result = m_command_manager.run(m_cursor_context, tokens);
     }
 

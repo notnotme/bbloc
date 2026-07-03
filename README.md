@@ -180,6 +180,7 @@ ApplicationWindow
 | Shift+Tab | auto_complete backward | Auto-complete input backward |
 | F3 | find_next | Jump to the next match of the search term |
 | Shift+F3 | find_prev | Jump to the previous match of the search term |
+| Ctrl+G | goto_line | Prompt for a line number and jump to it |
 
 ### System
 | Keys | Command | Description |
@@ -220,6 +221,7 @@ ApplicationWindow
 | Command | Arguments | Description |
 |---------|-----------|-------------|
 | `move <direction> <expand_selection>` | direction, bool | Move cursor (up/down/left/right/bol/eol/bof/eof/page_up/page_down) |
+| `goto_line <line>` | line | Jump to a 1-based line (clamped to range) |
 
 ### Search & Replace
 | Command | Arguments | Description |

@@ -51,6 +51,7 @@ struct CursorContext {
     int32_t scroll_y;               ///< Vertical scroll value of this cursor.
     bool follow_indicator;          ///< Indicate that the view should scroll to the indicator when rendering.
     bool wants_redraw;              ///< indicate that the view and parents or sibling should redraw due to state change.
+    bool from_prompt;               ///< True when the current command was invoked from the interactive prompt.
 
     bool stick_to_column;           ///< Flag indicating that the next move (up or down) must place the cursor column
     uint32_t stick_column_index;    ///< Column where the cursor column must "stick".
@@ -87,6 +88,7 @@ struct CursorContext {
           stick_column_index(0),
           follow_indicator(false),
           wants_redraw(true),
+          from_prompt(false),
           search_term(std::nullopt),
           search_match_index(-1),
           search_match_count(0) {

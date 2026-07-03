@@ -264,6 +264,7 @@ classDiagram
     class SearchCommand {
         note: "search / find_next / find_prev / replace / replace_all"
     }
+    class GotoLineCommand
 
     Command~CursorContext~ <|-- BindCommand
     Command~CursorContext~ <|-- MoveCursorCommand
@@ -282,6 +283,7 @@ classDiagram
     Command~CursorContext~ <|-- UndoCommand
     Command~CursorContext~ <|-- RedoCommand
     Command~CursorContext~ <|-- SearchCommand
+    Command~CursorContext~ <|-- GotoLineCommand
 ```
 
 ---

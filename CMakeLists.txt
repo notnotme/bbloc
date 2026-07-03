@@ -45,6 +45,7 @@ add_executable(bbloc
         src/command/UndoCommand.cpp
         src/command/RedoCommand.cpp
         src/command/MoveCursorCommand.cpp
+        src/command/GotoLineCommand.cpp
         src/command/ExecCommand.cpp
         src/command/AutoCompleteCommand.cpp
         src/editor/Editor.cpp
