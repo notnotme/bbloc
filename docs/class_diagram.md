@@ -104,15 +104,17 @@ classDiagram
         <<struct>>
     }
     class UndoHistory {
-        note: "linear snapshot stacks, capped depth"
+        note: "linear snapshot stacks, cvar-capped depth"
     }
     class Snapshot {
         <<struct>>
     }
+    class CVarInt
 
     Cursor *-- TextBuffer
     Cursor *-- UndoHistory
     UndoHistory *-- Snapshot : nested
+    UndoHistory o-- CVarInt : shared dim_max_undo
     Cursor ..> TextRange : returns
     Cursor ..> BufferEdit : produces
 ```
@@ -259,6 +261,9 @@ classDiagram
     class PasteTextCommand
     class UndoCommand
     class RedoCommand
+    class SearchCommand {
+        note: "search / find_next / find_prev / replace / replace_all"
+    }
 
     Command~CursorContext~ <|-- BindCommand
     Command~CursorContext~ <|-- MoveCursorCommand
@@ -276,6 +281,7 @@ classDiagram
     Command~CursorContext~ <|-- PasteTextCommand
     Command~CursorContext~ <|-- UndoCommand
     Command~CursorContext~ <|-- RedoCommand
+    Command~CursorContext~ <|-- SearchCommand
 ```
 
 ---

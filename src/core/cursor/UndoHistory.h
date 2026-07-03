@@ -21,8 +21,11 @@
 
 #include <cstdint>
 #include <deque>
+#include <memory>
 #include <optional>
 #include <string>
+
+#include "../cvar/CVarInt.h"
 
 
 /**
@@ -30,7 +33,7 @@
  *
  * Snapshots are coalesced through a single boundary flag: a new snapshot is
  * pushed only when the history is at a boundary. Both stacks are capped at
- * MAX_HISTORY_DEPTH entries, dropping the oldest snapshot when full.
+ * the live capacity, dropping the oldest snapshot when full.
  */
 class UndoHistory final {
 public:
@@ -42,8 +45,8 @@ public:
     };
 
 private:
-    /** Maximum number of snapshots kept in each stack. */
-    static constexpr auto MAX_HISTORY_DEPTH = 64u;
+    /** Default maximum number of snapshots kept in each stack. */
+    static constexpr uint32_t DEFAULT_MAX_HISTORY_DEPTH = 64u;
 
     /** Snapshots available for undo. */
     std::deque<Snapshot> m_undo_stack;
@@ -51,8 +54,21 @@ private:
     /** Snapshots available for redo. */
     std::deque<Snapshot> m_redo_stack;
 
+    /** Shared CVar holding the maximum number of snapshots kept in each stack. */
+    std::shared_ptr<CVarInt> m_max_undo;
+
     /** Flag indicating that the next edit must push a new snapshot. */
     bool m_at_boundary;
+
+private:
+    /**
+     * @brief Returns the live snapshot cap read from the shared CVar.
+     *
+     * Falls back to DEFAULT_MAX_HISTORY_DEPTH while no CVar has been shared.
+     *
+     * @return The maximum number of snapshots kept in each stack, at least 1.
+     */
+    [[nodiscard]] uint32_t capacity() const;
 
 public:
     /** @brief Deleted copy constructor. */
@@ -67,13 +83,25 @@ public:
     /** @brief Marks a boundary so that the next edit pushes a new snapshot. */
     void markBoundary();
 
+    /**
+     * @brief Shares the CVar that caps both stacks and trims them to its current value.
+     *
+     * The cap is read live from this CVar afterwards, so no separate copy is kept.
+     *
+     * @param maxDepth The shared CVar holding the maximum history depth.
+     */
+    void shareMaxDepth(std::shared_ptr<CVarInt> maxDepth);
+
+    /** @brief Trims both stacks down to the current capacity, dropping the oldest snapshots. */
+    void applyMaxDepth();
+
     /** @brief Returns true when the next edit must push a new snapshot. */
     [[nodiscard]] bool isAtBoundary() const;
 
     /**
      * @brief Pushes a snapshot onto the undo stack.
      *
-     * Clears the redo stack, drops the oldest snapshot past MAX_HISTORY_DEPTH,
+     * Clears the redo stack, drops the oldest snapshots past the current capacity,
      * and clears the boundary flag.
      *
      * @param snapshot The snapshot to store.

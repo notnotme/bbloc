@@ -18,12 +18,37 @@
  */
 #include "UndoHistory.h"
 
+#include <algorithm>
+
 
 UndoHistory::UndoHistory()
     : m_at_boundary(true) {}
 
 void UndoHistory::markBoundary() {
     m_at_boundary = true;
+}
+
+uint32_t UndoHistory::capacity() const {
+    if (m_max_undo) {
+        return static_cast<uint32_t>(std::max(1, m_max_undo->m_value));
+    }
+
+    return DEFAULT_MAX_HISTORY_DEPTH;
+}
+
+void UndoHistory::shareMaxDepth(std::shared_ptr<CVarInt> maxDepth) {
+    m_max_undo = std::move(maxDepth);
+    applyMaxDepth();
+}
+
+void UndoHistory::applyMaxDepth() {
+    while (m_undo_stack.size() > capacity()) {
+        m_undo_stack.pop_front();
+    }
+
+    while (m_redo_stack.size() > capacity()) {
+        m_redo_stack.pop_front();
+    }
 }
 
 bool UndoHistory::isAtBoundary() const {
@@ -33,7 +58,7 @@ bool UndoHistory::isAtBoundary() const {
 void UndoHistory::push(Snapshot snapshot) {
     m_redo_stack.clear();
     m_undo_stack.emplace_back(std::move(snapshot));
-    if (m_undo_stack.size() > MAX_HISTORY_DEPTH) {
+    while (m_undo_stack.size() > capacity()) {
         m_undo_stack.pop_front();
     }
 
@@ -49,7 +74,7 @@ std::optional<UndoHistory::Snapshot> UndoHistory::undo(Snapshot current) {
     m_undo_stack.pop_back();
 
     m_redo_stack.emplace_back(std::move(current));
-    if (m_redo_stack.size() > MAX_HISTORY_DEPTH) {
+    while (m_redo_stack.size() > capacity()) {
         m_redo_stack.pop_front();
     }
 
@@ -65,7 +90,7 @@ std::optional<UndoHistory::Snapshot> UndoHistory::redo(Snapshot current) {
     m_redo_stack.pop_back();
 
     m_undo_stack.emplace_back(std::move(current));
-    if (m_undo_stack.size() > MAX_HISTORY_DEPTH) {
+    while (m_undo_stack.size() > capacity()) {
         m_undo_stack.pop_front();
     }
 

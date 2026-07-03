@@ -33,6 +33,7 @@ add_executable(bbloc
         src/command/QuitCommand.cpp
         src/command/OpenFileCommand.cpp
         src/command/SaveFileCommand.cpp
+        src/command/SearchCommand.cpp
         src/command/ResetCVarFloatCommand.cpp
         src/command/FontSizeCommand.cpp
         src/command/SetHighLightCommand.cpp

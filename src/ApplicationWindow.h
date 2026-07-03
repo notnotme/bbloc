@@ -24,7 +24,9 @@
 
 #include <SDL.h>
 
+#include "core/cvar/CVarBool.h"
 #include "core/cvar/CVarFloat.h"
+#include "core/cvar/CVarInt.h"
 #include "core/CommandManager.h"
 #include "core/cursor/PromptCursor.h"
 #include "core/renderer/QuadBuffer.h"
@@ -115,6 +117,12 @@ private:
 
     /** CVar tracking the maximum frame time (to render, before swapping). */
     std::shared_ptr<CVarFloat> m_draw_time;
+
+    /** CVar tracking the maximum undo/redo history depth. */
+    std::shared_ptr<CVarInt> m_max_undo;
+
+    /** CVar tracking whether searches match case. */
+    std::shared_ptr<CVarBool> m_search_case_sensitive;
 
     /** The bind command. */
     std::shared_ptr<BindCommand> m_bind_command;

@@ -58,6 +58,10 @@ bind Shift PageDown "move page_down true"
 bind None tab "auto_complete forward"
 bind Shift tab "auto_complete backward"
 
+# search: jump to the next / previous match of the current search term
+bind None F3 find_next
+bind Shift F3 find_prev
+
 # temporary shortcut to set color theme (does not work on switch: must use romfs:/)
 # This will be removed before next switch release, as theme will adapt according to switch theme
 bind Ctrl+Shift l "exec romfs/light_theme"

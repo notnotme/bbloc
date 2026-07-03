@@ -42,6 +42,7 @@
 #include "command/RedoCommand.h"
 #include "command/ResetCVarFloatCommand.h"
 #include "command/SaveFileCommand.h"
+#include "command/SearchCommand.h"
 #include "command/SetHighLightCommand.h"
 #include "command/UndoCommand.h"
 #include "core/cursor/buffer/StringBuffer.h"
@@ -61,6 +62,8 @@ ApplicationWindow::ApplicationWindow()
       m_prompt_state(m_command_manager),
       m_command_time(std::make_shared<CVarFloat>(0.0f, true)),
       m_draw_time(std::make_shared<CVarFloat>(0.0f, true)),
+      m_max_undo(std::make_shared<CVarInt>(64)),
+      m_search_case_sensitive(std::make_shared<CVarBool>(false)),
       m_bind_command(std::make_shared<BindCommand>(m_command_manager)),
       m_orthogonal() {}
 
@@ -149,6 +152,16 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     // Register cvars and commands then run autoexec
     m_command_manager.registerCvar(u"inf_draw_time", m_draw_time, nullptr);
     m_command_manager.registerCvar(u"inf_command_time", m_command_time, nullptr);
+    m_cursor_context.cursor.shareMaxHistoryDepth(m_max_undo);
+    m_command_manager.registerCvar(u"dim_max_undo", m_max_undo, [this] {
+        // Clamp the depth so the user cannot exhaust memory or disable history entirely.
+        m_max_undo->m_value = std::clamp(m_max_undo->m_value, 1, 4096);
+        m_cursor_context.cursor.setMaxHistoryDepth();
+    });
+    m_command_manager.registerCvar(u"search_case_sensitive", m_search_case_sensitive, [this] {
+        // Re-count matches for the stored term in place so the indicator reflects the new mode immediately.
+        SearchCommand::refreshMatchStats(m_cursor_context, m_search_case_sensitive->m_value);
+    });
     m_command_manager.registerCommand(u"quit", std::make_shared<QuitCommand>());
     m_command_manager.registerCommand(u"open", std::make_shared<OpenFileCommand>());
     m_command_manager.registerCommand(u"save", std::make_shared<SaveFileCommand>());
@@ -164,6 +177,11 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     m_command_manager.registerCommand(u"undo", std::make_shared<UndoCommand>());
     m_command_manager.registerCommand(u"redo", std::make_shared<RedoCommand>());
     m_command_manager.registerCommand(u"move", std::make_shared<MoveCursorCommand>(m_prompt_state));
+    m_command_manager.registerCommand(u"search", std::make_shared<SearchCommand>(SearchCommand::Action::SEARCH, m_search_case_sensitive));
+    m_command_manager.registerCommand(u"find_next", std::make_shared<SearchCommand>(SearchCommand::Action::FIND_NEXT, m_search_case_sensitive));
+    m_command_manager.registerCommand(u"find_prev", std::make_shared<SearchCommand>(SearchCommand::Action::FIND_PREV, m_search_case_sensitive));
+    m_command_manager.registerCommand(u"replace", std::make_shared<SearchCommand>(SearchCommand::Action::REPLACE, m_search_case_sensitive));
+    m_command_manager.registerCommand(u"replace_all", std::make_shared<SearchCommand>(SearchCommand::Action::REPLACE_ALL, m_search_case_sensitive));
     m_command_manager.registerCommand(u"exec", std::make_shared<ExecCommand>());
     m_command_manager.registerCommand(u"auto_complete", std::make_shared<AutoCompleteCommand>(m_prompt_state));
 

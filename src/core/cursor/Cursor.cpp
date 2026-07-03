@@ -434,3 +434,11 @@ std::optional<BufferEdit> Cursor::redo() {
 void Cursor::clearHistory() {
     m_history.clear();
 }
+
+void Cursor::shareMaxHistoryDepth(std::shared_ptr<CVarInt> maxDepth) {
+    m_history.shareMaxDepth(std::move(maxDepth));
+}
+
+void Cursor::setMaxHistoryDepth() {
+    m_history.applyMaxDepth();
+}

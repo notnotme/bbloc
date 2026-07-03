@@ -19,6 +19,9 @@
 #ifndef CURSOR_CONTEXT_H
 #define CURSOR_CONTEXT_H
 
+#include <optional>
+#include <string>
+
 #include "cursor/Cursor.h"
 #include "cursor/PromptCursor.h"
 #include "base/CommandFeedback.h"
@@ -52,6 +55,11 @@ struct CursorContext {
     bool stick_to_column;           ///< Flag indicating that the next move (up or down) must place the cursor column
     uint32_t stick_column_index;    ///< Column where the cursor column must "stick".
 
+    /** Search state */
+    std::optional<std::u16string> search_term; ///< The last searched term, if any.
+    int32_t search_match_index;                ///< Zero-based ordinal of the current match, or -1 when none.
+    int32_t search_match_count;                ///< Total number of matches for the current term, or 0 when none.
+
     /** The feedback prompt state. */
     std::optional<CommandFeedback> command_feedback;
 
@@ -78,7 +86,10 @@ struct CursorContext {
           stick_to_column(false),
           stick_column_index(0),
           follow_indicator(false),
-          wants_redraw(true) {
+          wants_redraw(true),
+          search_term(std::nullopt),
+          search_match_index(-1),
+          search_match_count(0) {
     }
 };
 

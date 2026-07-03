@@ -233,15 +233,26 @@ void Prompt::drawText(const CursorContext &context, const PromptState &viewState
         drawQuad(cursor_position_x, pen_position_y - line_height - font_descender, indicator_width, line_height, indicator_color);
     }
 
-    // When completion or history is active, draw it on the right side
-    const auto is_navigating_history = viewState.isNavigatingHistory();
-    const auto completion_count = is_navigating_history ? viewState.getHistoryCount() : viewState.getCompletionCount();
-    const auto completion_index =  is_navigating_history ? viewState.getHistoryIndex() : viewState.getCompletionIndex();
-    const auto string_active_completion = utf8::utf8to16(std::format("{}/{}", completion_index + 1, completion_count));
-    if (completion_count > 0) {
-        const auto active_completion_width = m_theme.measure(string_active_completion, true);
-        pen_position_x = position_x + width - padding_width - active_completion_width;
-        for (const auto c : string_active_completion) {
+    // Draw a right-aligned "index/total" counter. History and completion counters only exist while
+    // the prompt is focused; the search counter persists so it stays visible with focus in the editor.
+    auto indicator_index = 0;
+    auto indicator_count = 0;
+    if (viewState.isNavigatingHistory()) {
+        indicator_index = viewState.getHistoryIndex();
+        indicator_count = viewState.getHistoryCount();
+    } else if (viewState.getCompletionCount() > 0) {
+        indicator_index = viewState.getCompletionIndex();
+        indicator_count = viewState.getCompletionCount();
+    } else if (context.search_match_count > 0) {
+        indicator_index = context.search_match_index;
+        indicator_count = context.search_match_count;
+    }
+
+    if (indicator_count > 0) {
+        const auto string_indicator = utf8::utf8to16(std::format("{}/{}", indicator_index + 1, indicator_count));
+        const auto indicator_text_width = m_theme.measure(string_indicator, true);
+        pen_position_x = position_x + width - padding_width - indicator_text_width;
+        for (const auto c : string_indicator) {
             if (quad_in_buffer == ApplicationWindow::PROMPT_BUFFER_QUAD_COUNT) {
                 throw std::runtime_error("Not enough quad allowed to render the prompt.");
             }

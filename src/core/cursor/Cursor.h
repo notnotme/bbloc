@@ -28,6 +28,7 @@
 #include "buffer/BufferEdit.h"
 #include "TextRange.h"
 #include "UndoHistory.h"
+#include "../cvar/CVarInt.h"
 
 
 /**
@@ -261,6 +262,15 @@ public:
 
     /** @brief Wipes the undo/redo history. */
     void clearHistory();
+
+    /**
+     * @brief Shares the CVar capping the undo/redo history depth with the history.
+     * @param maxDepth The shared CVar holding the maximum history depth.
+     */
+    void shareMaxHistoryDepth(std::shared_ptr<CVarInt> maxDepth);
+
+    /** @brief Trims the undo/redo history down to the shared maximum depth. */
+    void setMaxHistoryDepth();
 };
 
 

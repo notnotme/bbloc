@@ -178,6 +178,8 @@ ApplicationWindow
 | Ctrl+Shift+Z | redo | Redo the last undone modification |
 | Tab | auto_complete forward | Auto-complete input forward |
 | Shift+Tab | auto_complete backward | Auto-complete input backward |
+| F3 | find_next | Jump to the next match of the search term |
+| Shift+F3 | find_prev | Jump to the previous match of the search term |
 
 ### System
 | Keys | Command | Description |
@@ -219,6 +221,15 @@ ApplicationWindow
 |---------|-----------|-------------|
 | `move <direction> <expand_selection>` | direction, bool | Move cursor (up/down/left/right/bol/eol/bof/eof/page_up/page_down) |
 
+### Search & Replace
+| Command | Arguments | Description |
+|---------|-----------|-------------|
+| `search <term>` | term | Store the term and select its first match, reporting the match count |
+| `find_next` | - | Select the next match of the stored term (wraps to the top) |
+| `find_prev` | - | Select the previous match of the stored term (wraps to the bottom) |
+| `replace <from> <to>` | from, to | Replace the next occurrence of `from` with `to` |
+| `replace_all <from> <to>` | from, to | Replace every occurrence of `from` with `to` |
+
 ### System
 | Command | Arguments | Description |
 |---------|-----------|-------------|
@@ -241,6 +252,7 @@ ApplicationWindow
 | Variable | Type | Description |
 |----------|------|-------------|
 | `tab_to_space` | bool | Insert tab or spaces up to `dim_tab_to_space` |
+| `search_case_sensitive` | bool | Whether search and replace match case |
 
 ### Read-Only Metrics
 | Variable | Type | Description |
@@ -289,6 +301,7 @@ ApplicationWindow
 | `dim_page_up_down` | int | Lines per page scroll |
 | `dim_font_size` | int | Font size in pixels (runtime) |
 | `dim_max_history` | int | Prompt command-history size |
+| `dim_max_undo` | int | Undo/redo history depth (1-4096) |
 
 ### Usage
 - Get value: `cvar <name>`
@@ -406,7 +419,6 @@ make
 - Inline documentation needs improvement, to be re-done
 - Code base need a good cleanup as there is a lots of comments all over the place
 - Additional language support
-- Search/Replace
 - Better keyboard layouts for Nintendo Switch
 - Better tab alignment ?
 
