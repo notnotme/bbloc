@@ -2,6 +2,7 @@
 #define COMMAND_RUNNER_H
 
 #include <string_view>
+#include <vector>
 
 
 /**
@@ -36,11 +37,12 @@ public:
      * @brief Provides auto-completion suggestions for command arguments.
      *
      * @param command The name of the command being executed.
+     * @param previousArgs The arguments typed before the one being completed, excluding the command name.
      * @param argumentIndex The zero-based index of the argument currently being completed.
      * @param input The current (partial) user input for this argument.
      * @param itemCallback Callback to receive possible argument completions.
      */
-    virtual void getArgumentsCompletions(std::u16string_view command, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) = 0;
+    virtual void getArgumentsCompletions(std::u16string_view command, const std::vector<std::u16string_view> &previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) = 0;
 };
 
 

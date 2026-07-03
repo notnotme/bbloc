@@ -27,11 +27,12 @@ public:
      *
      * This command does not auto-complete.
      *
+     * @param previousArgs The arguments typed before the one being completed, excluding the command name.
      * @param argumentIndex The index of the argument currently being completed.
      * @param input The current partial input from the user for this argument.
      * @param itemCallback A callback to be invoked with each completion suggestion.
      */
-    void provideAutoComplete(int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
+    void provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
 
     /**
      * @brief Executes the quit operation.

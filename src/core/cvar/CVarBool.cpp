@@ -11,6 +11,16 @@ std::u16string CVarBool::getStringValue() const {
     return m_value ? u"true" : u"false";
 }
 
+void CVarBool::provideValueCompletion(const int32_t componentIndex, const AutoCompleteCallback &itemCallback) const {
+    if (componentIndex != 0) {
+        // A boolean has a single component
+        return;
+    }
+
+    itemCallback(u"false");
+    itemCallback(u"true");
+}
+
 std::optional<std::u16string> CVarBool::setValueFromStrings(const std::vector<std::u16string_view> &args) {
     if (args.size() != 1) {
         return u"Argument expected: <value>.";

@@ -44,11 +44,12 @@ public:
     /**
      * @brief Command-line completion function used to provide completion suggestions for command arguments.
      *
+     * @param previousArgs The arguments typed before the one being completed, excluding the command name.
      * @param argumentIndex The index of the argument currently being completed.
      * @param input The current partial input from the user for this argument.
      * @param itemCallback A callback to be invoked with each completion suggestion.
      */
-    virtual void provideAutoComplete(int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const = 0;
+    virtual void provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const = 0;
 };
 
 

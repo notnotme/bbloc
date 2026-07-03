@@ -18,9 +18,26 @@ void CVarCommand::registerCvar(const std::u16string_view name, std::shared_ptr<C
     }
 }
 
-void CVarCommand::provideAutoComplete(const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void CVarCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     if (argumentIndex > 0) {
-        // Only auto-complete the names of CVars
+        // Let the CVar being set suggest candidates for the component being completed
+        if (previousArgs.empty()) {
+            return;
+        }
+
+        const auto cvar_name_str = std::u16string(previousArgs[0].begin(), previousArgs[0].end());
+        const auto &cvar_entry = m_cvars.find(cvar_name_str);
+        if (cvar_entry == m_cvars.end()) {
+            return;
+        }
+
+        cvar_entry->second.cvar->provideValueCompletion(argumentIndex - 1,
+            [&](const std::u16string_view completion) {
+                if (completion.starts_with(input) || input.empty()) {
+                    itemCallback(completion);
+                }
+            });
+
         return;
     }
 

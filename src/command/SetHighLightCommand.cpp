@@ -3,8 +3,9 @@
 #include <utf8.h>
 
 
-void SetHighLightCommand::provideAutoComplete(const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void SetHighLightCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     // Ignore input
+    (void) previousArgs;
     (void) input;
     if (argumentIndex != 0) {
         // Only auto-complete the first argument (mode)

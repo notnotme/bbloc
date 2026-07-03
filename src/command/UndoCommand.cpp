@@ -1,7 +1,8 @@
 #include "UndoCommand.h"
 
 
-void UndoCommand::provideAutoComplete(const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void UndoCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+    (void) previousArgs;
     (void) input;
     (void) argumentIndex;
     (void) itemCallback;

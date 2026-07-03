@@ -42,7 +42,7 @@ ApplicationWindow::ApplicationWindow()
       m_prompt_state(m_command_manager),
       m_command_time(std::make_shared<CVarFloat>(0.0f, true)),
       m_draw_time(std::make_shared<CVarFloat>(0.0f, true)),
-      m_bind_command(std::make_shared<BindCommand>()),
+      m_bind_command(std::make_shared<BindCommand>(m_command_manager)),
       m_orthogonal() {}
 
 void ApplicationWindow::updateOrthogonal(const int32_t width, const int32_t height) {
@@ -311,8 +311,8 @@ void ApplicationWindow::getCommandCompletions(const std::u16string_view input, c
     m_command_manager.getCommandCompletions(input, itemCallback);
 }
 
-void ApplicationWindow::getArgumentsCompletions(const std::u16string_view command, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
-    m_command_manager.getArgumentsCompletion(command, argumentIndex, input, itemCallback);
+void ApplicationWindow::getArgumentsCompletions(const std::u16string_view command, const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
+    m_command_manager.getArgumentsCompletion(command, previousArgs, argumentIndex, input, itemCallback);
 }
 
 void ApplicationWindow::destroy() {

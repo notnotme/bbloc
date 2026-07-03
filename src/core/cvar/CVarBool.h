@@ -5,6 +5,7 @@
 #include <string_view>
 #include <optional>
 
+#include "../base/AutoCompleteCallback.h"
 #include "TypedCVar.h"
 
 
@@ -35,6 +36,16 @@ public:
      * @return An error message if the conversion fails, or std::nullopt if successful
      */
     std::optional<std::u16string> setValueFromStrings(const std::vector<std::u16string_view> &args) override;
+
+    /**
+     * @brief Provides completion suggestions for the boolean value.
+     *
+     * Emits "false" and "true" for the first component; other components have no candidates.
+     *
+     * @param componentIndex The index of the value component being completed.
+     * @param itemCallback A callback to be invoked with each completion suggestion.
+     */
+    void provideValueCompletion(int32_t componentIndex, const AutoCompleteCallback &itemCallback) const override;
 };
 
 

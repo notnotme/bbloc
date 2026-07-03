@@ -25,13 +25,14 @@ public:
      * @brief Provides auto-completion suggestions for command arguments.
      *
      * Implements the Command interface method for auto-completion.
-     * This command auto-completes argument 0 which is the file path.
+     * This command auto-completes argument 0 which is the file path, and argument 1 which is the "-f" flag.
      *
+     * @param previousArgs The arguments typed before the one being completed, excluding the command name.
      * @param argumentIndex The index of the argument currently being completed.
      * @param input The current partial input from the user for this argument.
      * @param itemCallback A callback to be invoked with each completion suggestion.
      */
-    void provideAutoComplete(int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
+    void provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
 
     /**
      * @brief Executes the file save operation.

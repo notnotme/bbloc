@@ -9,7 +9,8 @@ const std::unordered_map<std::u16string, FontSizeCommand::Size> FontSizeCommand:
     { u"-", Size::MINUS}
 };
 
-void FontSizeCommand::provideAutoComplete(const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void FontSizeCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+    (void) previousArgs;
     (void) input;
     (void) argumentIndex;
     for (const auto &item : std::views::keys(SIZE_MAP)) {

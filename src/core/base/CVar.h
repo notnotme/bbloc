@@ -6,6 +6,8 @@
 #include <optional>
 #include <vector>
 
+#include "AutoCompleteCallback.h"
+
 
 /**
  * @brief Base class representing a configuration variable (CVar).
@@ -50,6 +52,17 @@ public:
      * @return An optional message string in return.
      */
     virtual std::optional<std::u16string> setValueFromStrings(const std::vector<std::u16string_view> &args) = 0;
+
+    /**
+     * @brief Provides completion suggestions for one component of the CVar value.
+     *
+     * The default implementation emits the componentIndex-th space-separated component
+     * of getStringValue(), if it exists. Subclasses can override it to offer better candidates.
+     *
+     * @param componentIndex The index of the value component being completed.
+     * @param itemCallback A callback to be invoked with each completion suggestion.
+     */
+    virtual void provideValueCompletion(int32_t componentIndex, const AutoCompleteCallback &itemCallback) const;
 };
 
 inline CVar::CVar(const bool isReadOnly)
@@ -57,6 +70,33 @@ inline CVar::CVar(const bool isReadOnly)
 
 inline bool CVar::isReadOnly() const {
     return m_is_read_only;
+}
+
+inline void CVar::provideValueCompletion(const int32_t componentIndex, const AutoCompleteCallback &itemCallback) const {
+    constexpr auto SPACE_DELIMITER = u' ';
+    const auto value = getStringValue();
+
+    auto index = 0;
+    auto component_index = 0;
+    while (index < value.length()) {
+        // Skip blank spaces
+        if (value[index] == SPACE_DELIMITER) {
+            ++index;
+            continue;
+        }
+
+        const auto start = index;
+        while (index < value.length() && value[index] != SPACE_DELIMITER) {
+            ++index;
+        }
+
+        if (component_index == componentIndex) {
+            itemCallback(std::u16string_view(value).substr(start, index - start));
+            return;
+        }
+
+        ++component_index;
+    }
 }
 
 

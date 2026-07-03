@@ -35,11 +35,15 @@ public:
     /**
      * @brief Provides auto-completion suggestions for CVar command arguments.
      *
+     * Completes the first argument with CVar names, and the following ones with the matching
+     * component of the current value of the named CVar.
+     *
+     * @param previousArgs The arguments typed before the one being completed, excluding the command name.
      * @param argumentIndex Index of the argument being completed.
      * @param input Partial user input string.
      * @param itemCallback Callback to provide suggestions.
      */
-    void provideAutoComplete(int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
+    void provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
 
     /**
      * @brief Executes the CVar command.

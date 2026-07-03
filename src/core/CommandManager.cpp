@@ -53,10 +53,10 @@ void CommandManager::getCommandCompletions(const std::u16string_view input, cons
     }
 }
 
-void CommandManager::getArgumentsCompletion(const std::u16string_view command, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
+void CommandManager::getArgumentsCompletion(const std::u16string_view command, const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
     const auto command_str = std::u16string(command.begin(), command.end());
     if (const auto &cmd = m_commands.find(command_str); cmd != m_commands.end()) {
-        cmd->second->provideAutoComplete(argumentIndex, input, itemCallback);
+        cmd->second->provideAutoComplete(previousArgs, argumentIndex, input, itemCallback);
     }
 }
 
@@ -69,10 +69,15 @@ void CommandManager::getPathCompletions(const std::u16string_view input, const b
     if (exists && is_directory) {
         for (const auto &entry : std::filesystem::directory_iterator(parent_path)) {
             const auto &path = entry.path();
-            const auto &complete_path = path.string();
             const auto &filename = path.filename().string();
             if (filename.starts_with(path_input_string)) {
                 if (entry.is_directory() || (!foldersOnly && entry.is_regular_file())) {
+                    auto complete_path = path.string();
+                    if (entry.is_directory()) {
+                        // Mark directories so the next completion can descend into them
+                        complete_path.append("/");
+                    }
+
                     const auto utf16_complete_path = utf8::utf8to16(complete_path);
                     itemCallback(utf16_complete_path);
                 }

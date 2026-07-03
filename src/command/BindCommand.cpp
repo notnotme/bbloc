@@ -1,5 +1,8 @@
 #include "BindCommand.h"
 
+#include <ranges>
+#include <unordered_set>
+
 #include <SDL_keyboard.h>
 #include <utf8.h>
 
@@ -13,8 +16,45 @@ const std::unordered_map<std::u16string, uint16_t> BindCommand::MODIFIER_MAP = {
     { u"None", KMOD_NONE }
 };
 
-void BindCommand::provideAutoComplete(const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
-    // TODO
+BindCommand::BindCommand(CommandManager &commandManager)
+    : m_command_manager(commandManager) {}
+
+void BindCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+    (void) previousArgs;
+    if (argumentIndex == 0) {
+        // Complete the last modifier of an eventual "+" separated combo, keeping what precedes it.
+        const auto last_plus_index = input.rfind(u'+');
+        const auto combo_prefix = last_plus_index == std::u16string_view::npos ? std::u16string_view() : input.substr(0, last_plus_index + 1);
+        const auto modifier_input = last_plus_index == std::u16string_view::npos ? input : input.substr(last_plus_index + 1);
+
+        const auto input_is_empty = modifier_input.empty();
+        for (const auto &name : std::views::keys(MODIFIER_MAP)) {
+            if (name.starts_with(modifier_input) || input_is_empty) {
+                itemCallback(std::u16string(combo_prefix).append(name));
+            }
+        }
+    } else if (argumentIndex == 1) {
+        // Enumerate every key name known to SDL, skipping unnamed keys and duplicates.
+        auto seen_names = std::unordered_set<std::string>();
+        for (auto scancode = 1; scancode < SDL_NUM_SCANCODES; ++scancode) {
+            const auto key = SDL_GetKeyFromScancode(static_cast<SDL_Scancode>(scancode));
+            if (key == SDLK_UNKNOWN) {
+                continue;
+            }
+
+            const auto key_name = std::string(SDL_GetKeyName(key));
+            if (key_name.empty() || !seen_names.insert(key_name).second) {
+                continue;
+            }
+
+            const auto utf16_key_name = utf8::utf8to16(key_name);
+            if (utf16_key_name.starts_with(input) || input.empty()) {
+                itemCallback(utf16_key_name);
+            }
+        }
+    } else if (argumentIndex == 2) {
+        m_command_manager.getCommandCompletions(input, itemCallback);
+    }
 }
 
 std::optional<std::u16string> BindCommand::run(CursorContext &payload, const std::vector<std::u16string_view> &args) {

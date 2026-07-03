@@ -8,6 +8,7 @@
 #include <SDL_keycode.h>
 
 #include "../core/base/AutoCompleteCallback.h"
+#include "../core/CommandManager.h"
 #include "../core/CursorContext.h"
 #include "../core/base/Command.h"
 
@@ -22,6 +23,9 @@ class BindCommand final : public Command<CursorContext> {
 private:
     /** Lookup map to ease mapping modifiers. */
     static const std::unordered_map<std::u16string, uint16_t> MODIFIER_MAP;
+
+    /** Reference to the command manager used to complete command names. */
+    CommandManager &m_command_manager;
 
     /** Map of key binding to commands.
      *
@@ -56,19 +60,24 @@ private:
     static int32_t mapModifier(std::u16string_view modifier);
 
 public:
-    /** @brief Constructs a BindCommand with default initialization. */
-    explicit BindCommand() = default;
+    /**
+     * @brief Constructs a BindCommand with the given command manager.
+     *
+     * @param commandManager Reference to the command manager used to complete command names.
+     */
+    explicit BindCommand(CommandManager &commandManager);
 
     /**
      * @brief Provides auto-completion suggestions for the bind command arguments.
      *
-     * TODO Suggests completions for keys, modifiers, and available commands.
+     * Suggests completions for modifiers ("+" separated), key names, and registered commands.
      *
+     * @param previousArgs The arguments typed before the one being completed, excluding the command name.
      * @param argumentIndex The index of the argument currently being completed.
      * @param input The current partial input from the user for this argument.
      * @param itemCallback A callback to be invoked with each completion suggestion.
      */
-    void provideAutoComplete(int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
+    void provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
 
     /**
      * @brief Executes the bind command to create a new key binding.

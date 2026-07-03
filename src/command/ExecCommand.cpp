@@ -8,7 +8,8 @@
 #include "../core/CommandManager.h"
 
 
-void ExecCommand::provideAutoComplete(const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void ExecCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+    (void) previousArgs;
     if (argumentIndex != 0) {
         // Only auto-complete the first argument (path)
         return;

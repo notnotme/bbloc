@@ -4,7 +4,8 @@
 #include <utf8.h>
 
 
-void CopyTextCommand::provideAutoComplete(const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void CopyTextCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+    (void) previousArgs;
     (void) input;
     (void) argumentIndex;
     (void) itemCallback;

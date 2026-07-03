@@ -1,7 +1,8 @@
 #include "RedoCommand.h"
 
 
-void RedoCommand::provideAutoComplete(const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void RedoCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+    (void) previousArgs;
     (void) input;
     (void) argumentIndex;
     (void) itemCallback;

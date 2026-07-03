@@ -8,13 +8,18 @@
 #include "../core/CommandManager.h"
 
 
-void SaveFileCommand::provideAutoComplete(const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
-    if (argumentIndex != 0) {
-        // Only auto-complete the first argument (path)
-        return;
+void SaveFileCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+    (void) previousArgs;
+    if (argumentIndex == 0) {
+        // The first argument is the path
+        CommandManager::getPathCompletions(input, false, itemCallback);
+    } else if (argumentIndex == 1) {
+        // The second argument can only be the overwrite flag
+        constexpr auto FORCE_FLAG = std::u16string_view(u"-f");
+        if (FORCE_FLAG.starts_with(input)) {
+            itemCallback(FORCE_FLAG);
+        }
     }
-
-    CommandManager::getPathCompletions(input, false, itemCallback);
 }
 
 std::optional<std::u16string> SaveFileCommand::run(CursorContext &payload, const std::vector<std::u16string_view> &args) {

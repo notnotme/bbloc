@@ -3,7 +3,8 @@
 #include <SDL_events.h>
 
 
-void QuitCommand::provideAutoComplete(const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void QuitCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+    (void) previousArgs;
     (void) argumentIndex;
     (void) input;
     (void) itemCallback;

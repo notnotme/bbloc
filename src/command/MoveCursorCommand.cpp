@@ -24,7 +24,7 @@ const std::unordered_map<std::u16string, MoveCursorCommand::Boolean> MoveCursorC
 MoveCursorCommand::MoveCursorCommand(PromptState &promptState)
     : m_prompt_state(promptState) {}
 
-void MoveCursorCommand::provideAutoComplete(const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void MoveCursorCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     if (argumentIndex == 0) {
         for (const auto &item : std::views::keys(MOVEMENT_MAP)) {
             itemCallback(item);

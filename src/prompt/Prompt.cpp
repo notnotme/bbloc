@@ -82,6 +82,14 @@ void Prompt::onTextInput(CursorContext &context, PromptState &viewState, const c
     }
 
     const auto utf16_text = utf8::utf8to16(utf8_text);
+    if (viewState.getCompletionCount() > 0 && utf16_text == u"/" && context.prompt_cursor.getString().ends_with(u'/')) {
+        // Typing '/' on a folder candidate accepts it instead of inserting a duplicate slash,
+        // so the next completion descends into the folder.
+        viewState.clearCompletions();
+        viewState.clearHistoryIndex();
+        return;
+    }
+
     context.prompt_cursor.insert(utf16_text);
 
     // Reset completions and history index as soon as the user typed a new text

@@ -85,11 +85,12 @@ public:
      * @brief Provides auto-completions for command arguments.
      *
      * @param command The command name.
+     * @param previousArgs The arguments typed before the one being completed, excluding the command name.
      * @param argumentIndex The index of the argument to complete.
      * @param input Current user input string.
      * @param itemCallback Callback to receive argument name suggestions.
      */
-    void getArgumentsCompletion(std::u16string_view command, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback);
+    void getArgumentsCompletion(std::u16string_view command, const std::vector<std::u16string_view> &previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback);
 
     /**
      * @brief Tokenizes a UTF-16 input string for command parsing. Splits the input into a list of arguments.

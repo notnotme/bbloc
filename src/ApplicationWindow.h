@@ -166,11 +166,12 @@ public:
      * Parts of CommandRunner.
      *
      * @param command Name of the command whose arguments are being completed.
+     * @param previousArgs The arguments typed before the one being completed, excluding the command name.
      * @param argumentIndex Index of the current argument being typed.
      * @param input Partial input for the current argument.
      * @param itemCallback Callback to return matching argument suggestions.
      */
-    void getArgumentsCompletions(std::u16string_view command, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) override;
+    void getArgumentsCompletions(std::u16string_view command, const std::vector<std::u16string_view> &previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) override;
 };
 
 
