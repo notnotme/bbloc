@@ -79,7 +79,7 @@ std::optional<std::u16string> SaveFileCommand::run(CursorContext &payload, const
 
         // Needs user feedback to be able to overwrite it
         payload.command_feedback = CommandFeedback {
-            .prompt_message = u"File already exists, overwrite ? [y/N]:",
+            .prompt_message = u"File already exists, overwrite ? [y/N]: ",
             // This reuses the same command, but with "-f" argument to force overwriting.
             .command_string = std::u16string(u"save ").append(quoted_filename).append(u" -f"),
             .completions_list = {u"n", u"y"},
