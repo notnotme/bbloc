@@ -37,32 +37,53 @@
  * This structure is passed around to update or interact with a cursor, allowing access to his state,
  * command feedback, highlighting, prompt, and UI preferences.
  */
-struct CursorContext {
+struct CursorContext final {
+private:
+    /**
+     * @brief Scroll state of a cursor's view.
+     */
+    struct ScrollState final {
+        int32_t x = 0;                  ///< Horizontal scroll value of cursor.
+        int32_t y = 0;                  ///< Vertical scroll value of cursor.
+        bool follow_indicator = false;  ///< View should scroll to the indicator on next render.
+    };
+
+    /**
+     * @brief Column-sticking state used by vertical cursor moves.
+     */
+    struct ColumnStick final {
+        bool active = false;            ///< Next up/down move must place the cursor at `index`.
+        uint32_t index = 0;             ///< Column where the cursor must "stick".
+    };
+
+    /**
+     * @brief State of the current search session.
+     */
+    struct SearchState final {
+        std::optional<std::u16string> term;  ///< The last searched term, if any.
+        int32_t match_index = -1;            ///< Zero-based ordinal of current match, -1 when none.
+        int32_t match_count = 0;             ///< Total matches for the current term, 0 when none.
+    };
+
+public:
     /** Runtime objects */
     CommandRunner &command_runner;  ///< The command runner object of the application.
     Theme &theme;                   ///< The theme object of the application.
     PromptCursor &prompt_cursor;    ///< The prompt cursor object of the application.
     Cursor cursor;                  ///< The Cursor who is tied to this context.
     HighLighter highlighter;        ///< The highlighter used to highlight the text.
-    FocusTarget focus_target;       ///< The currently focused input target.
+    FocusTarget focus_target = FocusTarget::Editor;  ///< The currently focused input target.
 
-    /** Dynamic variable meant to manipulate the views */
-    int32_t scroll_x;               ///< Horizontal scroll value of cursor.
-    int32_t scroll_y;               ///< Vertical scroll value of this cursor.
-    bool follow_indicator;          ///< Indicate that the view should scroll to the indicator when rendering.
-    bool wants_redraw;              ///< indicate that the view and parents or sibling should redraw due to state change.
-    bool from_prompt;               ///< True when the current command was invoked from the interactive prompt.
-
-    bool stick_to_column;           ///< Flag indicating that the next move (up or down) must place the cursor column
-    uint32_t stick_column_index;    ///< Column where the cursor column must "stick".
-
-    /** Search state */
-    std::optional<std::u16string> search_term; ///< The last searched term, if any.
-    int32_t search_match_index;                ///< Zero-based ordinal of the current match, or -1 when none.
-    int32_t search_match_count;                ///< Total number of matches for the current term, or 0 when none.
+    /** Dynamic variables meant to manipulate the views */
+    ScrollState scroll;             ///< Scroll state of this cursor's view.
+    ColumnStick stick;              ///< Column-sticking state for vertical moves.
+    SearchState search;             ///< State of the current search session.
 
     /** The feedback prompt state. */
     std::optional<CommandFeedback> command_feedback;
+
+    bool wants_redraw = true;       ///< indicate that the view and parents or sibling should redraw due to state change.
+    bool from_prompt = false;       ///< True when the current command was invoked from the interactive prompt.
 
     /**
      * @brief Constructs a CursorContext with the required runtime object and a buffer.
@@ -80,19 +101,7 @@ struct CursorContext {
           theme(theme),
           prompt_cursor(promptCursor),
           cursor(std::move(buffer)),
-          highlighter(cursor),
-          focus_target(FocusTarget::Editor),
-          scroll_x(0),
-          scroll_y(0),
-          stick_to_column(false),
-          stick_column_index(0),
-          follow_indicator(false),
-          wants_redraw(true),
-          from_prompt(false),
-          search_term(std::nullopt),
-          search_match_index(-1),
-          search_match_count(0) {
-    }
+          highlighter(cursor) {}
 };
 
 

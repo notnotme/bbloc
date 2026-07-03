@@ -243,9 +243,9 @@ void Prompt::drawText(const CursorContext &context, const PromptState &viewState
     } else if (viewState.getCompletionCount() > 0) {
         indicator_index = viewState.getCompletionIndex();
         indicator_count = viewState.getCompletionCount();
-    } else if (context.search_match_count > 0) {
-        indicator_index = context.search_match_index;
-        indicator_count = context.search_match_count;
+    } else if (context.search.match_count > 0) {
+        indicator_index = context.search.match_index;
+        indicator_count = context.search.match_count;
     }
 
     if (indicator_count > 0) {

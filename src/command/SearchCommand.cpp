@@ -64,7 +64,7 @@ std::optional<std::u16string> SearchCommand::runSearch(CursorContext &payload, c
         term.append(args[index]);
     }
 
-    payload.search_term = term;
+    payload.search.term = term;
 
     const auto &cursor = payload.cursor;
     const auto case_sensitive = m_case_sensitive->m_value;
@@ -76,24 +76,24 @@ std::optional<std::u16string> SearchCommand::runSearch(CursorContext &payload, c
     }
 
     if (!match) {
-        payload.search_match_index = -1;
-        payload.search_match_count = 0;
+        payload.search.match_index = -1;
+        payload.search.match_count = 0;
         return u"not found";
     }
 
     const auto current_matches = scanMatches(cursor, term, match.value(), case_sensitive);
-    payload.search_match_index = current_matches.index;
-    payload.search_match_count = current_matches.total;
+    payload.search.match_index = current_matches.index;
+    payload.search.match_count = current_matches.total;
     selectMatch(payload, match.value(), static_cast<uint32_t>(term.length()));
     return std::nullopt;
 }
 
 std::optional<std::u16string> SearchCommand::runFind(CursorContext &payload) const {
-    if (!payload.search_term) {
+    if (!payload.search.term) {
         return u"no search term";
     }
 
-    const auto &term = payload.search_term.value();
+    const auto &term = payload.search.term.value();
     const auto &cursor = payload.cursor;
     const auto case_sensitive = m_case_sensitive->m_value;
     const auto selection = cursor.getSelectedRange();
@@ -121,14 +121,14 @@ std::optional<std::u16string> SearchCommand::runFind(CursorContext &payload) con
     }
 
     if (!match) {
-        payload.search_match_index = -1;
-        payload.search_match_count = 0;
+        payload.search.match_index = -1;
+        payload.search.match_count = 0;
         return u"not found";
     }
 
     const auto current_matches = scanMatches(cursor, term, match.value(), case_sensitive);
-    payload.search_match_index = current_matches.index;
-    payload.search_match_count = current_matches.total;
+    payload.search.match_index = current_matches.index;
+    payload.search.match_count = current_matches.total;
     selectMatch(payload, match.value(), static_cast<uint32_t>(term.length()));
     return std::nullopt;
 }
@@ -146,7 +146,7 @@ std::optional<std::u16string> SearchCommand::runReplace(CursorContext &payload, 
 
     auto &cursor = payload.cursor;
     const auto case_sensitive = m_case_sensitive->m_value;
-    payload.search_term = std::u16string(from);
+    payload.search.term = std::u16string(from);
 
     if (m_action == Action::REPLACE) {
         auto match = searchForward(cursor, from, cursor.getLine(), cursor.getColumn(), case_sensitive);
@@ -155,14 +155,14 @@ std::optional<std::u16string> SearchCommand::runReplace(CursorContext &payload, 
         }
 
         if (!match) {
-            payload.search_match_index = -1;
-            payload.search_match_count = 0;
+            payload.search.match_index = -1;
+            payload.search.match_count = 0;
             return u"not found";
         }
 
         const auto current_matches = scanMatches(cursor, from, match.value(), case_sensitive);
-        payload.search_match_index = current_matches.index;
-        payload.search_match_count = current_matches.total;
+        payload.search.match_index = current_matches.index;
+        payload.search.match_count = current_matches.total;
         selectMatch(payload, match.value(), static_cast<uint32_t>(from.length()));
         replaceSelection(payload, to);
         return std::u16string(u"replaced ").append(toU16(1)).append(u" occurrence(s)");
@@ -181,8 +181,8 @@ std::optional<std::u16string> SearchCommand::runReplace(CursorContext &payload, 
     }
 
     // Every match was consumed, so the persistent indicator has nothing left to show.
-    payload.search_match_index = -1;
-    payload.search_match_count = 0;
+    payload.search.match_index = -1;
+    payload.search.match_count = 0;
     return std::u16string(u"replaced ").append(toU16(count)).append(u" occurrence(s)");
 }
 
@@ -195,7 +195,7 @@ void SearchCommand::selectMatch(CursorContext &payload, const MatchLocation &mat
     cursor.activateSelection(true);
     cursor.setPosition(match.line, match.column + termLength);
 
-    payload.follow_indicator = true;
+    payload.scroll.follow_indicator = true;
     payload.wants_redraw = true;
 }
 
@@ -209,8 +209,8 @@ void SearchCommand::replaceSelection(CursorContext &payload, const std::u16strin
     }
 
     const auto &edit = cursor.insert(replacement);
-    payload.stick_column_index = cursor.getColumn();
-    payload.follow_indicator = true;
+    payload.stick.index = cursor.getColumn();
+    payload.scroll.follow_indicator = true;
     payload.highlighter.edit(edit);
     payload.wants_redraw = true;
 }
@@ -273,13 +273,13 @@ SearchCommand::MatchStats SearchCommand::scanMatches(const Cursor &cursor, const
 void SearchCommand::refreshMatchStats(CursorContext &payload, const bool caseSensitive) {
     payload.wants_redraw = true;
 
-    if (!payload.search_term || payload.search_term->empty()) {
-        payload.search_match_index = -1;
-        payload.search_match_count = 0;
+    if (!payload.search.term || payload.search.term->empty()) {
+        payload.search.match_index = -1;
+        payload.search.match_count = 0;
         return;
     }
 
-    const auto &term = payload.search_term.value();
+    const auto &term = payload.search.term.value();
     const auto &cursor = payload.cursor;
 
     // Anchor on the current selection start, or the bare cursor when nothing is selected.
@@ -312,16 +312,16 @@ void SearchCommand::refreshMatchStats(CursorContext &payload, const bool caseSen
     }
 
     if (total == 0) {
-        payload.search_match_index = -1;
-        payload.search_match_count = 0;
+        payload.search.match_index = -1;
+        payload.search.match_count = 0;
         return;
     }
 
     // Prefer the ordinal of a match landing on the anchor; otherwise place the counter just past
     // the matches preceding it, clamped in case the anchor sits after the final match.
     const auto index = exact >= 0 ? exact : before;
-    payload.search_match_index = std::clamp(index, 0, total - 1);
-    payload.search_match_count = total;
+    payload.search.match_index = std::clamp(index, 0, total - 1);
+    payload.search.match_count = total;
 }
 
 size_t SearchCommand::indexOf(const std::u16string_view line, const std::u16string_view term, const size_t from, const bool caseSensitive) {

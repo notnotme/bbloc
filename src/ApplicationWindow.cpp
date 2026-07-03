@@ -282,7 +282,7 @@ void ApplicationWindow::mainLoop() {
                     // We must have an updated value for the line_height, so request the size from the theme now
                     const auto line_height = m_theme.getLineHeight();
                     const auto scroll_amount = event.wheel.y * -line_height;
-                    m_cursor_context.scroll_y = m_cursor_context.scroll_y + scroll_amount;
+                    m_cursor_context.scroll.y = m_cursor_context.scroll.y + scroll_amount;
                     m_cursor_context.wants_redraw = true;
                 }
                 break;
@@ -336,7 +336,7 @@ void ApplicationWindow::mainLoop() {
         }
 
         // Reset follow_indicator if it was not held by the editor render already
-        m_cursor_context.follow_indicator = false;
+        m_cursor_context.scroll.follow_indicator = false;
 
         // Update max_render_time metrics
         const auto frame_time_elapsed = static_cast<float>(SDL_GetPerformanceCounter() - currentTime) / performanceQuery;

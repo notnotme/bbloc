@@ -69,8 +69,8 @@ std::optional<std::u16string> GotoLineCommand::run(CursorContext &payload, const
 
     payload.cursor.activateSelection(false);
     payload.cursor.setPosition(line_index, 0);
-    payload.stick_column_index = payload.cursor.getColumn();
-    payload.follow_indicator = true;
+    payload.stick.index = payload.cursor.getColumn();
+    payload.scroll.follow_indicator = true;
     payload.wants_redraw = true;
 
     return std::nullopt;

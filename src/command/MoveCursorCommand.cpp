@@ -136,19 +136,19 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
                 break;
                 case Movement::LEFT:
                     payload.cursor.moveLeft();
-                    payload.stick_column_index = payload.cursor.getColumn();
+                    payload.stick.index = payload.cursor.getColumn();
                 break;
                 case Movement::RIGHT:
                     payload.cursor.moveRight();
-                    payload.stick_column_index = payload.cursor.getColumn();
+                    payload.stick.index = payload.cursor.getColumn();
                 break;
                 case Movement::BEGIN_LINE:
                     payload.cursor.moveToStartOfLine();
-                    payload.stick_column_index = payload.cursor.getColumn();
+                    payload.stick.index = payload.cursor.getColumn();
                 break;
                 case Movement::END_LINE:
                     payload.cursor.moveToEndOfLine();
-                    payload.stick_column_index = payload.cursor.getColumn();
+                    payload.stick.index = payload.cursor.getColumn();
                 break;
                 case Movement::PAGE_UP: {
                     const auto line_count = payload.theme.getDimension(DimensionId::PageUpDown);
@@ -164,17 +164,17 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
                 break;
                 case Movement::BEGIN_FILE:
                     payload.cursor.moveToStartOfFile();
-                    payload.stick_column_index = payload.cursor.getColumn();
+                    payload.stick.index = payload.cursor.getColumn();
                 break;
                 case Movement::END_FILE:
                     payload.cursor.moveToEndOfFile();
-                    payload.stick_column_index = payload.cursor.getColumn();
+                    payload.stick.index = payload.cursor.getColumn();
                 break;
                 default:
                     return std::nullopt;
             }
 
-            payload.follow_indicator = true;
+            payload.scroll.follow_indicator = true;
             payload.wants_redraw = true;
         break;
         default:
@@ -203,18 +203,18 @@ MoveCursorCommand::Boolean MoveCursorCommand::mapBoolean(const std::u16string_vi
 }
 
 void MoveCursorCommand::stickToColumn(CursorContext &payload) {
-    if (payload.stick_to_column) {
+    if (payload.stick.active) {
         const auto cursor_line = payload.cursor.getLine();
         const auto string_length = payload.cursor.getString().length();
-        const auto new_column = payload.stick_column_index > string_length
+        const auto new_column = payload.stick.index > string_length
             ? string_length
-            : payload.stick_column_index;
+            : payload.stick.index;
 
         payload.cursor.setPosition(cursor_line, new_column);
     }
 
     const auto new_column = payload.cursor.getColumn();
-    payload.stick_to_column = payload.stick_column_index >= new_column;
+    payload.stick.active = payload.stick.index >= new_column;
 }
 
 

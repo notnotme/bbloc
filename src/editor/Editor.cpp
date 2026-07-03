@@ -49,8 +49,8 @@ void Editor::render(CursorContext &context, ViewState &viewState, const float dt
     updateScroll(context, viewState);
 
     // Get updated scroll values
-    const auto scroll_x = context.scroll_x;
-    const auto scroll_y = context.scroll_y;
+    const auto scroll_x = context.scroll.x;
+    const auto scroll_y = context.scroll.y;
 
     // Map the editor buffer region, keep a variable to know how many quads we have before the cursor text
     m_quad_buffer.map(ApplicationWindow::EDITOR_BUFFER_QUAD_OFFSET, ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT);
@@ -81,7 +81,7 @@ void Editor::render(CursorContext &context, ViewState &viewState, const float dt
 bool Editor::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
     switch (keyCode) {
         case SDLK_RETURN: {
-            context.follow_indicator = true;
+            context.scroll.follow_indicator = true;
             if (const auto &edit = context.cursor.eraseSelection()) {
                 // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
                 context.highlighter.edit(edit.value());
@@ -92,11 +92,11 @@ bool Editor::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_K
             const auto &edit = context.cursor.newLine();
             context.highlighter.edit(edit);
             // Update stick to column index if we insert
-            context.stick_column_index = context.cursor.getColumn();
+            context.stick.index = context.cursor.getColumn();
         }
         return true;
         case SDLK_BACKSPACE: {
-            context.follow_indicator = true;
+            context.scroll.follow_indicator = true;
             if (const auto &selection = context.cursor.eraseSelection()) {
                 // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
                 context.highlighter.edit(selection.value());
@@ -109,7 +109,7 @@ bool Editor::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_K
         }
         return true;
         case SDLK_DELETE: {
-            context.follow_indicator = true;
+            context.scroll.follow_indicator = true;
             if (const auto &selection = context.cursor.eraseSelection()) {
                 // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
                 context.highlighter.edit(selection.value());
@@ -119,11 +119,11 @@ bool Editor::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_K
                 context.highlighter.edit(edit.value());
             }
             // Update stick to column index
-            context.stick_column_index = context.cursor.getColumn();
+            context.stick.index = context.cursor.getColumn();
         }
         return true;
         case SDLK_TAB: {
-            context.follow_indicator = true;
+            context.scroll.follow_indicator = true;
             if (const auto &selection = context.cursor.eraseSelection()) {
                 // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
                 context.highlighter.edit(selection.value());
@@ -141,7 +141,7 @@ bool Editor::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_K
                 context.highlighter.edit(edit);
             }
             // Update stick to column index
-            context.stick_column_index = context.cursor.getColumn();
+            context.stick.index = context.cursor.getColumn();
         }
         return true;
         default:
@@ -168,8 +168,8 @@ void Editor::onTextInput(CursorContext &context, ViewState &viewState, const cha
 
     const auto utf16_text = utf8::utf8to16(utf8_text);
     const auto &edit = context.cursor.insert(utf16_text);
-    context.stick_column_index = context.cursor.getColumn();
-    context.follow_indicator = true;
+    context.stick.index = context.cursor.getColumn();
+    context.scroll.follow_indicator = true;
     context.highlighter.edit(edit);
 }
 
@@ -221,9 +221,9 @@ void Editor::updateScroll(CursorContext &context, const ViewState &viewState) co
     const auto height = viewState.getHeight();
     const auto margin_width = padding_width + cursor_line_count_width + padding_width;
 
-    if (context.follow_indicator) {
-        const auto scroll_x = context.scroll_x;
-        const auto scroll_y = context.scroll_y;
+    if (context.scroll.follow_indicator) {
+        const auto scroll_x = context.scroll.x;
+        const auto scroll_y = context.scroll.y;
         const auto cursor_string = context.cursor.getString();
         const auto cursor_string_to_indicator = cursor_string.substr(0, cursor_column);
         const auto indicator_x = m_theme.measure(cursor_string_to_indicator, false);
@@ -231,25 +231,25 @@ void Editor::updateScroll(CursorContext &context, const ViewState &viewState) co
 
         // Vertical scroll
         if (indicator_y < scroll_y) {
-            context.scroll_y = indicator_y;
+            context.scroll.y = indicator_y;
         } else if (indicator_y > height + scroll_y - line_height) {
-            context.scroll_y = indicator_y - (height - line_height);
+            context.scroll.y = indicator_y - (height - line_height);
         }
 
         // Horizontal scroll
         if (indicator_x < scroll_x) {
-            context.scroll_x = indicator_x;
+            context.scroll.x = indicator_x;
         } else if (indicator_x > width - margin_width - border_size + scroll_x) {
-            context.scroll_x = indicator_x - width + margin_width + border_size + indicator_width;
+            context.scroll.x = indicator_x - width + margin_width + border_size + indicator_width;
         }
     } else {
         // Update max-scroll values
-        const auto scroll_x = context.scroll_x;
-        const auto scroll_y = context.scroll_y;
+        const auto scroll_x = context.scroll.x;
+        const auto scroll_y = context.scroll.y;
         const auto max_scroll_y = cursor_line_count * line_height - height;
         const auto max_scroll_x = m_longest_line_cache.width - (width - margin_width - border_size - indicator_width);
-        context.scroll_x = std::clamp(scroll_x, 0, max_scroll_x < 0 ? 0 : max_scroll_x);
-        context.scroll_y = std::clamp(scroll_y, 0, max_scroll_y < 0 ? 0 : max_scroll_y);
+        context.scroll.x = std::clamp(scroll_x, 0, max_scroll_x < 0 ? 0 : max_scroll_x);
+        context.scroll.y = std::clamp(scroll_y, 0, max_scroll_y < 0 ? 0 : max_scroll_y);
     }
 }
 

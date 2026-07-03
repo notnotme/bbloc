@@ -61,6 +61,6 @@ std::optional<std::u16string> PasteTextCommand::run(CursorContext &payload, cons
 
     // Redraw and follow the cursor.
     payload.wants_redraw = true;
-    payload.follow_indicator = true;
+    payload.scroll.follow_indicator = true;
     return std::nullopt;
 }

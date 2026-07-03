@@ -39,10 +39,10 @@ std::optional<std::u16string> UndoCommand::run(CursorContext &payload, const std
 
     payload.highlighter.edit(edit.value());
     payload.cursor.activateSelection(false);
-    payload.stick_column_index = payload.cursor.getColumn();
+    payload.stick.index = payload.cursor.getColumn();
 
     // Redraw and follow the cursor.
     payload.wants_redraw = true;
-    payload.follow_indicator = true;
+    payload.scroll.follow_indicator = true;
     return std::nullopt;
 }
