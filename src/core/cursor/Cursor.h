@@ -9,6 +9,7 @@
 #include "buffer/TextBuffer.h"
 #include "buffer/BufferEdit.h"
 #include "TextRange.h"
+#include "UndoHistory.h"
 
 
 /**
@@ -40,6 +41,9 @@ private:
     /** Holds the index of the column where the selection starts. */
     uint32_t m_selected_column_start;
 
+    /** Undo/redo history of full-buffer snapshots. */
+    UndoHistory m_history;
+
 private:
     /**
      * @brief Erase a range of text inside the internal buffer. This does not move the cursor coordinates.
@@ -51,6 +55,22 @@ private:
      * @return Reference to the resulting BufferEdit describing the change.
      */
     [[nodiscard]] BufferEdit erase(uint32_t lineStart, uint32_t columnStart, uint32_t lineEnd, uint32_t columnEnd) const;
+
+    /** @brief Returns the entire buffer content as a single string, lines joined with line breaks. */
+    [[nodiscard]] std::u16string getText() const;
+
+    /** @brief Pushes a snapshot of the current state when the history is at a boundary. */
+    void recordBeforeEdit();
+
+    /**
+     * @brief Replaces the buffer content and cursor position with a snapshot.
+     *
+     * Deactivates the selection and marks a history boundary.
+     *
+     * @param snapshot The snapshot to restore.
+     * @return A single whole-buffer BufferEdit describing the change.
+     */
+    [[nodiscard]] BufferEdit restore(const UndoHistory::Snapshot &snapshot);
 
 public:
     /** @brief Deleted copy constructor. */
@@ -65,10 +85,10 @@ public:
      */
     explicit Cursor(std::unique_ptr<TextBuffer> buffer);
 
-    /** @brief Scrolls the view up by a number of lines. */
+    /** @brief Moves the cursor up by a number of lines. */
     void pageUp(uint32_t lineCount);
 
-    /** @brief Scrolls the view down by a number of lines. */
+    /** @brief Moves the cursor down by a number of lines. */
     void pageDown(uint32_t lineCount);
 
     /** @brief Sets the name associated with this cursor. */
@@ -177,7 +197,7 @@ public:
      *
      * @return An optional BufferEdit describing the change.
      */
-    [[nodiscard]] std::optional<BufferEdit> eraseRight() const;
+    [[nodiscard]] std::optional<BufferEdit> eraseRight();
 
     /** @return An optional BufferEdit describing the change. */
     [[nodiscard]] std::optional<BufferEdit> eraseSelection();
@@ -190,6 +210,23 @@ public:
      * @return The resulting CursorEdit describing the change.
      */
     [[nodiscard]] BufferEdit clear();
+
+    /**
+     * @brief Restores the buffer to its state before the last recorded edit.
+     *
+     * @return An optional BufferEdit describing the change, or std::nullopt if there is nothing to undo.
+     */
+    [[nodiscard]] std::optional<BufferEdit> undo();
+
+    /**
+     * @brief Re-applies the last undone edit.
+     *
+     * @return An optional BufferEdit describing the change, or std::nullopt if there is nothing to redo.
+     */
+    [[nodiscard]] std::optional<BufferEdit> redo();
+
+    /** @brief Wipes the undo/redo history. */
+    void clearHistory();
 };
 
 

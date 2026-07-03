@@ -10,6 +10,8 @@ Cursor::Cursor(std::unique_ptr<TextBuffer> buffer)
       m_selected_column_start(0) {}
 
 void Cursor::pageUp(const uint32_t lineCount) {
+    m_history.markBoundary();
+
     // Don't go before 0
     if (m_line > lineCount) {
         m_line -= lineCount;
@@ -24,6 +26,8 @@ void Cursor::pageUp(const uint32_t lineCount) {
 }
 
 void Cursor::pageDown(const uint32_t lineCount) {
+    m_history.markBoundary();
+
     // Don't go after the end
     const auto cursor_line_count = m_buffer->getStringCount() - 1;
     const auto cursor_new_line = m_line + lineCount;
@@ -136,6 +140,8 @@ std::optional<std::vector<std::u16string_view>> Cursor::getSelectedText() const 
 }
 
 void Cursor::moveLeft() {
+    m_history.markBoundary();
+
     if (m_column == 0) {
         // At the very beginning of a line, the cursor can't go left
         if (m_line > 0) {
@@ -149,6 +155,8 @@ void Cursor::moveLeft() {
 }
 
 void Cursor::moveRight() {
+    m_history.markBoundary();
+
     if (m_column == m_buffer->getString(m_line).length()) {
         // At the very end of a line, the cursor can't go right
         if (m_line < m_buffer->getStringCount() - 1) {
@@ -162,10 +170,11 @@ void Cursor::moveRight() {
 }
 
 void Cursor::moveUp() {
+    m_history.markBoundary();
+
     if (m_line > 0) {
         const auto string_above_length = m_buffer->getString(m_line - 1).length();
         if (m_column > string_above_length) {
-            // The cursor can't stay at the same X position, put it at the end of the next line
             m_column = string_above_length;
         }
         --m_line;
@@ -175,6 +184,8 @@ void Cursor::moveUp() {
 }
 
 void Cursor::moveDown() {
+    m_history.markBoundary();
+
     if (m_line < m_buffer->getStringCount() - 1) {
         const auto string_below_length = m_buffer->getString(m_line + 1).length();
         if (m_column > string_below_length) {
@@ -188,19 +199,23 @@ void Cursor::moveDown() {
 }
 
 void Cursor::moveToStartOfLine() {
+    m_history.markBoundary();
     m_column = 0;
 }
 
 void Cursor::moveToEndOfLine() {
+    m_history.markBoundary();
     m_column = m_buffer->getString(m_line).length();
 }
 
 void Cursor::moveToStartOfFile() {
+    m_history.markBoundary();
     m_line = 0;
     m_column = 0;
 }
 
 void Cursor::moveToEndOfFile() {
+    m_history.markBoundary();
     const auto string_count = m_buffer->getStringCount() - 1;
     const auto string_length = m_buffer->getString(string_count).length();
     m_line = string_count;
@@ -233,9 +248,14 @@ void Cursor::setPosition(const uint32_t line, const uint32_t column) {
 }
 
 BufferEdit Cursor::insert(const std::u16string_view characters) {
+    recordBeforeEdit();
+    const auto previous_line = m_line;
     const auto &edit = m_buffer->insert(m_line, m_column, characters);
     m_line = edit.new_end.line;
     m_column = edit.new_end.column;
+    if (m_line != previous_line) {
+        m_history.markBoundary();
+    }
     return edit;
 }
 
@@ -244,15 +264,19 @@ BufferEdit Cursor::erase(const uint32_t lineStart, const uint32_t columnStart, c
 }
 
 BufferEdit Cursor::newLine() {
+    recordBeforeEdit();
     const auto &edit = m_buffer->insert(m_line, m_column, u"\n");
     m_line = edit.new_end.line;
     m_column = edit.new_end.column;
+    // The cursor always changes line
+    m_history.markBoundary();
     return edit;
 }
 
 std::optional<BufferEdit> Cursor::eraseLeft() {
     if (m_column > 0) {
         // We can erase on the left since column > 0
+        recordBeforeEdit();
         const auto &edit = m_buffer->erase(m_line, m_column, m_line, m_column - 1);
         m_column = edit.new_end.column;
         return edit;
@@ -260,24 +284,29 @@ std::optional<BufferEdit> Cursor::eraseLeft() {
 
     if (m_line > 0) {
         // We can't erase left because column = 0, so we move the remainder of this line to the end of the line above
+        recordBeforeEdit();
         const auto string_above_length = m_buffer->getString(m_line - 1).length();
         const auto &edit =  m_buffer->erase(m_line, m_column, m_line - 1, string_above_length);
         m_line = edit.new_end.line;
         m_column = edit.new_end.column;
+        // The cursor always changes line
+        m_history.markBoundary();
         return edit;
     }
 
     return std::nullopt;
 }
 
-std::optional<BufferEdit> Cursor::eraseRight() const {
+std::optional<BufferEdit> Cursor::eraseRight() {
     if (m_column < m_buffer->getString(m_line).length()) {
         // We can erase on the right since column < string_length
+        recordBeforeEdit();
         return m_buffer->erase(m_line, m_column, m_line, m_column + 1);
     }
 
     if (m_line < m_buffer->getStringCount() - 1) {
         // We can't erase right because column >= string_length, so we move the line below and append it to this line
+        recordBeforeEdit();
         return m_buffer->erase(m_line, m_column, m_line + 1, 0);
     }
 
@@ -289,9 +318,14 @@ std::optional<BufferEdit> Cursor::eraseSelection() {
         return std::nullopt;
     }
 
+    recordBeforeEdit();
+    const auto previous_line = m_line;
     const auto &edit = m_buffer->erase(m_selected_line_start, m_selected_column_start, m_line, m_column);
     m_line = edit.new_end.line;
     m_column = edit.new_end.column;
+    if (m_line != previous_line) {
+        m_history.markBoundary();
+    }
     return edit;
 }
 
@@ -306,4 +340,70 @@ BufferEdit Cursor::clear() {
     m_selected_column_start = 0;
 
     return m_buffer->clear();
+}
+
+std::u16string Cursor::getText() const {
+    auto text = std::u16string();
+    const auto line_count = m_buffer->getStringCount();
+    for (auto line = 0u; line < line_count; ++line) {
+        text.append(m_buffer->getString(line));
+        if (line < line_count - 1) {
+            text.append(u"\n");
+        }
+    }
+    return text;
+}
+
+void Cursor::recordBeforeEdit() {
+    if (m_history.isAtBoundary()) {
+        m_history.push({getText(), m_line, m_column});
+    }
+}
+
+BufferEdit Cursor::restore(const UndoHistory::Snapshot &snapshot) {
+    const auto &clear_edit = m_buffer->clear();
+
+    auto new_end_byte = 0u;
+    auto new_end = BufferEdit::Position {0, 0};
+    if (!snapshot.text.empty()) {
+        const auto &insert_edit = m_buffer->insert(0, 0, snapshot.text);
+        new_end_byte = insert_edit.new_end_byte;
+        new_end = insert_edit.new_end;
+    }
+
+    m_line = snapshot.line;
+    m_column = snapshot.column;
+    activateSelection(false);
+    m_history.markBoundary();
+
+    return BufferEdit {
+        .start_byte = 0,
+        .old_end_byte = clear_edit.old_end_byte,
+        .new_end_byte = new_end_byte,
+        .start = {0, 0},
+        .old_end = clear_edit.old_end,
+        .new_end = new_end
+    };
+}
+
+std::optional<BufferEdit> Cursor::undo() {
+    const auto &snapshot = m_history.undo({getText(), m_line, m_column});
+    if (!snapshot) {
+        return std::nullopt;
+    }
+
+    return restore(snapshot.value());
+}
+
+std::optional<BufferEdit> Cursor::redo() {
+    const auto &snapshot = m_history.redo({getText(), m_line, m_column});
+    if (!snapshot) {
+        return std::nullopt;
+    }
+
+    return restore(snapshot.value());
+}
+
+void Cursor::clearHistory() {
+    m_history.clear();
 }

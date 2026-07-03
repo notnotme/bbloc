@@ -66,9 +66,10 @@ std::optional<std::u16string> OpenFileCommand::run(CursorContext &payload, const
     const auto &edit_insert = payload.cursor.insert(all_line);
     payload.highlighter.edit(edit_insert);
 
-    // Set cursor name and reset position.
+    // Set cursor name, reset position and discard the undo history of the previous buffer.
     payload.cursor.setName(path);
     payload.cursor.setPosition(0, 0);
+    payload.cursor.clearHistory();
     payload.follow_indicator = true;
     payload.stick_to_column = false;
     payload.stick_column_index = 0;

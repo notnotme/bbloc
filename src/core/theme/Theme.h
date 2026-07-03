@@ -241,6 +241,8 @@ void Theme::registerHighLightColorCVar(GlobalRegistry<TPayload> &commandControll
     const auto &cvar_hl_statement_color      = m_highlight_colors.insert({TokenId::Statement,    std::make_shared<CVarColor>(200,   0, 200, 255)});
     const auto &cvar_hl_type_color           = m_highlight_colors.insert({TokenId::Type,         std::make_shared<CVarColor>(  0, 128, 128, 255)});
     const auto &cvar_hl_constant_color       = m_highlight_colors.insert({TokenId::Constant,     std::make_shared<CVarColor>(128,  64,   0, 255)});
+    const auto &cvar_hl_function_color       = m_highlight_colors.insert({TokenId::Function,     std::make_shared<CVarColor>(150, 100,  40, 255)});
+    const auto &cvar_hl_variable_color       = m_highlight_colors.insert({TokenId::Variable,     std::make_shared<CVarColor>( 90,  90, 110, 255)});
 
     // Make highlight colors accessible from the console
     commandController.registerCvar(u"hl_text",          cvar_hl_text_color.first->second, nullptr);
@@ -252,6 +254,8 @@ void Theme::registerHighLightColorCVar(GlobalRegistry<TPayload> &commandControll
     commandController.registerCvar(u"hl_statement",     cvar_hl_statement_color.first->second, nullptr);
     commandController.registerCvar(u"hl_type",          cvar_hl_type_color.first->second, nullptr);
     commandController.registerCvar(u"hl_constant",      cvar_hl_constant_color.first->second, nullptr);
+    commandController.registerCvar(u"hl_function",      cvar_hl_function_color.first->second, nullptr);
+    commandController.registerCvar(u"hl_variable",      cvar_hl_variable_color.first->second, nullptr);
 }
 
 template<typename TPayload>

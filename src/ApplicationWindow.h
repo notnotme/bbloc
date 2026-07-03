@@ -92,7 +92,7 @@ private:
     /** State object tracking the prompt. */
     PromptState m_prompt_state;
 
-    /** CVar tracking the maximum frame time (to render, before swapping). */
+    /** CVar tracking the maximum command execution time. */
     std::shared_ptr<CVarFloat> m_command_time;
 
     /** CVar tracking the maximum frame time (to render, before swapping). */

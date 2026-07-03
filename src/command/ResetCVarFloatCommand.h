@@ -25,7 +25,7 @@ public:
     explicit ResetCVarFloatCommand(std::shared_ptr<CVarFloat> cvar);
 
     /**
-     * @brief Provides auto-completion suggestions for CVar names.
+     * @brief Provides auto-completion suggestions for command arguments.
      *
      * This command does not auto-complete.
      *
@@ -42,7 +42,7 @@ public:
      * This command expect no argument (empty vector).
      *
      * @param payload The cursor context (not directly used for CVar operations).
-     * @param args Command arguments, with the first argument being the name of the CVar to reset.
+     * @param args Command arguments; must be empty (the target CVar is bound at construction).
      * @return An optional message indicating the result of the operation.
      */
     [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, const std::vector<std::u16string_view> &args) override;

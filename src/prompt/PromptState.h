@@ -31,7 +31,7 @@ public:
     /** @brief Default prompt label when active. */
     static constexpr auto PROMPT_ACTIVE = u":";
 
-    /** Amount of command history (can be changed at runtime). */
+    /** Default command-history size; the runtime value is the dim_max_history CVar. */
     static constexpr auto MAX_COMMAND_HISTORY = 32;
 
 private:

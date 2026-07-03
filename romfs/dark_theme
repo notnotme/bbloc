@@ -20,3 +20,5 @@ cvar hl_keyword                      255 130 170 255
 cvar hl_statement                    130 170 255 255
 cvar hl_type                         120 210 255 255
 cvar hl_constant                     190 160 255 255
+cvar hl_function                     240 200 130 255
+cvar hl_variable                     190 200 220 255

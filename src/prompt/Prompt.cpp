@@ -39,8 +39,7 @@ bool Prompt::onKeyDown(CursorContext &context, PromptState &viewState, const SDL
             viewState.clearCompletions();
             viewState.clearHistoryIndex();
 
-            // The return value of runCommand can be ignored in this use case,
-            // and because we just check the current focus inside Command::isRunnable to block commands, in facts.
+            // The return value of runCommand can be ignored in this use case.
             const auto prompt_command = context.prompt_cursor.getString();
             context.command_runner.runCommand(prompt_command, true);
             context.prompt_cursor.clear();

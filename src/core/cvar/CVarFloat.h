@@ -9,9 +9,9 @@
 
 
 /**
- * @brief Boolean-based configuration variable.
+ * @brief Float-based configuration variable.
  *
- * Allows storing and modifying a boolean value through the command system.
+ * Allows storing and modifying a float value through the command system.
  */
 class CVarFloat final : public TypedCVar<float> {
 public:

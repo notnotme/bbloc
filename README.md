@@ -151,7 +151,8 @@ ApplicationWindow
 ### Navigation
 | Keys | Command | Description |
 |------|---------|-------------|
-| Escape | cancel | Cancel current action (e.g., close prompt) |
+| Up | move up | Move cursor up one line |
+| Shift+Up | move up true | Move up with text selection |
 | Down | move down | Move cursor down one line |
 | Shift+Down | move down true | Move down with text selection |
 | Left | move left | Move cursor left one character |
@@ -173,6 +174,8 @@ ApplicationWindow
 | Ctrl+C | copy | Copy selection to clipboard |
 | Ctrl+X | cut | Cut selection to clipboard |
 | Ctrl+V | paste | Paste from clipboard |
+| Ctrl+Z | undo | Undo the last text modification |
+| Ctrl+Shift+Z | redo | Redo the last undone modification |
 | Tab | auto_complete forward | Auto-complete input forward |
 | Shift+Tab | auto_complete backward | Auto-complete input backward |
 
@@ -188,6 +191,8 @@ ApplicationWindow
 | Ctrl+Shift+S | save | Save current buffer to file |
 | Ctrl+Shift+Space | activate_prompt | Open command prompt |
 | Ctrl+Shift+Q | quit | Quit application (no save) |
+| Ctrl+Shift+L | exec romfs/light_theme | Load the light theme (temporary binding) |
+| Ctrl+Shift+D | exec romfs/dark_theme | Load the dark theme (temporary binding) |
 
 ## Commands
 
@@ -203,7 +208,7 @@ ApplicationWindow
 | Command | Arguments | Description |
 |---------|-----------|-------------|
 | `cvar <name> [value1] [value2] ...` | cvar name, values | Print/set CVar value |
-| `reset_render_time` | - | Reset render time CVar to 0 |
+| `reset_draw_time` | - | Reset render time CVar to 0 |
 | `reset_command_time` | - | Reset command time CVar to 0 |
 | `set_font_size <size>` | size, +, - | Set font size (absolute or relative) |
 | `set_hl_mode <mode>` | mode | Set syntax highlight mode (cpp, json, etc.) |
@@ -221,6 +226,8 @@ ApplicationWindow
 | `copy` | - | Copy selection to clipboard |
 | `paste` | - | Paste from clipboard |
 | `cut` | - | Cut selection to clipboard |
+| `undo` | - | Undo the last text modification |
+| `redo` | - | Redo the last undone modification |
 | `auto_complete <direction>` | direction | Provide command/argument completion |
 
 ### Auto-Completion
@@ -238,7 +245,7 @@ ApplicationWindow
 ### Read-Only Metrics
 | Variable | Type | Description |
 |----------|------|-------------|
-| `inf_render_time` | float | Maximum render time in seconds (reset-able) |
+| `inf_draw_time` | float | Maximum render time in seconds (reset-able) |
 | `inf_command_time` | float | Maximum command processing time (reset-able) |
 
 ### Theme Colors
@@ -248,7 +255,7 @@ ApplicationWindow
 | `col_info_bar_background` | Color | Info bar background color |
 | `col_editor_background` | Color | Editor background color |
 | `col_prompt_background` | Color | Prompt background color |
-| `col_line_background` | Color | Current line highlight color |
+| `col_current_line_background` | Color | Current line highlight color |
 | `col_selected_text_background` | Color | Selected text background |
 | `col_line_number` | Color | Line number color |
 | `col_info_bar_text` | Color | Info bar text color |
@@ -260,12 +267,17 @@ ApplicationWindow
 ### Highlight Colors
 | Variable | Type | Description |
 |----------|------|-------------|
+| `hl_text` | Color | Plain text color |
 | `hl_comment` | Color | Comment syntax color |
 | `hl_string` | Color | String syntax color |
 | `hl_preprocessor` | Color | Preprocessor syntax color |
 | `hl_number` | Color | Number syntax color |
 | `hl_keyword` | Color | Keyword syntax color |
 | `hl_statement` | Color | Statement syntax color |
+| `hl_type` | Color | Type syntax color |
+| `hl_constant` | Color | Constant syntax color |
+| `hl_function` | Color | Function and method syntax color |
+| `hl_variable` | Color | Variable and field syntax color |
 
 ### Dimensions
 | Variable | Type | Description |
@@ -276,6 +288,7 @@ ApplicationWindow
 | `dim_tab_to_space` | int | Spaces per tab character |
 | `dim_page_up_down` | int | Lines per page scroll |
 | `dim_font_size` | int | Font size in pixels (runtime) |
+| `dim_max_history` | int | Prompt command-history size |
 
 ### Usage
 - Get value: `cvar <name>`
@@ -383,16 +396,15 @@ make
 - Customizable key bindings
 - Tab handling (space expansion)
 - Selection and clipboard operations
+- Undo/redo (linear, snapshot-based, 64 entries deep)
 
 ### Known Limitations
 - Tab alignment may not be perfect with mixed spaces
 - Basic error handling
-- No undo/redo support
 
 ### Future Enhancements (no ordering)
 - Inline documentation needs improvement, to be re-done
 - Code base need a good cleanup as there is a lots of comments all over the place
-- Undo/Redo system
 - Additional language support
 - Search/Replace
 - Better keyboard layouts for Nintendo Switch

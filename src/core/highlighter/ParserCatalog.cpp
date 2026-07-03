@@ -1,0 +1,69 @@
+#include "ParserCatalog.h"
+
+#include <string>
+
+#include <tree_sitter/tree-sitter-cpp.h>
+#include <tree_sitter/tree-sitter-json.h>
+
+#include "query/cpp_query.h"
+#include "query/json_query.h"
+
+
+const std::unordered_map<HighLightId, ParserDescriptor> &ParserCatalog::getDescriptors() {
+    static const std::unordered_map<HighLightId, ParserDescriptor> DESCRIPTORS = {
+        { HighLightId::Json, {
+            .language           = tree_sitter_json(),
+            .name               = "JSON",
+            .argument_value     = "json",
+            .files_format       = {".json", ".JSON"},
+            .query_source       = json_query,
+            .capture_tokens     = {
+                {"keyword",  TokenId::Keyword},
+                {"string",   TokenId::String},
+                {"number",   TokenId::Number},
+                {"comment",  TokenId::Comment},
+                {"constant", TokenId::Constant}
+            }
+        }},
+        { HighLightId::Cpp, {
+            .language           = tree_sitter_cpp(),
+            .name               = "C++",
+            .argument_value     = "cpp",
+            .files_format       = {".c", ".C", ".cc", ".CC", ".cpp", ".CPP", ".h", ".H", ".hpp", ".HPP", ".cxx", ".CXX"},
+            .query_source       = cpp_query,
+            .capture_tokens     = {
+                {"keyword",      TokenId::Keyword},
+                {"statement",    TokenId::Statement},
+                {"string",       TokenId::String},
+                {"number",       TokenId::Number},
+                {"comment",      TokenId::Comment},
+                {"preprocessor", TokenId::Preprocessor},
+                {"type",         TokenId::Type},
+                {"constant",     TokenId::Constant},
+                {"function",     TokenId::Function},
+                {"variable",     TokenId::Variable}
+            }
+        }}
+    };
+
+    return DESCRIPTORS;
+}
+
+std::unordered_map<HighLightId, Parser> ParserCatalog::createParsers() {
+    std::unordered_map<HighLightId, Parser> parsers;
+    for (const auto &[id, descriptor] : getDescriptors()) {
+        parsers.try_emplace(id, descriptor);
+    }
+
+    return parsers;
+}
+
+HighLightId ParserCatalog::findModeByExtension(const std::string_view extension) {
+    for (const auto &[id, descriptor] : getDescriptors()) {
+        if (descriptor.files_format.contains(std::string(extension))) {
+            return id;
+        }
+    }
+
+    return HighLightId::None;
+}

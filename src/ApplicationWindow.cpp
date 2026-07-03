@@ -20,9 +20,11 @@
 #include "command/OpenFileCommand.h"
 #include "command/PasteTextCommand.h"
 #include "command/QuitCommand.h"
+#include "command/RedoCommand.h"
 #include "command/ResetCVarFloatCommand.h"
 #include "command/SaveFileCommand.h"
 #include "command/SetHighLightCommand.h"
+#include "command/UndoCommand.h"
 #include "core/cursor/buffer/StringBuffer.h"
 #include "core/cursor/buffer/VectorBuffer.h"
 #include "core/cursor/buffer/LineBuffer.h"
@@ -140,6 +142,8 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     m_command_manager.registerCommand(u"copy", std::make_shared<CopyTextCommand>());
     m_command_manager.registerCommand(u"paste", std::make_shared<PasteTextCommand>());
     m_command_manager.registerCommand(u"cut", std::make_shared<CutTextCommand>());
+    m_command_manager.registerCommand(u"undo", std::make_shared<UndoCommand>());
+    m_command_manager.registerCommand(u"redo", std::make_shared<RedoCommand>());
     m_command_manager.registerCommand(u"move", std::make_shared<MoveCursorCommand>(m_prompt_state));
     m_command_manager.registerCommand(u"exec", std::make_shared<ExecCommand>());
     m_command_manager.registerCommand(u"auto_complete", std::make_shared<AutoCompleteCommand>(m_prompt_state));
@@ -351,7 +355,6 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
         }
 
         if (fromPrompt) {
-            // If a command is not running from direct prompt input, don't add it to history
             m_prompt_state.addHistory(command);
 
             // Move focus to the editor if we run this command from the prompt,

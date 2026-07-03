@@ -19,6 +19,10 @@ bind Ctrl c copy
 bind Ctrl x cut
 bind Ctrl v paste
 
+# Undo and redo the last text modifications
+bind Ctrl z undo
+bind Ctrl+Shift z redo
+
 # Save the current buffer (will ask for confirmation before erasing a new file)
 bind Ctrl+Shift s save
 

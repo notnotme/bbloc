@@ -34,7 +34,7 @@ public:
     /**
      * @brief Sets the Color value using string arguments.
      *
-     * The vector of arguments must contain 4 items containing the red, green, blue, and alpha value.
+     * The vector of arguments must contain 3 items (red, green, blue), with an optional 4th alpha item defaulting to 255.
      *
      * @param args The string arguments to parse into a Color value.
      * @return Nothing in case of success, an error message otherwise.

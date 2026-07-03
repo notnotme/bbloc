@@ -37,7 +37,7 @@ public:
      *
      * Changes the highlighting behavior based on the provided arguments.
      * Expect 1 argument which is the parser name.
-     * See Highlighter::PARSERS for potential arguments.
+     * See HighLighter::getParserCompletions for the supported modes.
      *
      * @param payload The cursor context containing the editor state to be modified.
      * @param args Command arguments that specify the highlighting options to apply.

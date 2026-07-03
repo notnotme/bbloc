@@ -10,9 +10,9 @@
 
 
 /**
- * @brief Command for executing external commands in the text editor.
+ * @brief Command for executing editor commands from a file.
  *
- * This class implements the Command interface for executing commands inside a text file,
+ * This class implements the Command interface for executing editor commands listed in a text file,
  * potentially capturing their output and integrating it with the editor.
  */
 class ExecCommand final : public Command<CursorContext> {
@@ -35,13 +35,13 @@ public:
     void provideAutoComplete(int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
 
     /**
-     * @brief Executes the external command.
+     * @brief Executes the editor commands read from a file.
      *
      * Read a text file and run the command line by line. Redirecting the output to the prompt if necessary.
      * Expect 1 argument which is the file path where to read the file with the list of commands.
      *
      * @param payload The cursor context at the point of execution.
-     * @param args Command arguments specifying the external command to run and its parameters.
+     * @param args A single argument: the path to the file containing the commands to execute.
      * @return An optional message indicating the result of the exec operation.
      */
     [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, const std::vector<std::u16string_view> &args) override;

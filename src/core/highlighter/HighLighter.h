@@ -4,7 +4,6 @@
 #include <functional>
 #include <optional>
 #include <unordered_map>
-#include <unordered_set>
 #include <string_view>
 
 #include <tree_sitter/api.h>
@@ -13,6 +12,7 @@
 #include "../cursor/buffer/BufferEdit.h"
 #include "../cursor/Cursor.h"
 #include "HighLightId.h"
+#include "Parser.h"
 #include "TokenId.h"
 
 
@@ -36,21 +36,11 @@ private:
     };
 
 private:
-    /**
-     * @brief Holds language-specific parser data, mapping logic, and queries.
-     */
-    struct Parser final {
-        const TSLanguage* language;                         ///< Pointer to the Tree-sitter language definition.
-        const std::string name;                             ///< Human-readable name of the language.
-        const std::string argument_value;                   ///< Argument string usable in the prompt to select this parser.
-        const std::unordered_set<std::string> files_format; ///< Set of supported file extensions for the language.
-        const std::string query_source;                     ///< Source code of the Tree-sitter query for highlighting.
-        TSQuery *query;                                     ///< Compiled Tree-sitter query.
-    };
-
-private:
     /** Reference to the cursor giving the text data to this highlighter */
     const Cursor &m_cursor;
+
+    /** Compiled parsers indexed by highlighting mode; each Parser owns its tree-sitter query. */
+    const std::unordered_map<HighLightId, Parser> m_parsers;
 
     /** The current active parser module, or nullptr. Is used only to avoid a map lookup for each character.  */
     const Parser *p_current_parser;
@@ -73,7 +63,7 @@ private:
     /** Currently active highlighting mode. */
     HighLightId m_high_light;
 
-    /** true when a tree-sitter needs to reparse the tree and we to build a new cache */
+    /** true when the tree-sitter tree must be reparsed and the line cache rebuilt. */
     bool m_is_dirty;
 
 private:
@@ -88,9 +78,6 @@ private:
      * @return A string view containing the line of text, starting from the said column, until the end of the said line (\n).
      */
     [[nodiscard]] std::optional<std::u16string_view> readCallback(uint32_t line, uint32_t column) const;
-
-    /** Static map of registered parsers indexed by highlighting mode. */
-    static const std::unordered_map<HighLightId, Parser> PARSERS;
 
 public:
     /** @brief Deleted copy constructor. */

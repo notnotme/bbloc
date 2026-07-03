@@ -33,7 +33,7 @@ private:
       * @brief: Draw the text layer of the info bar.
       *
       * @param context A reference to the cursor context.
-      * @param viewState A reference to the Prompt view state.
+      * @param viewState A reference to the InfoBar view state.
       */
     void drawText(const CursorContext &context, const ViewState &viewState) const;
 

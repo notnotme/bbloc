@@ -13,11 +13,14 @@ add_executable(bbloc
         src/core/cursor/buffer/LineBuffer.cpp
         src/core/cursor/Cursor.cpp
         src/core/cursor/PromptCursor.cpp
+        src/core/cursor/UndoHistory.cpp
         src/core/cvar/CVarBool.cpp
         src/core/cvar/CVarColor.cpp
         src/core/cvar/CVarInt.cpp
         src/core/cvar/CVarFloat.cpp
         src/core/highlighter/HighLighter.cpp
+        src/core/highlighter/Parser.cpp
+        src/core/highlighter/ParserCatalog.cpp
         src/core/renderer/AtlasArray.cpp
         src/core/renderer/QuadBuffer.cpp
         src/core/renderer/QuadProgram.cpp
@@ -38,6 +41,8 @@ add_executable(bbloc
         src/command/CopyTextCommand.cpp
         src/command/PasteTextCommand.cpp
         src/command/CutTextCommand.cpp
+        src/command/UndoCommand.cpp
+        src/command/RedoCommand.cpp
         src/command/MoveCursorCommand.cpp
         src/command/ExecCommand.cpp
         src/command/AutoCompleteCommand.cpp

@@ -23,8 +23,8 @@
  *
  * While a line is the current line:
  *   - its characters are absent from m_buffer,
- *   - m_line_data[m_current].count is kept at 0,
- *   - m_line_data[m_current].start does not change (important to keep bytecount/offset for BufferEdits)
+ *   - m_line_data[m_current_line_index].count is kept at 0,
+ *   - m_line_data[m_current_line_index].start does not change (important to keep bytecount/offset for BufferEdits)
  *   - the source of truth for its content/length is m_current_line.
  *
  * Editing/erasing that stays on the current line only touches m_current_line and is cheap (no reflow of buffer).
@@ -61,7 +61,7 @@ private:
      * @brief Commits m_current_line back into m_buffer at the current line slot.
      *
      * Inserts m_current_line into m_buffer, restores
-     * m_line_data[m_current].count and shifts the following lines' offsets.
+     * m_line_data[m_current_line_index].count and shifts the following lines' offsets.
      */
     void commitCurrentLine();
 

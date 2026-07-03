@@ -16,7 +16,9 @@ enum class TokenId {
     Comment,      ///< A comment (single-line, multi-line, or documentation).
     Preprocessor, ///< A preprocessor directive (e.g., #include, #define).
     Type,         ///< A type identifier.
-    Constant      ///< A constant or macro.
+    Constant,     ///< A constant or macro.
+    Function,     ///< A function or method name (definition or call).
+    Variable      ///< A variable, parameter, or member field.
 };
 
 

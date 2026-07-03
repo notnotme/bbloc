@@ -72,7 +72,7 @@ uint32_t LineBuffer::getByteCount(uint32_t lineStart, uint32_t columnStart, uint
         return 0;
     }
 
-    // Find the start and end point in the cache, then subtract their offsets. Take in account "\n".
+    // Find the start and end point in the line metadata, then subtract their offsets. Take in account "\n".
     const auto start_byte_offset = m_line_data[lineStart].start + columnStart;
     const auto end_byte_offset = m_line_data[lineEnd].start + columnEnd;
     const auto line_ends = lineEnd - lineStart; // "\n"

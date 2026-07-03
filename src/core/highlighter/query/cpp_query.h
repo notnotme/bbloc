@@ -6,73 +6,78 @@
 
 static const std::string cpp_query =
 R""""(
-    (auto) @keyword
+    ; ---- Comments / literals ----
+    (comment) @comment
+    (string_literal) @string
+    (raw_string_literal) @string
+    (char_literal) @string
+    (number_literal) @number
+
+    ; ---- Preprocessor ----
+    (preproc_def name: (identifier) @constant)
+    (preproc_function_def name: (identifier) @function)
+    (preproc_ifdef name: (identifier) @constant)
+    (preproc_defined (identifier) @constant)
+    (preproc_include path: (system_lib_string) @string)
+    (preproc_directive) @preprocessor
+    [
+        "#include" "#define" "#if" "#else" "#elif"
+        "#ifdef" "#ifndef" "#elifdef" "#endif" "defined"
+    ] @preprocessor
+
+    ; ---- Functions & methods: definitions ----
+    (function_declarator declarator: (identifier) @function)
+    (function_declarator declarator: (field_identifier) @function)
+    (function_declarator declarator: (qualified_identifier name: (identifier) @function))
+    (function_declarator declarator: (destructor_name) @function)
+    (function_declarator declarator: (operator_name) @function)
+
+    ; ---- Functions & methods: calls ----
+    (call_expression function: (identifier) @function)
+    (call_expression function: (field_expression field: (field_identifier) @function))
+    (call_expression function: (qualified_identifier name: (identifier) @function))
+    (template_function name: (identifier) @function)
+    (template_method name: (field_identifier) @function)
+
+    ; ---- Types ----
     (type_identifier) @type
     (primitive_type) @type
-    (string_literal) @string
-    (number_literal) @number
-    (comment) @comment
-    (null "nullptr") @constant
-    (preproc_def) @preprocessor
-    (preproc_include path: (system_lib_string) @string)
-    (preproc_include path: (string_literal) @string)
-    (preproc_ifdef name: (identifier) @preprocessor)
+    (sized_type_specifier) @type
+    (namespace_identifier) @type
+    (auto) @keyword
+
+    ; ---- Constants ----
+    (this) @constant
+    (null) @constant
+    (true) @constant
+    (false) @constant
+    (enumerator name: (identifier) @constant)
+
+    ; ---- Control flow ----
     [
-        "break"
-        "catch"
-        "class"
-        "co_await"
-        "co_return"
-        "co_yield"
-        "concept"
-        "constexpr"
-        "const"
-        "constinit"
-        "consteval"
-        "default"
-        "delete"
-        "explicit"
-        "export"
-        "final"
-        "friend"
-        "import"
-        "module"
-        "mutable"
-        "namespace"
-        "noexcept"
-        "new"
-        "override"
-        "private"
-        "protected"
-        "public"
-        "requires"
-        "static"
-        "template"
-        "throw"
-        "try"
-        "typename"
-        "using"
-        "virtual"
-        "case"
-        "do"
-        "else"
-        "if"
-        "switch"
-        "while"
-        "return"
+        "if" "else" "switch" "case" "default" "do" "while" "for"
+        "break" "continue" "return" "goto"
+        "try" "catch" "throw"
+        "co_return" "co_await" "co_yield"
+    ] @statement
+
+    ; ---- Keywords ----
+    [
+        "class" "struct" "enum" "union" "typedef" "namespace" "using"
+        "template" "typename" "concept" "requires" "decltype"
+        "public" "private" "protected" "friend"
+        "virtual" "override" "final" "explicit" "operator"
+        "static" "extern" "inline" "thread_local" "register"
+        "const" "constexpr" "consteval" "constinit" "mutable" "volatile"
+        "noexcept" "static_assert" "sizeof"
+        "new" "delete"
+        "signed" "unsigned" "long" "short"
+        "export" "import" "module"
     ] @keyword
-    ; [
-    ; ] @statement
-    [
-        "#include"
-        "#if"
-        "#else"
-        "#elif"
-        "#ifdef"
-        "#ifndef"
-        "#elifdef"
-        "#endif"
-    ] @preprocessor
+
+    ; ---- Variables (generic catch-alls, must stay last) ----
+    (field_identifier) @variable
+    (identifier) @variable
 )"""";
 
 

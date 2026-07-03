@@ -3,59 +3,19 @@
 #include <ranges>
 #include <utf8.h>
 
-#include <tree_sitter/tree-sitter-cpp.h>
-#include <tree_sitter/tree-sitter-json.h>
+#include "ParserCatalog.h"
 
-#include "query/cpp_query.h"
-#include "query/json_query.h"
-
-
-const std::unordered_map<HighLightId, HighLighter::Parser> HighLighter::PARSERS = {
-    { HighLightId::Json, {
-        .language           = tree_sitter_json(),
-        .name               = "JSON",
-        .argument_value     = "json",
-        .files_format       = {".json", ".JSON"},
-        .query_source       = json_query,
-        .query              = nullptr
-    }},
-    { HighLightId::Cpp, {
-        .language           = tree_sitter_cpp(),
-        .name               = "C++",
-        .argument_value     = "cpp",
-        .files_format       = {".c", ".C", ".cc", ".CC", ".cpp", ".CPP", ".h", ".H", ".hpp", ".HPP", ".cxx", ".CXX"},
-        .query_source       = cpp_query,
-        .query              = nullptr
-    }}
-};
 
 HighLighter::HighLighter(Cursor &cursor)
     : m_cursor(cursor),
+      m_parsers(ParserCatalog::createParsers()),
       p_current_parser(nullptr),
       p_ts_parser(ts_parser_new()),
       p_ts_tree(nullptr),
       p_ts_query_cursor(ts_query_cursor_new()),
       m_input(this, inputCallback, TSInputEncodingUTF16LE),
       m_high_light(HighLightId::None),
-      m_is_dirty(false) {
-
-    // Compile queries
-    for (auto& [id, parser] : const_cast<std::unordered_map<HighLightId, Parser>&>(PARSERS)) {
-        uint32_t error_offset;
-        TSQueryError error_type;
-        parser.query = ts_query_new(
-            parser.language,
-            parser.query_source.data(),
-            parser.query_source.length(),
-            &error_offset,
-            &error_type
-        );
-        if (parser.query == nullptr) {
-            // In a real app we might want to handle this better, but for now:
-            throw std::runtime_error("Tree-sitter query error");
-        }
-    }
-}
+      m_is_dirty(false) {}
 
 HighLighter::~HighLighter() {
     // Cleanup tree
@@ -72,33 +32,19 @@ HighLighter::~HighLighter() {
     // Cleanup query cursor
     ts_query_cursor_delete(p_ts_query_cursor);
     p_ts_query_cursor = nullptr;
-
-    // Cleanup queries
-    for (auto& [id, parser] : const_cast<std::unordered_map<HighLightId, Parser>&>(PARSERS)) {
-        if (parser.query != nullptr) {
-            ts_query_delete(parser.query);
-            parser.query = nullptr;
-        }
-    }
 }
 
 void HighLighter::setMode(const HighLightId highLight) {
     m_high_light = highLight;
     m_is_dirty = true;
 
-    auto *old_language = ts_parser_language(p_ts_parser);
-    if (old_language != nullptr) {
-        // Free dynamic allocation done by the language
-        ts_language_delete(old_language);
-    }
-
     if (highLight == HighLightId::None) {
         // There is no need to keep the old mode
         p_current_parser = nullptr;
     } else {
         // Set new mode
-        const auto &parser = PARSERS.at(highLight);
-        if (! ts_parser_set_language(p_ts_parser, parser.language)) {
+        const auto &parser = m_parsers.at(highLight);
+        if (! ts_parser_set_language(p_ts_parser, parser.getLanguage())) {
             throw std::runtime_error("Could not set parser for language highlight");
         }
 
@@ -115,16 +61,7 @@ void HighLighter::setMode(const HighLightId highLight) {
 }
 
 void HighLighter::setMode(const std::string_view extension) {
-    for (const auto &[id, parser] : PARSERS) {
-        if (parser.files_format.contains(extension.data())) {
-            // Found a match!
-            setMode(id);
-            return;
-        }
-    }
-
-    // Fall back to none
-    setMode(HighLightId::None);
+    setMode(ParserCatalog::findModeByExtension(extension));
 }
 
 std::string_view HighLighter::getModeString() const {
@@ -133,12 +70,12 @@ std::string_view HighLighter::getModeString() const {
         return "TEXT";
     }
 
-    return p_current_parser->name;
+    return p_current_parser->getName();
 }
 
 void HighLighter::parse() {
     if (p_current_parser != nullptr && m_is_dirty) {
-        // Reuse the old tree to parse create a new one, if p_ts_tree is nullptr, start from scratch
+        // Reuse the old tree to parse and create a new one; if p_ts_tree is nullptr, parse from scratch
         auto *new_tree = ts_parser_parse(p_ts_parser, p_ts_tree, m_input);
         // Delete the old tree and set the new as the current one
         if (p_ts_tree != nullptr) {
@@ -157,12 +94,12 @@ void HighLighter::updateCache() const {
     m_line_cache.clear();
     m_line_cache.resize(line_count);
 
-    if (p_ts_tree == nullptr || p_current_parser == nullptr || p_current_parser->query == nullptr) {
+    if (p_ts_tree == nullptr || p_current_parser == nullptr) {
         return;
     }
 
     const auto root_node = ts_tree_root_node(p_ts_tree);
-    ts_query_cursor_exec(p_ts_query_cursor, p_current_parser->query, root_node);
+    ts_query_cursor_exec(p_ts_query_cursor, p_current_parser->getQuery(), root_node);
 
     TSQueryMatch match;
     while (ts_query_cursor_next_match(p_ts_query_cursor, &match)) {
@@ -172,24 +109,7 @@ void HighLighter::updateCache() const {
             const auto start_point = ts_node_start_point(node);
             const auto end_point = ts_node_end_point(node);
 
-            uint32_t capture_name_len;
-            const auto capture_name = ts_query_capture_name_for_id(
-                p_current_parser->query,
-                capture.index,
-                &capture_name_len
-            );
-
-            auto token_id = TokenId::None;
-
-            const auto name = std::string_view(capture_name, capture_name_len);
-            if (name == "keyword") token_id = TokenId::Keyword;
-            else if (name == "statement") token_id = TokenId::Statement;
-            else if (name == "string") token_id = TokenId::String;
-            else if (name == "number") token_id = TokenId::Number;
-            else if (name == "comment") token_id = TokenId::Comment;
-            else if (name == "preprocessor") token_id = TokenId::Preprocessor;
-            else if (name == "type") token_id = TokenId::Type;
-            else if (name == "constant") token_id = TokenId::Constant;
+            const auto token_id = p_current_parser->getTokenId(capture.index);
             if (token_id == TokenId::None) continue;
 
             for (auto line = start_point.row; line <= end_point.row && line < line_count; ++line) {
@@ -223,26 +143,20 @@ void HighLighter::edit(const BufferEdit &edit) {
 }
 
 bool HighLighter::isSupported(const std::string_view extension) {
-    for (const auto &parser: std::views::values(PARSERS)) {
-        if (parser.files_format.contains(extension.data())) {
-            return true;
-        }
-    }
-
-    if (extension == ".txt" || extension == ".TXT") {
-        // So the set_hl_command can work with "txt"
+    if (ParserCatalog::findModeByExtension(extension) != HighLightId::None) {
         return true;
     }
 
-    return false;
+    // So the set_hl_command can work with "txt"
+    return extension == ".txt" || extension == ".TXT";
 }
 
 void HighLighter::getParserCompletions(const AutoCompleteCallback &callback) {
     // Add a "txt" item, for HighLightId::None
     callback(u"txt");
-    for (const auto &parser: std::views::values(PARSERS)) {
-        const auto utf8_argument_value = utf8::utf8to16(parser.argument_value);
-        callback(utf8_argument_value);
+    for (const auto &descriptor: std::views::values(ParserCatalog::getDescriptors())) {
+        const auto utf16_argument_value = utf8::utf8to16(descriptor.argument_value);
+        callback(utf16_argument_value);
     }
 }
 
@@ -264,14 +178,11 @@ TokenId HighLighter::getHighLightAtPosition(const uint32_t line, const uint32_t 
 std::optional<std::u16string_view> HighLighter::readCallback(const uint32_t line, const uint32_t column) const {
     const auto line_count = m_cursor.getLineCount();
     if (line > line_count - 1) {
-        // At line_count -1, then there is no more data to process
         return std::nullopt;
     }
 
     const auto string = m_cursor.getString(line);
     if (line < line_count && column < string.length()) {
-        // Not at the very end of the buffer,
-        // and not at the end of a line, then there is nothing more to do
         return m_cursor.getString(line).substr(column);
     }
 

@@ -77,7 +77,7 @@ private:
     void drawMarginText(const CursorContext &context, const ViewState &viewState, int32_t lineCountWidth, int32_t scrollY) const;
 
     /**
-     * @brief: Draw the Cursor the text layer in the of the editor.
+     * @brief Draw the text layer (glyphs, selection, and cursor indicator) of the editor.
      *
      * @param context A reference to the cursor context.
      * @param viewState A reference to the Editor view state.
