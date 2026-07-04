@@ -86,7 +86,7 @@ void ApplicationWindow::updateOrthogonal(const int32_t width, const int32_t heig
     m_orthogonal[15] = 1.0f;
 }
 
-void ApplicationWindow::create(const std::string_view title, const int32_t width, const int32_t height) {
+void ApplicationWindow::create(const std::string_view title, const int32_t width, const int32_t height, const int32_t argc, const char *argv[]) {
     // Init SDL
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         throw std::runtime_error(std::string("Failed to initialize SDL: ").append(SDL_GetError()));
@@ -189,6 +189,25 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
 
     // Don't run it "from prompt", so its not added to history
     runCommand(std::u16string(u"exec ").append(utf8::utf8to16(path)).append(u"autoexec"), false);
+
+    if (argc > 1) {
+        // Single editor buffer: only the first path is opened
+        openFile(argv[1]);
+    }
+}
+
+void ApplicationWindow::openFile(const std::string_view path) {
+    auto utf16_path = std::u16string();
+    try {
+        utf16_path = utf8::utf8to16(path);
+    } catch (const utf8::exception &) {
+        m_prompt_state.setRunningState(PromptState::RunningState::Message);
+        resetPrompt(u"Invalid UTF-8 encoding in path.");
+        return;
+    }
+
+    // Quote the path so tokenize keeps it as a single argument even with spaces
+    runCommand(std::u16string(u"open \"").append(utf16_path).append(u"\""), false);
 }
 
 void ApplicationWindow::mainLoop() {

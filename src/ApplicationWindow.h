@@ -155,6 +155,16 @@ private:
      */
     bool runCommand(std::u16string_view command, bool fromPrompt) override;
 
+    /**
+     * @brief Opens the file at the given path in the editor.
+     *
+     * Delegates to the "open" command; must be called after commands are registered.
+     * Errors (missing file, invalid encoding) are shown as a prompt message.
+     *
+     * @param path UTF-8 encoded path of the file to open.
+     */
+    void openFile(std::string_view path);
+
 public:
     /** @brief Deleted copy constructor. */
     ApplicationWindow(const ApplicationWindow &) = delete;
@@ -171,11 +181,16 @@ public:
     /**
      * @brief Creates the SDL window and initializes OpenGL context.
      *
+     * After command registration and the autoexec run, opens the file given as first
+     * program argument, if any.
+     *
      * @param title The window title.
      * @param width Initial window width in pixels.
      * @param height Initial window height in pixels.
+     * @param argc Program argument count, as received by main().
+     * @param argv Program argument values, as received by main().
      */
-    void create(std::string_view title, int32_t width, int32_t height);
+    void create(std::string_view title, int32_t width, int32_t height, int32_t argc, const char *argv[]);
 
     /** @brief Cleans up all allocated resources and destroys the window. */
     void destroy();

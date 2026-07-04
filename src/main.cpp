@@ -19,10 +19,9 @@
 #include "ApplicationWindow.h"
 
 
-int main(int argc, char *argv[]) {
-    // TODO use argc and argv and try to load files
+int main(const int argc, const char *argv[]) {
     ApplicationWindow window;
-    window.create("bbloc", 1280, 720);
+    window.create("bbloc", 1280, 720, argc, argv);
     window.mainLoop();
     window.destroy();
     return EXIT_SUCCESS;
