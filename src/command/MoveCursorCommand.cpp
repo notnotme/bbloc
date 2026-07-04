@@ -83,8 +83,9 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
     switch (payload.focus_target) {
         case FocusTarget::Prompt:
             switch (movement) {
+                // History is not navigable while a feedback expects an answer.
                 case Movement::UP:
-                    if (m_prompt_state.getHistoryCount() > 0) {
+                    if (!payload.command_feedback && m_prompt_state.getHistoryCount() > 0) {
                         m_prompt_state.clearCompletions();
 
                         const auto command = m_prompt_state.previousHistory();
@@ -94,7 +95,7 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
                     }
                 break;
                 case Movement::DOWN:
-                    if (m_prompt_state.getHistoryCount() > 0) {
+                    if (!payload.command_feedback && m_prompt_state.getHistoryCount() > 0) {
                         m_prompt_state.clearCompletions();
 
                         const auto command = m_prompt_state.nextHistory();
