@@ -21,9 +21,11 @@
 #include <string>
 
 #include <tree_sitter/tree-sitter-cpp.h>
+#include <tree_sitter/tree-sitter-ini.h>
 #include <tree_sitter/tree-sitter-json.h>
 
 #include "query/cpp_query.h"
+#include "query/ini_query.h"
 #include "query/json_query.h"
 
 
@@ -60,6 +62,19 @@ const std::unordered_map<HighLightId, ParserDescriptor> &ParserCatalog::getDescr
                 {"constant",     TokenId::Constant},
                 {"function",     TokenId::Function},
                 {"variable",     TokenId::Variable}
+            }
+        }},
+        { HighLightId::Ini, {
+            .language           = tree_sitter_ini(),
+            .name               = "INI",
+            .argument_value     = "ini",
+            .files_format       = {".ini", ".INI"},
+            .query_source       = ini_query,
+            .capture_tokens     = {
+                {"comment", TokenId::Comment},
+                {"type",    TokenId::Type},
+                {"keyword", TokenId::Keyword},
+                {"string",  TokenId::String}
             }
         }}
     };

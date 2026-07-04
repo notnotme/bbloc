@@ -133,6 +133,7 @@ classDiagram
         None
         Cpp
         Json
+        Ini
     }
     class TokenId {
         <<enum>>
@@ -305,6 +306,18 @@ classDiagram
     class CursorContext {
         <<runtime struct>>
     }
+    class ScrollState {
+        <<struct>>
+        note: "scroll x/y + follow_indicator"
+    }
+    class ColumnStick {
+        <<struct>>
+        note: "sticky column for vertical moves"
+    }
+    class SearchState {
+        <<struct>>
+        note: "term + match index/count"
+    }
     class View~TState~ {
         <<abstract>>
     }
@@ -330,6 +343,9 @@ classDiagram
     CommandManager o-- Command~T~
     CursorContext *-- TextBuffer
     CursorContext *-- HighLighter
+    CursorContext *-- ScrollState
+    CursorContext *-- ColumnStick
+    CursorContext *-- SearchState
     Theme o-- CVar
     View~TState~ o-- Renderer
     View~TState~ ..> CursorContext : receives as parameter

@@ -17,7 +17,7 @@ bbloc is a minimalist text editor developed in C++ using SDL2, OpenGL, glad, Fre
 
 ## Features
 
-- **Syntax Highlighting**: Built on tree-sitter for C++ and JSON syntax highlighting (more to come)
+- **Syntax Highlighting**: Built on tree-sitter for C++, JSON, and INI syntax highlighting (more to come)
 - **Command-Driven Interface**: Execute operations via text commands with auto-completion
 - **Real-Time Configuration**: Change colors, dimensions, and settings at runtime
 - **Customizable Key Bindings**: Rebind any key combination to commands
@@ -76,7 +76,7 @@ Actions can be mapped to keystrokes using the `bind` command. The editor include
 
 #### Syntax Highlighting
 - **Tree-sitter Integration**: Parse text for syntax patterns
-- **Language Parsers**: Support for C++ (tree-sitter-cpp) and JSON (tree-sitter-json)
+- **Language Parsers**: Support for C++ (tree-sitter-cpp), JSON (tree-sitter-json), and INI (tree-sitter-ini)
 - **Dynamic Switching**: Change highlight modes based on file extensions
 - **Real-time Updates**: Re-parse incrementaly changed text segments
 
@@ -323,6 +323,7 @@ ApplicationWindow
 - **tree-sitter**: General parser framework
 - **tree-sitter-cpp**: C/C++ language parser
 - **tree-sitter-json**: JSON language parser
+- **tree-sitter-ini**: INI language parser
 
 ### Fonts
 - **JetBrains Mono**: Default font included in repository

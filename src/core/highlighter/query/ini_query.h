@@ -16,20 +16,19 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef HIGH_LIGHT_ID_H
-#define HIGH_LIGHT_ID_H
+#ifndef INI_QUERY_H
+#define INI_QUERY_H
+
+#include <string>
 
 
-/**
- * @brief Identifies the syntax highlighting mode.
- *
- * This enum is used to describe the highlight for a given mode.
- */
-enum class HighLightId {
-    None, ///< No highlighting applied.
-    Cpp,  ///< C++ syntax highlighting.
-    Json, ///< JSON syntax highlighting.
-    Ini   ///< INI syntax highlighting.
-};
+static const std::string ini_query =
+R""""(
+    (comment) @comment
+    (section_name) @type
+    (setting_name) @keyword
+    (setting_value) @string
+)"""";
 
-#endif //HIGH_LIGHT_ID_H
+
+#endif // INI_QUERY_H

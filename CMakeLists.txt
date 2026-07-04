@@ -97,6 +97,11 @@ pkg_check_modules(TREE_SITTER_JSON REQUIRED tree-sitter-json)
 target_include_directories(bbloc PRIVATE ${TREE_SITTER_JSON_INCLUDE_DIRS})
 target_link_libraries(bbloc PRIVATE ${TREE_SITTER_JSON_LIBRARIES})
 
+# tree-sitter ini languages
+pkg_check_modules(TREE_SITTER_INI REQUIRED tree-sitter-ini)
+target_include_directories(bbloc PRIVATE ${TREE_SITTER_INI_INCLUDE_DIRS})
+target_link_libraries(bbloc PRIVATE ${TREE_SITTER_INI_LIBRARIES})
+
 # get_cmake_property(_variableNames VARIABLES)
 # list (SORT _variableNames)
 # foreach (_variableName ${_variableNames})
