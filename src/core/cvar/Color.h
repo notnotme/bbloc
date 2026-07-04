@@ -25,7 +25,7 @@
  *
  * Each component is stored as an 8-bit unsigned byte ranging from 0 to 255.
  */
-struct Color {
+struct Color final {
     uint8_t red;   ///< Red component of the color.
     uint8_t green; ///< Green component of the color.
     uint8_t blue;  ///< Blue component of the color.

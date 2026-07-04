@@ -44,7 +44,7 @@ private:
      *
      * Optimizes horizontal scroll range and avoids remeasuring the longest line every frame.
      */
-    struct LongestLineCache {
+    struct LongestLineCache final {
         uint32_t index; ///< Line index of the longest line.
         uint32_t count; ///< Character count in the longest line.
         int32_t width;  ///< Width in pixels of the longest line.
