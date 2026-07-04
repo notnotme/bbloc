@@ -42,7 +42,7 @@ std::optional<std::u16string> SetHighLightCommand::run(CursorContext &payload, c
     const auto extension = std::u16string(u".").append(args[0]);
     const auto utf8_extension = utf8::utf16to8(extension);
     if (!HighLighter::isSupported(utf8_extension)) {
-        return std::u16string(u"Unsupported highlight mode: ").append(extension);
+        return std::u16string(u"Unsupported highlight mode: ").append(args[0]);
     }
 
     payload.highlighter.setMode(utf8_extension);
