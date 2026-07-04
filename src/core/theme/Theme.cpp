@@ -156,3 +156,22 @@ int32_t Theme::measure(const std::u16string_view text, const bool ignoreTabs) co
     }
     return size;
 }
+
+std::u16string Theme::ellipsizeStart(const std::u16string_view text, const int32_t maxWidth) const {
+    if (measure(text, true) <= maxWidth) {
+        return std::u16string(text);
+    }
+
+    const auto max_glyphs = maxWidth / m_font_advance;
+    if (max_glyphs < 1) {
+        return {};
+    }
+
+    auto tail_start = text.length() - static_cast<size_t>(max_glyphs - 1);
+    if (tail_start < text.length() && text[tail_start] >= 0xDC00 && text[tail_start] <= 0xDFFF) {
+        // Never start the tail on a low surrogate, drop it to keep the pair intact
+        ++tail_start;
+    }
+
+    return std::u16string(1, u'…').append(text.substr(tail_start));
+}

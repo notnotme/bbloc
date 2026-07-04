@@ -190,6 +190,18 @@ public:
      * @return Width in pixels.
      */
     [[nodiscard]] int32_t measure(std::u16string_view text, bool ignoreTabs) const;
+
+    /**
+     * @brief Truncates a UTF-16 string from the start so it fits the given width.
+     *
+     * When the text is too wide, the leading part is replaced by an ellipsis (U+2026).
+     * Tabs are ignored, matching measure(text, true).
+     *
+     * @param text Text to truncate.
+     * @param maxWidth Maximum width in pixels.
+     * @return The text unchanged if it fits, otherwise the ellipsized tail.
+     */
+    [[nodiscard]] std::u16string ellipsizeStart(std::u16string_view text, int32_t maxWidth) const;
 };
 
 template<typename TPayload>

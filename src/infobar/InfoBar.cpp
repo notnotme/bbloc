@@ -18,7 +18,9 @@
  */
 #include "InfoBar.h"
 
+#include <algorithm>
 #include <format>
+
 #include <utf8.h>
 
 #include "../ApplicationWindow.h"
@@ -103,9 +105,10 @@ void InfoBar::drawText(const CursorContext &context, const ViewState &viewState)
     const auto string_info_size = m_theme.measure(string_info, true);
     const auto left_text_offset = static_cast<int16_t>(padding_width);
     const auto right_text_offset = static_cast<int16_t>(width - string_info_size - padding_width);
+    const auto cursor_name_max_width = std::max(right_text_offset - left_text_offset - padding_width, 0);
 
     const auto strings = {
-        std::pair { left_text_offset, string_cursor_name },
+        std::pair { left_text_offset, m_theme.ellipsizeStart(string_cursor_name, cursor_name_max_width) },
         std::pair { right_text_offset, string_info }
     };
 
@@ -131,11 +134,6 @@ void InfoBar::drawText(const CursorContext &context, const ViewState &viewState)
                     drawCharacter(pen_position_x, pen_position_y, character, text_color);
                     pen_position_x += font_advance;
                     ++quad_in_buffer;
-                break;
-            }
-
-            // todo: fixme there is no reason to have this here, cursor name will be truncated if too long
-            if (pen_position_x > position_x + width) {
                 break;
             }
         }
