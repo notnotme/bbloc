@@ -19,6 +19,8 @@
 #ifndef TOKEN_ID_H
 #define TOKEN_ID_H
 
+#include <cstddef>
+
 
 /**
  * @brief Represents the classification of a token for syntax highlighting or parsing.
@@ -38,6 +40,9 @@ enum class TokenId {
     Function,     ///< A function or method name (definition or call).
     Variable      ///< A variable, parameter, or member field.
 };
+
+/** @brief Number of TokenId values; must track the last enumerator of TokenId. */
+inline constexpr std::size_t TOKEN_ID_COUNT = static_cast<std::size_t>(TokenId::Variable) + 1;
 
 
 #endif //TOKEN_ID_H

@@ -19,12 +19,13 @@
 #ifndef FONT_SIZE_COMMAND_H
 #define FONT_SIZE_COMMAND_H
 
+#include <span>
 #include <string>
-#include <vector>
 
 #include "../core/base/AutoCompleteCallback.h"
 #include "../core/CursorContext.h"
 #include "../core/base/Command.h"
+#include "../core/base/U16StringMap.h"
 
 
 /**
@@ -45,7 +46,7 @@ private:
 
 private:
     /** Lookup map to ease mapping font size. */
-    static const std::unordered_map<std::u16string, Size> SIZE_MAP;
+    static const U16StringMap<Size> SIZE_MAP;
 
     /**
      * Map a "size" argument into a Size. Argument "size" can be one of "+" or "-".
@@ -68,7 +69,7 @@ public:
      * @param input The current partial input from the user for this argument.
      * @param itemCallback A callback to be invoked with each completion suggestion.
      */
-    void provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
+    void provideAutoComplete(std::span<const std::u16string_view> previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
 
     /**
      * @brief Executes the font size adjustment.
@@ -84,7 +85,7 @@ public:
      * @param args Command arguments specifying how to adjust the font size.
      * @return An optional message indicating the new font size or the result of the operation.
      */
-    [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, const std::vector<std::u16string_view> &args) override;
+    [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, std::span<const std::u16string_view> args) override;
 };
 
 

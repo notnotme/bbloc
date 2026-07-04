@@ -25,7 +25,9 @@ AtlasArray::AtlasArray()
     : m_max_row_height(0),
       m_character_layer(0),
       m_next_character_x(0),
-      m_next_character_y(0) {}
+      m_next_character_y(0),
+      m_ascii_characters(),
+      m_ascii_present() {}
 
 void AtlasArray::create() {
     // No-op
@@ -83,6 +85,17 @@ const AtlasEntry &AtlasArray::insert(const char16_t character, const uint32_t wi
         m_max_row_height = static_cast<uint8_t>(glyph_height);
     }
 
+    if (character < ASCII_ENTRY_COUNT) {
+        if (m_ascii_present[character]) {
+            throw std::runtime_error("AtlasArray::insert: failed.");
+        }
+
+        m_ascii_present[character] = true;
+        auto &slot = m_ascii_characters[character];
+        slot = entry;
+        return slot;
+    }
+
     const auto &[new_entry, success] = m_characters.insert({character, entry});
     if (!success) {
         throw std::runtime_error("AtlasArray::insert: failed.");
@@ -92,6 +105,10 @@ const AtlasEntry &AtlasArray::insert(const char16_t character, const uint32_t wi
 }
 
 const AtlasEntry* AtlasArray::get(const char16_t character) const {
+    if (character < ASCII_ENTRY_COUNT) {
+        return m_ascii_present[character] ? &m_ascii_characters[character] : nullptr;
+    }
+
     const auto entry = m_characters.find(character);
     if (entry == m_characters.end()) {
         return nullptr;
@@ -105,6 +122,7 @@ uint8_t AtlasArray::getCurrentLayer() const {
 }
 
 void AtlasArray::clearCharacters() {
+    m_ascii_present.fill(false);
     m_characters.clear();
     m_character_layer = 0;
     m_next_character_x = 0;
@@ -113,7 +131,8 @@ void AtlasArray::clearCharacters() {
 }
 
 void AtlasArray::destroy() {
-    // Clear maps
+    // Clear entries
+    m_ascii_present.fill(false);
     m_characters.clear();
 
     // Default states

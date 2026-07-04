@@ -20,7 +20,9 @@
 #define APPLICATION_WINDOW_H
 
 #include <array>
+#include <span>
 #include <string_view>
+#include <vector>
 
 #include <SDL.h>
 
@@ -130,6 +132,9 @@ private:
     /** 4x4 orthogonal projection matrix for 2D rendering. */
     std::array<float, 16> m_orthogonal;
 
+    /** Scratch vector whose capacity is reused by runCommand to tokenize command strings. */
+    std::vector<std::u16string_view> m_token_scratch;
+
     /**
      * @brief Recomputes the orthogonal projection matrix.
      *
@@ -221,7 +226,7 @@ public:
      * @param input Partial input for the current argument.
      * @param itemCallback Callback to return matching argument suggestions.
      */
-    void getArgumentsCompletions(std::u16string_view command, const std::vector<std::u16string_view> &previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) override;
+    void getArgumentsCompletions(std::u16string_view command, std::span<const std::u16string_view> previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) override;
 };
 
 

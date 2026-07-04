@@ -19,9 +19,9 @@
 #ifndef BIND_COMMAND_H
 #define BIND_COMMAND_H
 
+#include <span>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 #include <SDL_keycode.h>
 
@@ -29,6 +29,7 @@
 #include "../core/CommandManager.h"
 #include "../core/CursorContext.h"
 #include "../core/base/Command.h"
+#include "../core/base/U16StringMap.h"
 
 
 /**
@@ -40,7 +41,7 @@
 class BindCommand final : public Command<CursorContext> {
 private:
     /** Lookup map to ease mapping modifiers. */
-    static const std::unordered_map<std::u16string, uint16_t> MODIFIER_MAP;
+    static const U16StringMap<uint16_t> MODIFIER_MAP;
 
     /** Reference to the command manager used to complete command names. */
     CommandManager &m_command_manager;
@@ -95,7 +96,7 @@ public:
      * @param input The current partial input from the user for this argument.
      * @param itemCallback A callback to be invoked with each completion suggestion.
      */
-    void provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
+    void provideAutoComplete(std::span<const std::u16string_view> previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
 
     /**
      * @brief Executes the bind command to create a new key binding.
@@ -110,7 +111,7 @@ public:
      * @param args Command arguments specifying the key, modifiers, and target command.
      * @return An optional message indicating the result of the binding operation.
      */
-    [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, const std::vector<std::u16string_view> &args) override;
+    [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, std::span<const std::u16string_view> args) override;
 
     /**
      * @brief Retrieves the command associated with a specific key combination.

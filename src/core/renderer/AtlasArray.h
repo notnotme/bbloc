@@ -19,6 +19,7 @@
 #ifndef ATLAS_ARRAY_H
 #define ATLAS_ARRAY_H
 
+#include <array>
 #include <cstdint>
 #include <unordered_map>
 
@@ -33,6 +34,10 @@
  */
 class AtlasArray final {
 private:
+    /** Number of codepoints stored in the ASCII fast-path array. */
+    static constexpr char16_t ASCII_ENTRY_COUNT = 128;
+
+private:
     /** Maximum height of the current row (used for packing). */
     uint8_t m_max_row_height;
 
@@ -45,7 +50,13 @@ private:
     /** Current vertical insertion point in the character layer. */
     int32_t m_next_character_y;
 
-    /** Map storing character entries by codepoint. */
+    /** Entries for ASCII codepoints, indexed by codepoint. */
+    std::array<AtlasEntry, ASCII_ENTRY_COUNT> m_ascii_characters;
+
+    /** Presence flags for m_ascii_characters; a zero-sized glyph (e.g. space) is a legal entry. */
+    std::array<bool, ASCII_ENTRY_COUNT> m_ascii_present;
+
+    /** Map storing non-ASCII character entries by codepoint. */
     std::unordered_map<char16_t, AtlasEntry> m_characters;
 
 public:

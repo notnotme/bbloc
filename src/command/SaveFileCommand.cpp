@@ -27,7 +27,7 @@
 #include "../core/CommandManager.h"
 
 
-void SaveFileCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void SaveFileCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) previousArgs;
     if (argumentIndex == 0) {
         // The first argument is the path
@@ -41,7 +41,7 @@ void SaveFileCommand::provideAutoComplete(const std::vector<std::u16string_view>
     }
 }
 
-std::optional<std::u16string> SaveFileCommand::run(CursorContext &payload, const std::vector<std::u16string_view> &args) {
+std::optional<std::u16string> SaveFileCommand::run(CursorContext &payload, const std::span<const std::u16string_view> args) {
     // Check argument counts, keep the cursor name in a variable.
     const auto cursor_name = std::filesystem::path(payload.cursor.getName());
     if (cursor_name.empty() && args.empty() && !payload.from_prompt) {

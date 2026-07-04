@@ -21,16 +21,18 @@
 
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 #include "base/CVar.h"
 #include "base/CVarCallback.h"
 #include "base/Command.h"
 #include "base/GlobalRegistry.h"
 #include "base/AutoCompleteCallback.h"
+#include "base/U16StringMap.h"
 #include "CursorContext.h"
 #include "CVarCommand.h"
 
@@ -48,7 +50,7 @@
 class CommandManager final : public GlobalRegistry<CursorContext> {
 private:
     /** Registered commands. */
-    std::unordered_map<std::u16string, std::shared_ptr<Command<CursorContext>>> m_commands;
+    U16StringMap<std::shared_ptr<Command<CursorContext>>> m_commands;
 
     /** Names of commands excluded from prompt auto-completion. */
     std::unordered_set<std::u16string> m_hidden_commands;
@@ -97,7 +99,7 @@ public:
      * @param tokens List of UTF-16 input string view containing the command and arguments.
      * @return An optional result string for displaying messages in the prompt.
      */
-    std::optional<std::u16string> run(CursorContext &payload, const std::vector<std::u16string_view> &tokens);
+    std::optional<std::u16string> run(CursorContext &payload, std::span<const std::u16string_view> tokens);
 
     /**
      * @brief Gathers auto-completion suggestions for command names.
@@ -117,7 +119,7 @@ public:
      * @param input Current user input string.
      * @param itemCallback Callback to receive argument name suggestions.
      */
-    void getArgumentsCompletion(std::u16string_view command, const std::vector<std::u16string_view> &previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback);
+    void getArgumentsCompletion(std::u16string_view command, std::span<const std::u16string_view> previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback);
 
     /**
      * @brief Tokenizes a UTF-16 input string for command parsing. Splits the input into a list of arguments.
@@ -125,9 +127,9 @@ public:
      * Quoted arguments are preserved as single tokens.
      *
      * @param input The UTF-16 input string.
-     * @return Vector of UTF-16 views representing each argument token.
+     * @param tokens Receives the UTF-16 views of each argument token; cleared first, reusing its capacity.
      */
-    [[nodiscard]] static std::vector<std::u16string_view> tokenize(std::u16string_view input);
+    static void tokenize(std::u16string_view input, std::vector<std::u16string_view> &tokens);
 
     /**
      * @brief Split a UTF-16 input string.

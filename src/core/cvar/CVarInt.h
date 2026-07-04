@@ -52,7 +52,7 @@ public:
      * @param args The vector must contain only one element that is the string representation of the int.
      * @return Nothing in case of success, an error message otherwise.
      */
-    std::optional<std::u16string> setValueFromStrings(const std::vector<std::u16string_view> &args) override;
+    std::optional<std::u16string> setValueFromStrings(std::span<const std::u16string_view> args) override;
 };
 
 

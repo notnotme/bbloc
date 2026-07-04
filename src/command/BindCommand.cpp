@@ -27,7 +27,7 @@
 #include "../core/CommandManager.h"
 
 
-const std::unordered_map<std::u16string, uint16_t> BindCommand::MODIFIER_MAP = {
+const U16StringMap<uint16_t> BindCommand::MODIFIER_MAP = {
     { u"Ctrl", KMOD_CTRL },
     { u"Shift", KMOD_SHIFT },
     { u"Alt", KMOD_ALT },
@@ -37,7 +37,7 @@ const std::unordered_map<std::u16string, uint16_t> BindCommand::MODIFIER_MAP = {
 BindCommand::BindCommand(CommandManager &commandManager)
     : m_command_manager(commandManager) {}
 
-void BindCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void BindCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) previousArgs;
     if (argumentIndex == 0) {
         // Complete the last modifier of an eventual "+" separated combo, keeping what precedes it.
@@ -75,7 +75,7 @@ void BindCommand::provideAutoComplete(const std::vector<std::u16string_view> &pr
     }
 }
 
-std::optional<std::u16string> BindCommand::run(CursorContext &payload, const std::vector<std::u16string_view> &args) {
+std::optional<std::u16string> BindCommand::run(CursorContext &payload, const std::span<const std::u16string_view> args) {
     (void) payload;
     if (args.size() != 3 || args[1].empty()) {
         return u"Usage: bind <modifiers> <key> <command>";
@@ -139,9 +139,7 @@ uint16_t BindCommand::normalizeModifiers(const uint16_t modifiers) {
 }
 
 int32_t BindCommand::mapModifier(const std::u16string_view modifier) {
-    // Need to convert back to a string, since this is originally a split string (with no \0).
-    const auto modifier_str = std::u16string(modifier.begin(), modifier.end());
-    if (const auto &mapped_modifier = MODIFIER_MAP.find(modifier_str); mapped_modifier != MODIFIER_MAP.end()) {
+    if (const auto &mapped_modifier = MODIFIER_MAP.find(modifier); mapped_modifier != MODIFIER_MAP.end()) {
         return mapped_modifier->second;
     }
 

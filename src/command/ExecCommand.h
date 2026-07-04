@@ -19,8 +19,8 @@
 #ifndef EXEC_COMMAND_H
 #define EXEC_COMMAND_H
 
+#include <span>
 #include <string>
-#include <vector>
 
 #include "../core/base/AutoCompleteCallback.h"
 #include "../core/CursorContext.h"
@@ -56,7 +56,7 @@ public:
      * @param input The current partial input from the user for this argument.
      * @param itemCallback A callback to be invoked with each completion suggestion.
      */
-    void provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
+    void provideAutoComplete(std::span<const std::u16string_view> previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
 
     /**
      * @brief Executes the editor commands read from a file.
@@ -68,7 +68,7 @@ public:
      * @param args A single argument: the path to the file containing the commands to execute.
      * @return An optional message indicating the result of the exec operation.
      */
-    [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, const std::vector<std::u16string_view> &args) override;
+    [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, std::span<const std::u16string_view> args) override;
 };
 
 

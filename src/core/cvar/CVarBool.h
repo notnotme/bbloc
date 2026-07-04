@@ -53,7 +53,7 @@ public:
      * @param args Vector of string arguments to parse into a boolean value.
      * @return An error message if the conversion fails, or std::nullopt if successful
      */
-    std::optional<std::u16string> setValueFromStrings(const std::vector<std::u16string_view> &args) override;
+    std::optional<std::u16string> setValueFromStrings(std::span<const std::u16string_view> args) override;
 
     /**
      * @brief Provides completion suggestions for the boolean value.

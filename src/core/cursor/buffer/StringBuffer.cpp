@@ -35,6 +35,10 @@ uint32_t StringBuffer::getStringCount() const {
     return m_line_data.size();
 }
 
+uint32_t StringBuffer::getLongestLineLength(const uint32_t tabWeight) const {
+    return m_longest_line.getLongestLineLength(tabWeight);
+}
+
 uint32_t StringBuffer::getByteOffset(const uint32_t line, const uint32_t column) const {
     // Start to count at column * byte size, then add the total of line * byte size, for "\n".
     const auto byte_offset = (m_line_data[line].start + column) * sizeof(char16_t);
@@ -143,6 +147,8 @@ BufferEdit StringBuffer::insert(uint32_t line, uint32_t column, const std::u16st
     // We know the last position now, we can fill the last bit of the edit struct.
     edit.new_end.line = line;
     edit.new_end.column = column;
+
+    m_longest_line.onEdit(*this, edit);
     return edit;
 }
 
@@ -203,6 +209,7 @@ BufferEdit StringBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd,
         it->start -= erase_length;
     }
 
+    m_longest_line.onEdit(*this, edit);
     return edit;
 }
 
@@ -215,6 +222,7 @@ BufferEdit StringBuffer::clear() {
     m_buffer.clear();
     m_line_data.clear();
     m_line_data.emplace_back(0, 0);
+    m_longest_line.reset();
     return {
         .start_byte = 0,
         .old_end_byte = buffer_size,

@@ -45,20 +45,18 @@ void CommandManager::registerCvar(const std::u16string_view name, const std::sha
     m_cvar_command->registerCvar(name, cvar, callback);
 }
 
-std::optional<std::u16string> CommandManager::run(CursorContext &payload, const std::vector<std::u16string_view> &tokens) {
+std::optional<std::u16string> CommandManager::run(CursorContext &payload, const std::span<const std::u16string_view> tokens) {
     if (tokens.empty()) {
         // Nothing to process
         return std::nullopt;
     }
 
-    // Copy token 0 into a string to avoid looking paste it if using tokens[0].data().
-    const auto command = std::u16string(tokens[0].begin(), tokens[0].end());
-    if (const auto &cmd = m_commands.find(command); cmd != m_commands.end()) {
+    if (const auto &cmd = m_commands.find(tokens[0]); cmd != m_commands.end()) {
         // Skip the first item in the tokens, as it is the command name and we don't need it
-        return cmd->second->run(payload, { tokens.begin() + 1, tokens.end() });
+        return cmd->second->run(payload, tokens.subspan(1));
     }
 
-    return std::u16string(u"Unknown command: ").append(command);
+    return std::u16string(u"Unknown command: ").append(tokens[0]);
 }
 
 void CommandManager::getCommandCompletions(const std::u16string_view input, const bool includeHidden, const AutoCompleteCallback &itemCallback) {
@@ -69,9 +67,8 @@ void CommandManager::getCommandCompletions(const std::u16string_view input, cons
     }
 }
 
-void CommandManager::getArgumentsCompletion(const std::u16string_view command, const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
-    const auto command_str = std::u16string(command.begin(), command.end());
-    if (const auto &cmd = m_commands.find(command_str); cmd != m_commands.end()) {
+void CommandManager::getArgumentsCompletion(const std::u16string_view command, const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
+    if (const auto &cmd = m_commands.find(command); cmd != m_commands.end()) {
         cmd->second->provideAutoComplete(previousArgs, argumentIndex, input, itemCallback);
     }
 }
@@ -125,8 +122,8 @@ void CommandManager::getPathCompletions(const std::u16string_view input, const b
     }
 }
 
-std::vector<std::u16string_view> CommandManager::tokenize(const std::u16string_view input) {
-    std::vector<std::u16string_view> tokens;
+void CommandManager::tokenize(const std::u16string_view input, std::vector<std::u16string_view> &tokens) {
+    tokens.clear();
     auto start = 0;
     auto index = 0;
     while (index < input.length()) {
@@ -165,8 +162,6 @@ std::vector<std::u16string_view> CommandManager::tokenize(const std::u16string_v
             tokens.emplace_back(input.substr(start, index - start));
         }
     }
-
-    return tokens;
 }
 
 std::vector<std::u16string_view> CommandManager::split(const std::u16string_view input, const char16_t delimiter) {

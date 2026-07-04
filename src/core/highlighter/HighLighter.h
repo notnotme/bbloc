@@ -42,16 +42,8 @@
  */
 class HighLighter final {
 private:
-    /** @brief Represents a range of text with a specific TokenId. */
-    struct Span final {
-        const uint32_t start_column; ///< Starting column of the span.
-        const uint32_t end_column;   ///< Ending column of the span.
-        const TokenId token_id;      ///< Classification of the span.
-        Span(const uint32_t startColumn, const uint32_t endColumn, const TokenId tokenId)
-            : start_column(startColumn),
-              end_column(endColumn),
-              token_id(tokenId) {}
-    };
+    /** Number of lines covered by the highlight cache window. */
+    static constexpr uint32_t CACHE_LINE_COUNT = 512;
 
 private:
     /** Reference to the cursor giving the text data to this highlighter */
@@ -72,8 +64,11 @@ private:
     /** Tree-sitter query cursor. */
     TSQueryCursor *p_ts_query_cursor;
 
-    /** Cache of highlighting spans per line. */
-    mutable std::vector<std::vector<Span>> m_line_cache;
+    /** Painted TokenId per column for a window of lines starting at m_cache_start_line; TokenId::None means unpainted. */
+    mutable std::vector<std::vector<TokenId>> m_line_cache;
+
+    /** First line covered by m_line_cache. */
+    mutable uint32_t m_cache_start_line;
 
     /** Tree-sitter input wrapper for reading source text. */
     TSInput m_input;
@@ -81,8 +76,17 @@ private:
     /** Currently active highlighting mode. */
     HighLightId m_high_light;
 
-    /** true when the tree-sitter tree must be reparsed and the line cache rebuilt. */
+    /** true when the tree-sitter tree must be reparsed. */
     bool m_is_dirty;
+
+    /** true when an edit since the last parse changed the buffer line count. */
+    bool m_edit_lines_shifted;
+
+    /** First line touched by the edits accumulated since the last parse. */
+    uint32_t m_dirty_line_min;
+
+    /** Last line touched by the edits accumulated since the last parse. */
+    uint32_t m_dirty_line_max;
 
 private:
     /** @brief Tree-sitter input callback used to supply source code to the parser. */
@@ -96,6 +100,34 @@ private:
      * @return A string view containing the line of text, starting from the said column, until the end of the said line (\n).
      */
     [[nodiscard]] std::optional<std::u16string_view> readCallback(uint32_t line, uint32_t column) const;
+
+    /**
+     * @brief Rebuilds the highlight cache for a window of lines centered on the given line.
+     *
+     * @param line The line that must be covered by the new cache window.
+     */
+    void updateCache(uint32_t line) const;
+
+    /**
+     * @brief Runs the highlight query and paints the cached rows within the given line range.
+     *
+     * Rows with an empty cell vector are lazily resized to their line's current length before painting.
+     *
+     * @param rootNode Root node of the syntax tree to query.
+     * @param firstLine First line to paint (inclusive).
+     * @param lastLine Last line to paint (inclusive).
+     */
+    void paintCacheLines(TSNode rootNode, uint32_t firstLine, uint32_t lastLine) const;
+
+    /**
+     * @brief Repaints the cached lines invalidated since the last parse.
+     *
+     * Covers the accumulated edit span unioned with the structural changes between the old and new
+     * trees, clipped to the cached window. Must be called while p_ts_tree still holds the old tree.
+     *
+     * @param newTree The syntax tree produced by the latest parse.
+     */
+    void repaintChangedLines(TSTree *newTree);
 
 public:
     /** @brief Deleted copy constructor. */
@@ -132,9 +164,6 @@ public:
 
     /** @brief Parses or reparses the current input buffer. */
     void parse();
-
-    /** @brief Updates the line cache using the current syntax tree and query. */
-    void updateCache() const;
 
     /**
      * @brief Notifies the HighLighter about a range of text edits.

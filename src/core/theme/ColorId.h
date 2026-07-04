@@ -19,6 +19,8 @@
 #ifndef COLOR_ID_H
 #define COLOR_ID_H
 
+#include <cstddef>
+
 
 /**
  * @brief Enumeration of color identifiers used in the UI.
@@ -39,6 +41,9 @@ enum class ColorId {
     Border,                 ///< Color used for borders (e.g. between components).
     CursorIndicator         ///< Color of the cursor indicator.
 };
+
+/** @brief Number of ColorId values; must track the last enumerator of ColorId. */
+inline constexpr std::size_t COLOR_ID_COUNT = static_cast<std::size_t>(ColorId::CursorIndicator) + 1;
 
 
 #endif //COLOR_ID_H

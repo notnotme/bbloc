@@ -19,8 +19,8 @@
 #ifndef THEME_H
 #define THEME_H
 
+#include <array>
 #include <memory>
-#include <unordered_map>
 #include <string>
 #include <string_view>
 
@@ -67,14 +67,14 @@ private:
     /** Handle to the font face used for rendering. */
     FT_Face m_font;
 
-    /** Map storing color CVars for ui rendering. */
-    std::unordered_map<ColorId, std::shared_ptr<CVarColor>> m_colors;
+    /** Color CVars for ui rendering, indexed by ColorId. */
+    std::array<std::shared_ptr<CVarColor>, COLOR_ID_COUNT> m_colors;
 
-    /** Map storing color CVars for text highlight rendering. */
-    std::unordered_map<TokenId, std::shared_ptr<CVarColor>> m_highlight_colors;
+    /** Color CVars for text highlight rendering, indexed by TokenId. */
+    std::array<std::shared_ptr<CVarColor>, TOKEN_ID_COUNT> m_highlight_colors;
 
-    /** Map storing dimension CVars used for rendering. */
-    std::unordered_map<DimensionId, std::shared_ptr<CVarInt>> m_dimensions;
+    /** Dimension CVars used for rendering, indexed by DimensionId. */
+    std::array<std::shared_ptr<CVarInt>, DIMENSION_ID_COUNT> m_dimensions;
 
     /** Atlas array storing glyph and sprite metadata. */
     AtlasArray m_atlas_array;
@@ -234,78 +234,78 @@ void Theme::create(GlobalRegistry<TPayload> &commandController, const std::strin
 template<typename TPayload>
 void Theme::registerThemeColorCVar(GlobalRegistry<TPayload> &commandController) {
     // Create default colors for the theme
-    const auto &cvar_margin_background_color         = m_colors.insert({ColorId::MarginBackground,       std::make_shared<CVarColor>(220, 220, 220, 255)});
-    const auto &cvar_info_bar_background_color       = m_colors.insert({ColorId::InfoBarBackground,      std::make_shared<CVarColor>(210, 210, 210, 255)});
-    const auto &cvar_editor_background_color         = m_colors.insert({ColorId::EditorBackground,       std::make_shared<CVarColor>(250, 250, 250, 255)});
-    const auto &cvar_prompt_background_color         = m_colors.insert({ColorId::PromptBackground,       std::make_shared<CVarColor>(210, 210, 210, 255)});
-    const auto &cvar_current_line_background_color   = m_colors.insert({ColorId::LineBackground,         std::make_shared<CVarColor>(  0,   0,   0,  12)});
-    const auto &cvar_selected_text_background_color  = m_colors.insert({ColorId::SelectedTextBackground, std::make_shared<CVarColor>(  0, 200, 255,  32)});
-    const auto &cvar_line_number_color               = m_colors.insert({ColorId::LineNumber,             std::make_shared<CVarColor>(  0,   0,   0, 220)});
-    const auto &cvar_info_bar_text_color             = m_colors.insert({ColorId::InfoBarText,            std::make_shared<CVarColor>(  0,   0,   0, 220)});
-    const auto &cvar_prompt_text_color               = m_colors.insert({ColorId::PromptText,             std::make_shared<CVarColor>(  0,   0,   0, 220)});
-    const auto &cvar_prompt_input_text_color         = m_colors.insert({ColorId::PromptInputText,        std::make_shared<CVarColor>(  0,   0,   0, 220)});
-    const auto &cvar_border_color                    = m_colors.insert({ColorId::Border,                 std::make_shared<CVarColor>(150, 150, 150, 255)});
-    const auto &cvar_cursor_indicator_color          = m_colors.insert({ColorId::CursorIndicator,        std::make_shared<CVarColor>(  0,   0,   0, 255)});
+    const auto &cvar_margin_background_color         = m_colors[static_cast<size_t>(ColorId::MarginBackground)]       = std::make_shared<CVarColor>(220, 220, 220, 255);
+    const auto &cvar_info_bar_background_color       = m_colors[static_cast<size_t>(ColorId::InfoBarBackground)]      = std::make_shared<CVarColor>(210, 210, 210, 255);
+    const auto &cvar_editor_background_color         = m_colors[static_cast<size_t>(ColorId::EditorBackground)]       = std::make_shared<CVarColor>(250, 250, 250, 255);
+    const auto &cvar_prompt_background_color         = m_colors[static_cast<size_t>(ColorId::PromptBackground)]       = std::make_shared<CVarColor>(210, 210, 210, 255);
+    const auto &cvar_current_line_background_color   = m_colors[static_cast<size_t>(ColorId::LineBackground)]         = std::make_shared<CVarColor>(  0,   0,   0,  12);
+    const auto &cvar_selected_text_background_color  = m_colors[static_cast<size_t>(ColorId::SelectedTextBackground)] = std::make_shared<CVarColor>(  0, 200, 255,  32);
+    const auto &cvar_line_number_color               = m_colors[static_cast<size_t>(ColorId::LineNumber)]             = std::make_shared<CVarColor>(  0,   0,   0, 220);
+    const auto &cvar_info_bar_text_color             = m_colors[static_cast<size_t>(ColorId::InfoBarText)]            = std::make_shared<CVarColor>(  0,   0,   0, 220);
+    const auto &cvar_prompt_text_color               = m_colors[static_cast<size_t>(ColorId::PromptText)]             = std::make_shared<CVarColor>(  0,   0,   0, 220);
+    const auto &cvar_prompt_input_text_color         = m_colors[static_cast<size_t>(ColorId::PromptInputText)]        = std::make_shared<CVarColor>(  0,   0,   0, 220);
+    const auto &cvar_border_color                    = m_colors[static_cast<size_t>(ColorId::Border)]                 = std::make_shared<CVarColor>(150, 150, 150, 255);
+    const auto &cvar_cursor_indicator_color          = m_colors[static_cast<size_t>(ColorId::CursorIndicator)]        = std::make_shared<CVarColor>(  0,   0,   0, 255);
 
     // Make colors accessible from the console
-    commandController.registerCvar(u"col_margin_background",        cvar_margin_background_color.first->second, nullptr);
-    commandController.registerCvar(u"col_info_bar_background",      cvar_info_bar_background_color.first->second, nullptr);
-    commandController.registerCvar(u"col_editor_background",        cvar_editor_background_color.first->second, nullptr);
-    commandController.registerCvar(u"col_prompt_background",        cvar_prompt_background_color.first->second, nullptr);
-    commandController.registerCvar(u"col_current_line_background",  cvar_current_line_background_color.first->second, nullptr);
-    commandController.registerCvar(u"col_selected_text_background", cvar_selected_text_background_color.first->second, nullptr);
-    commandController.registerCvar(u"col_line_number",              cvar_line_number_color.first->second, nullptr);
-    commandController.registerCvar(u"col_info_bar_text",            cvar_info_bar_text_color.first->second, nullptr);
-    commandController.registerCvar(u"col_prompt_text",              cvar_prompt_text_color.first->second, nullptr);
-    commandController.registerCvar(u"col_prompt_input_text",        cvar_prompt_input_text_color.first->second, nullptr);
-    commandController.registerCvar(u"col_border",                   cvar_border_color.first->second, nullptr);
-    commandController.registerCvar(u"col_cursor_indicator",         cvar_cursor_indicator_color.first->second, nullptr);
+    commandController.registerCvar(u"col_margin_background",        cvar_margin_background_color, nullptr);
+    commandController.registerCvar(u"col_info_bar_background",      cvar_info_bar_background_color, nullptr);
+    commandController.registerCvar(u"col_editor_background",        cvar_editor_background_color, nullptr);
+    commandController.registerCvar(u"col_prompt_background",        cvar_prompt_background_color, nullptr);
+    commandController.registerCvar(u"col_current_line_background",  cvar_current_line_background_color, nullptr);
+    commandController.registerCvar(u"col_selected_text_background", cvar_selected_text_background_color, nullptr);
+    commandController.registerCvar(u"col_line_number",              cvar_line_number_color, nullptr);
+    commandController.registerCvar(u"col_info_bar_text",            cvar_info_bar_text_color, nullptr);
+    commandController.registerCvar(u"col_prompt_text",              cvar_prompt_text_color, nullptr);
+    commandController.registerCvar(u"col_prompt_input_text",        cvar_prompt_input_text_color, nullptr);
+    commandController.registerCvar(u"col_border",                   cvar_border_color, nullptr);
+    commandController.registerCvar(u"col_cursor_indicator",         cvar_cursor_indicator_color, nullptr);
 }
 
 template<typename TPayload>
 void Theme::registerHighLightColorCVar(GlobalRegistry<TPayload> &commandController) {
     // Create default highlight colors
-    const auto &cvar_hl_text_color           = m_highlight_colors.insert({TokenId::None,         std::make_shared<CVarColor>( 64,  64,  64, 255)});
-    const auto &cvar_hl_comment_color        = m_highlight_colors.insert({TokenId::Comment,      std::make_shared<CVarColor>(160, 160, 160, 200)});
-    const auto &cvar_hl_string_color         = m_highlight_colors.insert({TokenId::String,       std::make_shared<CVarColor>(  0, 150,   0, 255)});
-    const auto &cvar_hl_preprocessor_color   = m_highlight_colors.insert({TokenId::Preprocessor, std::make_shared<CVarColor>(150, 150,  64, 255)});
-    const auto &cvar_hl_number_color         = m_highlight_colors.insert({TokenId::Number,       std::make_shared<CVarColor>(  0, 200, 200, 255)});
-    const auto &cvar_hl_keyword_color        = m_highlight_colors.insert({TokenId::Keyword,      std::make_shared<CVarColor>(  0,   0, 200, 255)});
-    const auto &cvar_hl_statement_color      = m_highlight_colors.insert({TokenId::Statement,    std::make_shared<CVarColor>(200,   0, 200, 255)});
-    const auto &cvar_hl_type_color           = m_highlight_colors.insert({TokenId::Type,         std::make_shared<CVarColor>(  0, 128, 128, 255)});
-    const auto &cvar_hl_constant_color       = m_highlight_colors.insert({TokenId::Constant,     std::make_shared<CVarColor>(128,  64,   0, 255)});
-    const auto &cvar_hl_function_color       = m_highlight_colors.insert({TokenId::Function,     std::make_shared<CVarColor>(150, 100,  40, 255)});
-    const auto &cvar_hl_variable_color       = m_highlight_colors.insert({TokenId::Variable,     std::make_shared<CVarColor>( 90,  90, 110, 255)});
+    const auto &cvar_hl_text_color           = m_highlight_colors[static_cast<size_t>(TokenId::None)]         = std::make_shared<CVarColor>( 64,  64,  64, 255);
+    const auto &cvar_hl_comment_color        = m_highlight_colors[static_cast<size_t>(TokenId::Comment)]      = std::make_shared<CVarColor>(160, 160, 160, 200);
+    const auto &cvar_hl_string_color         = m_highlight_colors[static_cast<size_t>(TokenId::String)]       = std::make_shared<CVarColor>(  0, 150,   0, 255);
+    const auto &cvar_hl_preprocessor_color   = m_highlight_colors[static_cast<size_t>(TokenId::Preprocessor)] = std::make_shared<CVarColor>(150, 150,  64, 255);
+    const auto &cvar_hl_number_color         = m_highlight_colors[static_cast<size_t>(TokenId::Number)]       = std::make_shared<CVarColor>(  0, 200, 200, 255);
+    const auto &cvar_hl_keyword_color        = m_highlight_colors[static_cast<size_t>(TokenId::Keyword)]      = std::make_shared<CVarColor>(  0,   0, 200, 255);
+    const auto &cvar_hl_statement_color      = m_highlight_colors[static_cast<size_t>(TokenId::Statement)]    = std::make_shared<CVarColor>(200,   0, 200, 255);
+    const auto &cvar_hl_type_color           = m_highlight_colors[static_cast<size_t>(TokenId::Type)]         = std::make_shared<CVarColor>(  0, 128, 128, 255);
+    const auto &cvar_hl_constant_color       = m_highlight_colors[static_cast<size_t>(TokenId::Constant)]     = std::make_shared<CVarColor>(128,  64,   0, 255);
+    const auto &cvar_hl_function_color       = m_highlight_colors[static_cast<size_t>(TokenId::Function)]     = std::make_shared<CVarColor>(150, 100,  40, 255);
+    const auto &cvar_hl_variable_color       = m_highlight_colors[static_cast<size_t>(TokenId::Variable)]     = std::make_shared<CVarColor>( 90,  90, 110, 255);
 
     // Make highlight colors accessible from the console
-    commandController.registerCvar(u"hl_text",          cvar_hl_text_color.first->second, nullptr);
-    commandController.registerCvar(u"hl_comment",       cvar_hl_comment_color.first->second, nullptr);
-    commandController.registerCvar(u"hl_string",        cvar_hl_string_color.first->second, nullptr);
-    commandController.registerCvar(u"hl_preprocessor",  cvar_hl_preprocessor_color.first->second, nullptr);
-    commandController.registerCvar(u"hl_number",        cvar_hl_number_color.first->second, nullptr);
-    commandController.registerCvar(u"hl_keyword",       cvar_hl_keyword_color.first->second, nullptr);
-    commandController.registerCvar(u"hl_statement",     cvar_hl_statement_color.first->second, nullptr);
-    commandController.registerCvar(u"hl_type",          cvar_hl_type_color.first->second, nullptr);
-    commandController.registerCvar(u"hl_constant",      cvar_hl_constant_color.first->second, nullptr);
-    commandController.registerCvar(u"hl_function",      cvar_hl_function_color.first->second, nullptr);
-    commandController.registerCvar(u"hl_variable",      cvar_hl_variable_color.first->second, nullptr);
+    commandController.registerCvar(u"hl_text",          cvar_hl_text_color, nullptr);
+    commandController.registerCvar(u"hl_comment",       cvar_hl_comment_color, nullptr);
+    commandController.registerCvar(u"hl_string",        cvar_hl_string_color, nullptr);
+    commandController.registerCvar(u"hl_preprocessor",  cvar_hl_preprocessor_color, nullptr);
+    commandController.registerCvar(u"hl_number",        cvar_hl_number_color, nullptr);
+    commandController.registerCvar(u"hl_keyword",       cvar_hl_keyword_color, nullptr);
+    commandController.registerCvar(u"hl_statement",     cvar_hl_statement_color, nullptr);
+    commandController.registerCvar(u"hl_type",          cvar_hl_type_color, nullptr);
+    commandController.registerCvar(u"hl_constant",      cvar_hl_constant_color, nullptr);
+    commandController.registerCvar(u"hl_function",      cvar_hl_function_color, nullptr);
+    commandController.registerCvar(u"hl_variable",      cvar_hl_variable_color, nullptr);
 }
 
 template<typename TPayload>
 void Theme::registerThemeDimensionCVar(GlobalRegistry<TPayload> &commandController) {
     // Create default dimensions for the theme
-    const auto &cvar_padding_width   = m_dimensions.insert({DimensionId::PaddingWidth,   std::make_shared<CVarInt>( 8)});
-    const auto &cvar_indicator_width = m_dimensions.insert({DimensionId::IndicatorWidth, std::make_shared<CVarInt>( 2)});
-    const auto &cvar_border_size     = m_dimensions.insert({DimensionId::BorderSize,     std::make_shared<CVarInt>( 1)});
-    const auto &cvar_tab_to_space    = m_dimensions.insert({DimensionId::TabToSpace,     std::make_shared<CVarInt>( 4)});
-    const auto &cvar_page_up_down    = m_dimensions.insert({DimensionId::PageUpDown,     std::make_shared<CVarInt>(10)});
+    const auto &cvar_padding_width   = m_dimensions[static_cast<size_t>(DimensionId::PaddingWidth)]   = std::make_shared<CVarInt>( 8);
+    const auto &cvar_indicator_width = m_dimensions[static_cast<size_t>(DimensionId::IndicatorWidth)] = std::make_shared<CVarInt>( 2);
+    const auto &cvar_border_size     = m_dimensions[static_cast<size_t>(DimensionId::BorderSize)]     = std::make_shared<CVarInt>( 1);
+    const auto &cvar_tab_to_space    = m_dimensions[static_cast<size_t>(DimensionId::TabToSpace)]     = std::make_shared<CVarInt>( 4);
+    const auto &cvar_page_up_down    = m_dimensions[static_cast<size_t>(DimensionId::PageUpDown)]     = std::make_shared<CVarInt>(10);
 
     // Make dimensions accessible from the console
-    commandController.registerCvar(u"dim_padding_width",    cvar_padding_width.first->second, nullptr);
-    commandController.registerCvar(u"dim_indicator_width",  cvar_indicator_width.first->second, nullptr);
-    commandController.registerCvar(u"dim_border_size",      cvar_border_size.first->second, nullptr);
-    commandController.registerCvar(u"dim_tab_to_space",     cvar_tab_to_space.first->second, nullptr);
-    commandController.registerCvar(u"dim_page_up_down",     cvar_page_up_down.first->second, nullptr);
+    commandController.registerCvar(u"dim_padding_width",    cvar_padding_width, nullptr);
+    commandController.registerCvar(u"dim_indicator_width",  cvar_indicator_width, nullptr);
+    commandController.registerCvar(u"dim_border_size",      cvar_border_size, nullptr);
+    commandController.registerCvar(u"dim_tab_to_space",     cvar_tab_to_space, nullptr);
+    commandController.registerCvar(u"dim_page_up_down",     cvar_page_up_down, nullptr);
 
     // Register a cvar to change the font size. It needs a callback.
     commandController.registerCvar(u"dim_font_size", m_font_size, [&]{ setFontSize(m_font_size->m_value); });

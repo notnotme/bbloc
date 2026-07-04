@@ -22,7 +22,7 @@
 ResetCVarFloatCommand::ResetCVarFloatCommand(std::shared_ptr<CVarFloat> cvar)
     : m_cvar(std::move(cvar)) {}
 
-void ResetCVarFloatCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void ResetCVarFloatCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) previousArgs;
     (void) argumentIndex;
     (void) input;
@@ -30,7 +30,7 @@ void ResetCVarFloatCommand::provideAutoComplete(const std::vector<std::u16string
     // No-op
 }
 
-std::optional<std::u16string> ResetCVarFloatCommand::run(CursorContext &payload, const std::vector<std::u16string_view> &args) {
+std::optional<std::u16string> ResetCVarFloatCommand::run(CursorContext &payload, const std::span<const std::u16string_view> args) {
     (void) payload;
     if (!args.empty()) {
         return u"Expected 0 argument.";

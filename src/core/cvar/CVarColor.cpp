@@ -39,7 +39,7 @@ static uint8_t parseChannel(const std::u16string_view arg) {
 CVarColor::CVarColor(const uint8_t red, const uint8_t green, const uint8_t blue, const uint8_t alpha, const bool isReadOnly)
     : TypedCVar({red, green, blue, alpha}, isReadOnly) {}
 
-std::optional<std::u16string> CVarColor::setValueFromStrings(const std::vector<std::u16string_view> &args) {
+std::optional<std::u16string> CVarColor::setValueFromStrings(const std::span<const std::u16string_view> args) {
     if (args.size() < 3 || args.size() > 4) {
         return u"Argument expected: <red> <green> <blue> [alpha].";
     }

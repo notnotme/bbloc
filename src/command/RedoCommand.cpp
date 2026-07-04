@@ -19,7 +19,7 @@
 #include "RedoCommand.h"
 
 
-void RedoCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void RedoCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) previousArgs;
     (void) input;
     (void) argumentIndex;
@@ -27,7 +27,7 @@ void RedoCommand::provideAutoComplete(const std::vector<std::u16string_view> &pr
     // No-op
 }
 
-std::optional<std::u16string> RedoCommand::run(CursorContext &payload, const std::vector<std::u16string_view> &args) {
+std::optional<std::u16string> RedoCommand::run(CursorContext &payload, const std::span<const std::u16string_view> args) {
     if (!args.empty()) {
         return u"Expected 0 argument.";
     }

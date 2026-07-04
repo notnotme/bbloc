@@ -31,15 +31,14 @@ void CVarCommand::registerCvar(const std::u16string_view name, std::shared_ptr<C
     }
 }
 
-void CVarCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void CVarCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     if (argumentIndex > 0) {
         // Let the CVar being set suggest candidates for the component being completed
         if (previousArgs.empty()) {
             return;
         }
 
-        const auto cvar_name_str = std::u16string(previousArgs[0].begin(), previousArgs[0].end());
-        const auto &cvar_entry = m_cvars.find(cvar_name_str);
+        const auto &cvar_entry = m_cvars.find(previousArgs[0]);
         if (cvar_entry == m_cvars.end()) {
             return;
         }
@@ -61,37 +60,36 @@ void CVarCommand::provideAutoComplete(const std::vector<std::u16string_view> &pr
     }
 }
 
-std::optional<std::u16string> CVarCommand::run(CursorContext &payload, const std::vector<std::u16string_view> &args) {
+std::optional<std::u16string> CVarCommand::run(CursorContext &payload, const std::span<const std::u16string_view> args) {
     (void) payload;
     if (args.empty()) {
         return u"Usage: cvar <name> [value1] [value2] ...";
     }
 
-    const auto cvar_name_str = std::u16string(args[0].begin(), args[0].end());
-    if (!m_cvars.contains(cvar_name_str)) {
-        return std::u16string(u"Unknown cvar: ").append(cvar_name_str);
+    const auto &cvar_entry = m_cvars.find(args[0]);
+    if (cvar_entry == m_cvars.end()) {
+        return std::u16string(u"Unknown cvar: ").append(args[0]);
     }
 
-    const auto &cvar_entry = m_cvars[cvar_name_str];
-    auto *cvar = cvar_entry.cvar.get();
+    auto *cvar = cvar_entry->second.cvar.get();
 
     if (args.size() == 1) {
         // Print the value of this cvar
-        return std::u16string(cvar_name_str).append(u": ").append(cvar->getStringValue());
+        return std::u16string(args[0]).append(u": ").append(cvar->getStringValue());
     }
 
     // Se the value of this cvar if not read-only
     if (cvar->isReadOnly()) {
-        return std::u16string(u"CVar is read-only: ").append(cvar_name_str);
+        return std::u16string(u"CVar is read-only: ").append(args[0]);
     }
 
-    if (const auto &error = cvar->setValueFromStrings({ args.begin() + 1, args.end() })) {
+    if (const auto &error = cvar->setValueFromStrings(args.subspan(1))) {
         // Something wrong happened
-        return std::u16string(cvar_name_str).append(u": ").append(error.value());
+        return std::u16string(args[0]).append(u": ").append(error.value());
     }
 
     // Eventually invoke the associated callback
-    if (const auto &callback = cvar_entry.callback) {
+    if (const auto &callback = cvar_entry->second.callback) {
         callback();
     }
 

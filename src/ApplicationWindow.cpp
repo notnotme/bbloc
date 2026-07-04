@@ -353,17 +353,17 @@ void ApplicationWindow::mainLoop() {
                 m_prompt_state.setPromptText(PromptState::PROMPT_READY);
             }
 
+            // Update max_render_time metrics before the swap, which blocks on vsync
+            const auto frame_time_elapsed = static_cast<float>(SDL_GetPerformanceCounter() - currentTime) / performanceQuery;
+            if (frame_time_elapsed > m_draw_time->m_value) {
+                m_draw_time->m_value = frame_time_elapsed;
+            }
+
             SDL_GL_SwapWindow(p_sdl_window);
         }
 
         // Reset follow_indicator if it was not held by the editor render already
         m_cursor_context.scroll.follow_indicator = false;
-
-        // Update max_render_time metrics
-        const auto frame_time_elapsed = static_cast<float>(SDL_GetPerformanceCounter() - currentTime) / performanceQuery;
-        if (frame_time_elapsed > m_draw_time->m_value) {
-            m_draw_time->m_value = frame_time_elapsed;
-        }
     }
 }
 
@@ -371,7 +371,7 @@ void ApplicationWindow::getCommandCompletions(const std::u16string_view input, c
     m_command_manager.getCommandCompletions(input, false, itemCallback);
 }
 
-void ApplicationWindow::getArgumentsCompletions(const std::u16string_view command, const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
+void ApplicationWindow::getArgumentsCompletions(const std::u16string_view command, const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
     m_command_manager.getArgumentsCompletion(command, previousArgs, argumentIndex, input, itemCallback);
 }
 
@@ -414,8 +414,12 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
         // An empty answer flows to the command too, so it can report its usage.
         result = feedback.on_validate_callback(feedback_answer, feedback.command_string);
     } else {
-        const auto &tokens = CommandManager::tokenize(command);
+        // Take the scratch by move so a nested runCommand (e.g. exec running script lines) sees an
+        // empty member and allocates its own vector, keeping this command's args span valid.
+        auto tokens = std::move(m_token_scratch);
+        CommandManager::tokenize(command, tokens);
         if (tokens.empty()) {
+            m_token_scratch = std::move(tokens);
             return false;
         }
 
@@ -429,6 +433,9 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
 
         m_cursor_context.from_prompt = fromPrompt;
         result = m_command_manager.run(m_cursor_context, tokens);
+
+        // The command is done with its args span: give the capacity back for the next call.
+        m_token_scratch = std::move(tokens);
     }
 
     if (result) {

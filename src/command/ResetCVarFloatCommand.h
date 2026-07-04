@@ -19,8 +19,8 @@
 #ifndef RESET_CVAR_FLOAT_COMMAND_H
 #define RESET_CVAR_FLOAT_COMMAND_H
 
+#include <span>
 #include <string>
-#include <vector>
 
 #include "../core/base/AutoCompleteCallback.h"
 #include "../core/CursorContext.h"
@@ -52,7 +52,7 @@ public:
      * @param input The current partial input from the user for this argument.
      * @param itemCallback A callback to be invoked with each completion suggestion.
      */
-    void provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
+    void provideAutoComplete(std::span<const std::u16string_view> previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
 
     /**
      * @brief Executes the CVar reset operation.
@@ -64,7 +64,7 @@ public:
      * @param args Command arguments; must be empty (the target CVar is bound at construction).
      * @return An optional message indicating the result of the operation.
      */
-    [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, const std::vector<std::u16string_view> &args) override;
+    [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, std::span<const std::u16string_view> args) override;
 };
 
 

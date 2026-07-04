@@ -20,6 +20,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <system_error>
 
 #include <utf8.h>
@@ -27,7 +28,7 @@
 #include "../core/CommandManager.h"
 
 
-void OpenFileCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void OpenFileCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) previousArgs;
     if (argumentIndex != 0) {
         // Only auto-complete the first argument (path)
@@ -37,7 +38,7 @@ void OpenFileCommand::provideAutoComplete(const std::vector<std::u16string_view>
     CommandManager::getPathCompletions(input, false, itemCallback);
 }
 
-std::optional<std::u16string> OpenFileCommand::run(CursorContext &payload, const std::vector<std::u16string_view> &args) {
+std::optional<std::u16string> OpenFileCommand::run(CursorContext &payload, const std::span<const std::u16string_view> args) {
     if (args.empty()) {
         // From the prompt the filename is mandatory; from the editor, ask for it interactively.
         if (payload.from_prompt) {
@@ -85,6 +86,12 @@ std::optional<std::u16string> OpenFileCommand::run(CursorContext &payload, const
     // Stores temporary line and the whole text.
     auto line = std::string();
     auto all_line = std::u16string();
+
+    // A UTF-16 unit count never exceeds the UTF-8 byte count, so the file size is a tight upper bound.
+    if (const auto file_size = std::filesystem::file_size(path, error_code); !error_code) {
+        all_line.reserve(static_cast<size_t>(file_size));
+    }
+
     while (getline(ifs, line)) {
         if (!line.empty() && line.back() == '\r') {
             // Strip the carriage return of CRLF line endings
@@ -97,9 +104,8 @@ std::optional<std::u16string> OpenFileCommand::run(CursorContext &payload, const
             const auto utf16_line_count_str = utf8::utf8to16(line_count_str);
             return std::u16string(u"Invalid UTF-8 encoding detected at line ").append(utf16_line_count_str);
         }
-        // Convert to utf16 then append to the cursor
-        const auto utf16_line = utf8::utf8to16(line);
-        all_line.append(utf16_line);
+        // Convert to utf16 in place; this cannot throw, the line was validated by find_invalid above.
+        utf8::utf8to16(line.begin(), line.end(), std::back_inserter(all_line));
         if (!ifs.eof() && !ifs.fail()) {
             // After the first insert, line ends with \n, but not the last
             all_line.append(u"\n");

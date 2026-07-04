@@ -22,7 +22,7 @@
 ActivatePromptCommand::ActivatePromptCommand(PromptState &promptState)
     : m_prompt_state(promptState) {}
 
-void ActivatePromptCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void ActivatePromptCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) previousArgs;
     (void) input;
     (void) argumentIndex;
@@ -30,7 +30,7 @@ void ActivatePromptCommand::provideAutoComplete(const std::vector<std::u16string
     // No-op
 }
 
-std::optional<std::u16string> ActivatePromptCommand::run(CursorContext &payload, const std::vector<std::u16string_view> &args) {
+std::optional<std::u16string> ActivatePromptCommand::run(CursorContext &payload, const std::span<const std::u16string_view> args) {
     if (!args.empty()) {
         return u"Expected 0 argument.";
     }

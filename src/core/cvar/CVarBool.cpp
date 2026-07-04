@@ -39,7 +39,7 @@ void CVarBool::provideValueCompletion(const int32_t componentIndex, const AutoCo
     itemCallback(u"true");
 }
 
-std::optional<std::u16string> CVarBool::setValueFromStrings(const std::vector<std::u16string_view> &args) {
+std::optional<std::u16string> CVarBool::setValueFromStrings(const std::span<const std::u16string_view> args) {
     if (args.size() != 1) {
         return u"Argument expected: <value>.";
     }

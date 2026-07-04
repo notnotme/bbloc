@@ -22,12 +22,12 @@
 #include <utf8/cpp17.h>
 
 
-const std::unordered_map<std::u16string, FontSizeCommand::Size> FontSizeCommand::SIZE_MAP = {
+const U16StringMap<FontSizeCommand::Size> FontSizeCommand::SIZE_MAP = {
     { u"+", Size::PLUS },
     { u"-", Size::MINUS}
 };
 
-void FontSizeCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void FontSizeCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) previousArgs;
     if (argumentIndex != 0) {
         // Only auto-complete the first argument (size direction)
@@ -41,7 +41,7 @@ void FontSizeCommand::provideAutoComplete(const std::vector<std::u16string_view>
     }
 }
 
-std::optional<std::u16string> FontSizeCommand::run(CursorContext &payload, const std::vector<std::u16string_view> &args) {
+std::optional<std::u16string> FontSizeCommand::run(CursorContext &payload, const std::span<const std::u16string_view> args) {
     if (args.size() != 1) {
         return u"Expected 1 argument.";
     }
@@ -74,8 +74,7 @@ std::optional<std::u16string> FontSizeCommand::run(CursorContext &payload, const
 }
 
 FontSizeCommand::Size FontSizeCommand::mapSize(const std::u16string_view size) {
-    const auto size_str = std::u16string(size.begin(), size.end());
-    if (const auto &mapped_size = SIZE_MAP.find(size_str); mapped_size != SIZE_MAP.end()) {
+    if (const auto &mapped_size = SIZE_MAP.find(size); mapped_size != SIZE_MAP.end()) {
         return mapped_size->second;
     }
 

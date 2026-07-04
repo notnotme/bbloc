@@ -25,6 +25,7 @@
 
 #include "TextBuffer.h"
 #include "BufferEdit.h"
+#include "LongestLineTracker.h"
 
 
 /**
@@ -52,12 +53,16 @@ private:
     /** Metadata describing each line's position and length. */
     std::vector<LineData> m_line_data;
 
+    /** Incremental longest-line tracker used for horizontal scroll bounds. */
+    LongestLineTracker m_longest_line;
+
 public:
     /** @brief Constructs an empty StringBuffer. */
     explicit StringBuffer();
 
     [[nodiscard]] std::u16string_view getString(uint32_t line) const override;
     [[nodiscard]] uint32_t getStringCount() const override;
+    [[nodiscard]] uint32_t getLongestLineLength(uint32_t tabWeight) const override;
     [[nodiscard]] uint32_t getByteOffset(uint32_t line, uint32_t column) const override;
     [[nodiscard]] uint32_t getByteCount(uint32_t lineStart, uint32_t columnStart, uint32_t lineEnd, uint32_t columnEnd) const override;
     [[nodiscard]] BufferEdit insert(uint32_t line, uint32_t column, std::u16string_view characters) override;

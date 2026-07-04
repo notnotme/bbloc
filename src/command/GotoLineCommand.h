@@ -20,8 +20,8 @@
 #define GOTO_LINE_COMMAND_H
 
 #include <optional>
+#include <span>
 #include <string>
-#include <vector>
 
 #include "../core/base/AutoCompleteCallback.h"
 #include "../core/CursorContext.h"
@@ -55,7 +55,7 @@ public:
      * @param input The current partial input from the user for this argument.
      * @param itemCallback A callback to be invoked with each completion suggestion.
      */
-    void provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
+    void provideAutoComplete(std::span<const std::u16string_view> previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
 
     /**
      * @brief Moves the cursor to the start of the requested line.
@@ -67,7 +67,7 @@ public:
      * @param args Command arguments: the target 1-based line number.
      * @return An optional message describing an argument error, std::nullopt on success.
      */
-    [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, const std::vector<std::u16string_view> &args) override;
+    [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, std::span<const std::u16string_view> args) override;
 };
 
 

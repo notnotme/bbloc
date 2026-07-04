@@ -27,7 +27,7 @@
 #include "../core/CommandManager.h"
 
 
-void ExecCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void ExecCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) previousArgs;
     if (argumentIndex != 0) {
         // Only auto-complete the first argument (path)
@@ -37,7 +37,7 @@ void ExecCommand::provideAutoComplete(const std::vector<std::u16string_view> &pr
     CommandManager::getPathCompletions(input, false, itemCallback);
 }
 
-std::optional<std::u16string> ExecCommand::run(CursorContext &payload, const std::vector<std::u16string_view> &args) {
+std::optional<std::u16string> ExecCommand::run(CursorContext &payload, const std::span<const std::u16string_view> args) {
     if (args.size() != 1) {
         return u"Usage: exec <filename>";
     }
@@ -73,8 +73,7 @@ std::optional<std::u16string> ExecCommand::run(CursorContext &payload, const std
         // Convert to utf16 then append to the cursor
         if (!line.starts_with("#")) {
             // If the line starts with "#", this is a comment, otherwise this is a command.
-            const auto u16string = utf8::utf8to16(line);
-            command_list.emplace_back(u16string);
+            command_list.push_back(utf8::utf8to16(line));
         }
         ++line_count;
     }

@@ -22,7 +22,7 @@
 #include <string>
 #include <string_view>
 #include <optional>
-#include <vector>
+#include <span>
 
 #include "AutoCompleteCallback.h"
 
@@ -69,7 +69,7 @@ public:
      * @param args The parsed arguments list.
      * @return An optional message string in return.
      */
-    virtual std::optional<std::u16string> setValueFromStrings(const std::vector<std::u16string_view> &args) = 0;
+    virtual std::optional<std::u16string> setValueFromStrings(std::span<const std::u16string_view> args) = 0;
 
     /**
      * @brief Provides completion suggestions for one component of the CVar value.

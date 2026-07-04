@@ -21,7 +21,7 @@
 #include "../core/theme/DimensionId.h"
 
 
-const std::unordered_map<std::u16string, MoveCursorCommand::Movement> MoveCursorCommand::MOVEMENT_MAP = {
+const U16StringMap<MoveCursorCommand::Movement> MoveCursorCommand::MOVEMENT_MAP = {
     { u"up", Movement::UP },
     { u"down", Movement::DOWN },
     { u"left", Movement::LEFT },
@@ -34,7 +34,7 @@ const std::unordered_map<std::u16string, MoveCursorCommand::Movement> MoveCursor
     { u"eof",  Movement::END_FILE }
 };
 
-const std::unordered_map<std::u16string, MoveCursorCommand::Boolean> MoveCursorCommand::BOOLEAN_MAP = {
+const U16StringMap<MoveCursorCommand::Boolean> MoveCursorCommand::BOOLEAN_MAP = {
     { u"true", Boolean::TRUE },
     { u"false", Boolean::FALSE }
 };
@@ -42,7 +42,7 @@ const std::unordered_map<std::u16string, MoveCursorCommand::Boolean> MoveCursorC
 MoveCursorCommand::MoveCursorCommand(PromptState &promptState)
     : m_prompt_state(promptState) {}
 
-void MoveCursorCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void MoveCursorCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     if (argumentIndex == 0) {
         for (const auto &item : std::views::keys(MOVEMENT_MAP)) {
             itemCallback(item);
@@ -54,7 +54,7 @@ void MoveCursorCommand::provideAutoComplete(const std::vector<std::u16string_vie
     }
 }
 
-std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, const std::vector<std::u16string_view> &args) {
+std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, const std::span<const std::u16string_view> args) {
     if (args.empty() || args.size() > 2) {
         return u"Usage: move <direction> [selected]";
     }
@@ -186,8 +186,7 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
 }
 
 MoveCursorCommand::Movement MoveCursorCommand::mapMovement(const std::u16string_view movement) {
-    const auto movement_str = std::u16string(movement.begin(), movement.end());
-    if (const auto &mapped_movement = MOVEMENT_MAP.find(movement_str); mapped_movement != MOVEMENT_MAP.end()) {
+    if (const auto &mapped_movement = MOVEMENT_MAP.find(movement); mapped_movement != MOVEMENT_MAP.end()) {
         return mapped_movement->second;
     }
 
@@ -195,8 +194,7 @@ MoveCursorCommand::Movement MoveCursorCommand::mapMovement(const std::u16string_
 }
 
 MoveCursorCommand::Boolean MoveCursorCommand::mapBoolean(const std::u16string_view value) {
-    const auto boolean_str = std::u16string(value.begin(), value.end());
-    if (const auto &mapped_boolean = BOOLEAN_MAP.find(boolean_str); mapped_boolean != BOOLEAN_MAP.end()) {
+    if (const auto &mapped_boolean = BOOLEAN_MAP.find(value); mapped_boolean != BOOLEAN_MAP.end()) {
         return mapped_boolean->second;
     }
 

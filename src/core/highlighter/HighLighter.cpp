@@ -18,6 +18,9 @@
  */
 #include "HighLighter.h"
 
+#include <algorithm>
+#include <cstdlib>
+#include <limits>
 #include <ranges>
 #include <utf8.h>
 
@@ -31,9 +34,13 @@ HighLighter::HighLighter(Cursor &cursor)
       p_ts_parser(ts_parser_new()),
       p_ts_tree(nullptr),
       p_ts_query_cursor(ts_query_cursor_new()),
+      m_cache_start_line(0),
       m_input(this, inputCallback, TSInputEncodingUTF16LE),
       m_high_light(HighLightId::None),
-      m_is_dirty(false) {}
+      m_is_dirty(false),
+      m_edit_lines_shifted(false),
+      m_dirty_line_min(std::numeric_limits<uint32_t>::max()),
+      m_dirty_line_max(0) {}
 
 HighLighter::~HighLighter() {
     // Cleanup tree
@@ -76,6 +83,7 @@ void HighLighter::setMode(const HighLightId highLight) {
     }
 
     m_line_cache.clear();
+    m_cache_start_line = 0;
 }
 
 void HighLighter::setMode(const std::string_view extension) {
@@ -95,29 +103,45 @@ void HighLighter::parse() {
     if (p_current_parser != nullptr && m_is_dirty) {
         // Reuse the old tree to parse and create a new one; if p_ts_tree is nullptr, parse from scratch
         auto *new_tree = ts_parser_parse(p_ts_parser, p_ts_tree, m_input);
+
+        if (p_ts_tree == nullptr || m_line_cache.empty() || m_edit_lines_shifted) {
+            // Line-count changes shift the cache rows; drop the cache, it is rebuilt lazily around the lines actually queried
+            m_line_cache.clear();
+            m_cache_start_line = 0;
+        } else {
+            // Pure in-line edits: repaint only the affected cached lines
+            repaintChangedLines(new_tree);
+        }
+
         // Delete the old tree and set the new as the current one
         if (p_ts_tree != nullptr) {
             ts_tree_delete(p_ts_tree);
         }
         p_ts_tree = new_tree;
-        updateCache();
 
+        m_edit_lines_shifted = false;
+        m_dirty_line_min = std::numeric_limits<uint32_t>::max();
+        m_dirty_line_max = 0;
         m_is_dirty = false;
     }
 }
 
-void HighLighter::updateCache() const {
+void HighLighter::updateCache(const uint32_t line) const {
     const auto line_count = m_cursor.getLineCount();
+    const auto half_window = CACHE_LINE_COUNT / 2;
+    const auto start_line = line > half_window ? line - half_window : 0;
+    const auto end_line = std::min(start_line + CACHE_LINE_COUNT, line_count);
 
+    m_cache_start_line = start_line;
     m_line_cache.clear();
-    m_line_cache.resize(line_count);
+    m_line_cache.resize(end_line - start_line);
 
-    if (p_ts_tree == nullptr || p_current_parser == nullptr) {
-        return;
-    }
+    paintCacheLines(ts_tree_root_node(p_ts_tree), start_line, end_line - 1);
+}
 
-    const auto root_node = ts_tree_root_node(p_ts_tree);
-    ts_query_cursor_exec(p_ts_query_cursor, p_current_parser->getQuery(), root_node);
+void HighLighter::paintCacheLines(const TSNode rootNode, const uint32_t firstLine, const uint32_t lastLine) const {
+    ts_query_cursor_set_point_range(p_ts_query_cursor, TSPoint(firstLine, 0), TSPoint(lastLine + 1, 0));
+    ts_query_cursor_exec(p_ts_query_cursor, p_current_parser->getQuery(), rootNode);
 
     TSQueryMatch match;
     while (ts_query_cursor_next_match(p_ts_query_cursor, &match)) {
@@ -130,17 +154,67 @@ void HighLighter::updateCache() const {
             const auto token_id = p_current_parser->getTokenId(capture.index);
             if (token_id == TokenId::None) continue;
 
-            for (auto line = start_point.row; line <= end_point.row && line < line_count; ++line) {
-                const auto current_line = m_cursor.getString(line);
-                const auto start_col = line == start_point.row ? start_point.column / sizeof(char16_t) : 0;
-                const auto end_col = line == end_point.row ? end_point.column / sizeof(char16_t) : current_line.length();
+            // A node may start before or end after the painted range; clamp its lines to it
+            const auto first_line = std::max(start_point.row, firstLine);
+            const auto last_line = std::min(end_point.row, lastLine);
+            for (auto current = first_line; current <= last_line; ++current) {
+                const auto current_line = m_cursor.getString(current);
+                const auto start_col = current == start_point.row ? start_point.column / sizeof(char16_t) : 0;
+                const auto end_col = current == end_point.row ? end_point.column / sizeof(char16_t) : current_line.length();
 
-                if (start_col < end_col) {
-                    m_line_cache[line].emplace_back(start_col, end_col, token_id);
+                auto &cells = m_line_cache[current - m_cache_start_line];
+                if (cells.empty()) {
+                    cells.resize(current_line.length(), TokenId::None);
+                }
+
+                // Paint first-wins: earlier captures keep priority over later overlapping ones
+                const auto paint_end = std::min(end_col, cells.size());
+                for (auto col = start_col; col < paint_end; ++col) {
+                    if (cells[col] == TokenId::None) {
+                        cells[col] = token_id;
+                    }
                 }
             }
         }
     }
+}
+
+void HighLighter::repaintChangedLines(TSTree *newTree) {
+    const auto cache_first = m_cache_start_line;
+    const auto cache_last = m_cache_start_line + static_cast<uint32_t>(m_line_cache.size()) - 1;
+
+    // Cover the accumulated edit span, clipped to the cached window
+    auto repaint_first = std::numeric_limits<uint32_t>::max();
+    auto repaint_last = std::numeric_limits<uint32_t>::min();
+    if (m_dirty_line_min <= cache_last && m_dirty_line_max >= cache_first) {
+        repaint_first = std::max(m_dirty_line_min, cache_first);
+        repaint_last = std::min(m_dirty_line_max, cache_last);
+    }
+
+    // Union with the structural changes reported by tree-sitter (e.g. an edit commenting out lines below)
+    uint32_t range_count = 0;
+    auto *ranges = ts_tree_get_changed_ranges(p_ts_tree, newTree, &range_count);
+    for (uint32_t i = 0; i < range_count; ++i) {
+        const auto range_first = ranges[i].start_point.row;
+        const auto range_last = ranges[i].end_point.row;
+        if (range_first > cache_last || range_last < cache_first) continue;
+
+        repaint_first = std::min(repaint_first, std::max(range_first, cache_first));
+        repaint_last = std::max(repaint_last, std::min(range_last, cache_last));
+    }
+    free(ranges);
+
+    if (repaint_first > repaint_last) {
+        // No changed line intersects the cached window
+        return;
+    }
+
+    // Cleared rows are lazily resized to their line's current length while painting
+    for (auto current = repaint_first; current <= repaint_last; ++current) {
+        m_line_cache[current - m_cache_start_line].clear();
+    }
+
+    paintCacheLines(ts_tree_root_node(newTree), repaint_first, repaint_last);
 }
 
 void HighLighter::edit(const BufferEdit &edit) {
@@ -156,6 +230,13 @@ void HighLighter::edit(const BufferEdit &edit) {
         };
 
         ts_tree_edit(p_ts_tree, &ts_edit);
+
+        // Accumulate the dirty line span until the next parse consumes it
+        if (edit.old_end.line != edit.new_end.line) {
+            m_edit_lines_shifted = true;
+        }
+        m_dirty_line_min = std::min(m_dirty_line_min, edit.start.line);
+        m_dirty_line_max = std::max({m_dirty_line_max, edit.old_end.line, edit.new_end.line});
         m_is_dirty = true;
     }
 }
@@ -179,18 +260,16 @@ void HighLighter::getParserCompletions(const AutoCompleteCallback &callback) {
 }
 
 TokenId HighLighter::getHighLightAtPosition(const uint32_t line, const uint32_t column) const {
-    if (m_high_light == HighLightId::None || line >= m_line_cache.size()) {
+    if (m_high_light == HighLightId::None || p_ts_tree == nullptr || line >= m_cursor.getLineCount()) {
         return TokenId::None;
     }
 
-    // Search the spans for the current line
-    for (const auto &span : m_line_cache[line]) {
-        if (column >= span.start_column && column < span.end_column) {
-            return span.token_id;
-        }
+    if (line < m_cache_start_line || line >= m_cache_start_line + m_line_cache.size()) {
+        updateCache(line);
     }
 
-    return TokenId::None;
+    const auto &cells = m_line_cache[line - m_cache_start_line];
+    return column < cells.size() ? cells[column] : TokenId::None;
 }
 
 std::optional<std::u16string_view> HighLighter::readCallback(const uint32_t line, const uint32_t column) const {

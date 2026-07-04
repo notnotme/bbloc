@@ -25,7 +25,7 @@
 CVarFloat::CVarFloat(const float value, const bool isReadOnly)
     : TypedCVar(value, isReadOnly) {}
 
-std::optional<std::u16string> CVarFloat::setValueFromStrings(const std::vector<std::u16string_view> &args) {
+std::optional<std::u16string> CVarFloat::setValueFromStrings(const std::span<const std::u16string_view> args) {
     if (args.size() != 1) {
         return u"Argument expected: <value>.";
     }

@@ -57,7 +57,7 @@ public:
      * @param args The string arguments to parse into a Color value.
      * @return Nothing in case of success, an error message otherwise.
      */
-    std::optional<std::u16string> setValueFromStrings(const std::vector<std::u16string_view> &args) override;
+    std::optional<std::u16string> setValueFromStrings(std::span<const std::u16string_view> args) override;
 };
 
 

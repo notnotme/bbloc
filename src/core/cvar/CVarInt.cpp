@@ -25,7 +25,7 @@
 CVarInt::CVarInt(const int32_t value, const bool isReadOnly)
     : TypedCVar(value, isReadOnly) {}
 
-std::optional<std::u16string> CVarInt::setValueFromStrings(const std::vector<std::u16string_view> &args) {
+std::optional<std::u16string> CVarInt::setValueFromStrings(const std::span<const std::u16string_view> args) {
     if (args.size() != 1) {
         return u"Argument expected: <value>.";
     }

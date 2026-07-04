@@ -35,25 +35,10 @@
  * @brief Main text editor view responsible for rendering text and handling input.
  *
  * The Editor view manages the rendering the cursor buffer, processing user input,
- * tracking scroll state, everything via CursorContext. It also tries to optimize layout with a longest-line cache.
+ * tracking scroll state, everything via CursorContext.
  */
 class Editor final : public View<> {
 private:
-    /**
-     * @brief Internal structure used to cache the longest visible line.
-     *
-     * Optimizes horizontal scroll range and avoids remeasuring the longest line every frame.
-     */
-    struct LongestLineCache final {
-        uint32_t index; ///< Line index of the longest line.
-        uint32_t count; ///< Character count in the longest line.
-        int32_t width;  ///< Width in pixels of the longest line.
-    };
-
-private:
-    /** Cache used for optimizing horizontal scroll and layout. */
-    LongestLineCache m_longest_line_cache;
-
     /** CVar for toggling tab-to-space replacement in input. */
     std::shared_ptr<CVarBool> m_is_tab_to_space;
 
@@ -62,19 +47,13 @@ private:
     void registerTabToSpaceCVar() const;
 
     /**
-     * @brief Recomputes the longest line cache.
-     *
-     * @param context Reference to the cursor context.
-     */
-    void updateLongestLineCache(const CursorContext &context);
-
-    /**
      * @brief: Compute scroll position and max scroll for the horizontal and vertical axis.
      *
      * @param context A reference to the cursor context.
      * @param viewState A reference to the Editor view state.
+     * @param marginWidth The width of the margin, without the border size.
      */
-    void updateScroll(CursorContext &context, const ViewState &viewState) const;
+    void updateScroll(CursorContext &context, const ViewState &viewState, int32_t marginWidth) const;
 
     /**
      * @brief: Draw the background layer of the editor.
@@ -101,8 +80,9 @@ private:
      * @param viewState A reference to the Editor view state.
      * @param scrollX The editor x scroll offset.
      * @param scrollY The editor y scroll offset.
+     * @param marginWidth The width of the margin, without the border size.
      */
-    void drawText(const CursorContext &context, const ViewState &viewState, int32_t scrollX, int32_t scrollY) const;
+    void drawText(const CursorContext &context, const ViewState &viewState, int32_t scrollX, int32_t scrollY, int32_t marginWidth) const;
 
 public:
     /**

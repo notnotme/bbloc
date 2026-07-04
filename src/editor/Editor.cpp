@@ -20,6 +20,8 @@
 
 #include <iostream>
 #include <algorithm>
+#include <array>
+#include <limits>
 #include <ranges>
 #include <utf8.h>
 
@@ -29,7 +31,6 @@
 
 Editor::Editor(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
     : View(commandController, theme, quadProgram, quadBuffer),
-      m_longest_line_cache(0, 0, 0),
       m_is_tab_to_space(std::make_shared<CVarBool>(true)) {
     // Register cvars
     registerTabToSpaceCVar();
@@ -40,13 +41,17 @@ void Editor::render(CursorContext &context, ViewState &viewState, const float dt
     const auto padding_width = m_theme.getDimension(DimensionId::PaddingWidth);
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
     const auto cursor_line_count = static_cast<int32_t>(context.cursor.getLineCount());
-    const auto string_cursor_line_count = utf8::utf8to16(std::to_string(cursor_line_count));
-    const auto cursor_line_count_width = m_theme.measure(string_cursor_line_count, true);
+
+    // The greatest line number is as wide as the line count has digits
+    auto line_count_digits = 0;
+    for (auto remainder = cursor_line_count; remainder > 0 || line_count_digits == 0; remainder /= 10) {
+        ++line_count_digits;
+    }
+    const auto cursor_line_count_width = line_count_digits * m_theme.getFontAdvance();
     const auto margin_width = padding_width + cursor_line_count_width + padding_width;
 
     // Follow or scroll to the said position. scrollX and scrollY and followIndicator are eventually updated outside (by reference)
-    updateLongestLineCache(context);
-    updateScroll(context, viewState);
+    updateScroll(context, viewState, margin_width);
 
     // Get updated scroll values
     const auto scroll_x = context.scroll.x;
@@ -58,7 +63,7 @@ void Editor::render(CursorContext &context, ViewState &viewState, const float dt
     drawMarginText(context, viewState, cursor_line_count_width, scroll_y);
 
     const auto quads_count_before_text = m_quad_buffer.getCount();
-    drawText(context, viewState, scroll_x, scroll_y);
+    drawText(context, viewState, scroll_x, scroll_y, margin_width);
     m_quad_buffer.unmap();
 
     // Get the vew geometry
@@ -173,53 +178,17 @@ void Editor::onTextInput(CursorContext &context, ViewState &viewState, const cha
     context.highlighter.edit(edit);
 }
 
-void Editor::updateLongestLineCache(const CursorContext &context) {
-    // Find the longest line in the buffer and calculate its width
-    const auto cursor_line_count = context.cursor.getLineCount();
-    const auto cursor_line = context.cursor.getLine();
-    const auto cursor_string = context.cursor.getString();
-    const auto cursor_string_width = m_theme.measure(cursor_string, false);
-    if (cursor_line_count != m_longest_line_cache.count
-        || cursor_line == m_longest_line_cache.index && cursor_string_width < m_longest_line_cache.width) {
-        m_longest_line_cache.count = cursor_line_count;
-        m_longest_line_cache.index = 0;
-        m_longest_line_cache.width = 0;
-        for (auto line = 0; line < cursor_line_count; ++line) {
-            const auto string = context.cursor.getString(line);
-            const auto string_width = m_theme.measure(string, false);
-            if (string_width > m_longest_line_cache.width) {
-                m_longest_line_cache.width = string_width;
-                m_longest_line_cache.index = line;
-            }
-        }
-    } else if (cursor_line != m_longest_line_cache.index
-        && cursor_string_width > m_longest_line_cache.width) {
-
-        m_longest_line_cache.index = cursor_line;
-        m_longest_line_cache.width = cursor_string_width;
-    } else if (cursor_line == m_longest_line_cache.index
-        && cursor_string_width > m_longest_line_cache.width) {
-
-        m_longest_line_cache.width = cursor_string_width;
-    }
-}
-
-void Editor::updateScroll(CursorContext &context, const ViewState &viewState) const {
+void Editor::updateScroll(CursorContext &context, const ViewState &viewState, const int32_t marginWidth) const {
     const auto line_height = m_theme.getLineHeight();
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
-    const auto padding_width = m_theme.getDimension(DimensionId::PaddingWidth);
     const auto indicator_width = m_theme.getDimension(DimensionId::IndicatorWidth);
 
     const auto cursor_line =  static_cast<int32_t>(context.cursor.getLine());
     const auto cursor_column =  static_cast<int32_t>(context.cursor.getColumn());
     const auto cursor_line_count = static_cast<int32_t>(context.cursor.getLineCount());
 
-    const auto cursor_line_count_string = utf8::utf8to16(std::to_string(cursor_line_count));
-    const auto cursor_line_count_width = m_theme.measure(cursor_line_count_string, true);
-
     const auto width = viewState.getWidth();
     const auto height = viewState.getHeight();
-    const auto margin_width = padding_width + cursor_line_count_width + padding_width;
 
     if (context.scroll.follow_indicator) {
         const auto scroll_x = context.scroll.x;
@@ -239,15 +208,17 @@ void Editor::updateScroll(CursorContext &context, const ViewState &viewState) co
         // Horizontal scroll
         if (indicator_x < scroll_x) {
             context.scroll.x = indicator_x;
-        } else if (indicator_x > width - margin_width - border_size + scroll_x) {
-            context.scroll.x = indicator_x - width + margin_width + border_size + indicator_width;
+        } else if (indicator_x > width - marginWidth - border_size + scroll_x) {
+            context.scroll.x = indicator_x - width + marginWidth + border_size + indicator_width;
         }
     } else {
         // Update max-scroll values
         const auto scroll_x = context.scroll.x;
         const auto scroll_y = context.scroll.y;
+        const auto tab_to_space = static_cast<uint32_t>(m_theme.getDimension(DimensionId::TabToSpace));
+        const auto longest_line_width = static_cast<int32_t>(context.cursor.getLongestLineLength(tab_to_space)) * m_theme.getFontAdvance();
         const auto max_scroll_y = cursor_line_count * line_height - height;
-        const auto max_scroll_x = m_longest_line_cache.width - (width - margin_width - border_size - indicator_width);
+        const auto max_scroll_x = longest_line_width - (width - marginWidth - border_size - indicator_width);
         context.scroll.x = std::clamp(scroll_x, 0, max_scroll_x < 0 ? 0 : max_scroll_x);
         context.scroll.y = std::clamp(scroll_y, 0, max_scroll_y < 0 ? 0 : max_scroll_y);
     }
@@ -293,20 +264,28 @@ void Editor::drawMarginText(const CursorContext &context, const ViewState &viewS
     auto pen_position_y = line_scroll_offset_y + position_y + line_height + font_descender;
     auto line_index = first_line_in_viewport;
 
+    // Line numbers are ASCII digits, format them into a stack buffer to avoid per-line allocations
+    constexpr auto MAX_LINE_NUMBER_DIGITS = std::numeric_limits<uint32_t>::digits10 + 1;
+    std::array<char16_t, MAX_LINE_NUMBER_DIGITS> line_number_digits{};
+
     auto quad_in_buffer = m_quad_buffer.getCount();
     while (line_index < cursor_line_count) {
         if (line_index >= 0) {
-            const auto string_line_number = utf8::utf8to16(std::to_string(line_index + 1));
-            const auto string_line_number_width = m_theme.measure(string_line_number, true);
+            // Fill the buffer from its end, least significant digit first
+            auto digit_count = 0;
+            for (auto remainder = static_cast<uint32_t>(line_index) + 1; remainder > 0; remainder /= 10) {
+                line_number_digits[MAX_LINE_NUMBER_DIGITS - 1 - digit_count] = static_cast<char16_t>(u'0' + remainder % 10);
+                ++digit_count;
+            }
 
-            pen_position_x = position_x + padding_width + lineCountWidth - string_line_number_width;
-            for (const auto c : string_line_number) {
+            pen_position_x = position_x + padding_width + lineCountWidth - digit_count * font_advance;
+            for (auto digit_index = MAX_LINE_NUMBER_DIGITS - digit_count; digit_index < MAX_LINE_NUMBER_DIGITS; ++digit_index) {
                 if (quad_in_buffer >= ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT) {
                     // The editor quad region is full, truncate the remaining text for this frame
                     return;
                 }
 
-                const auto &character = m_theme.getCharacter(c);
+                const auto &character = m_theme.getCharacter(line_number_digits[digit_index]);
                 drawCharacter(pen_position_x, pen_position_y, character, line_number_color);
                 pen_position_x += font_advance;
                 ++quad_in_buffer;
@@ -323,7 +302,7 @@ void Editor::drawMarginText(const CursorContext &context, const ViewState &viewS
     }
 }
 
-void Editor::drawText(const CursorContext &context, const ViewState &viewState, const int32_t scrollX, const int32_t scrollY) const {
+void Editor::drawText(const CursorContext &context, const ViewState &viewState, const int32_t scrollX, const int32_t scrollY, const int32_t marginWidth) const {
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
     const auto position_y = viewState.getPositionY();
@@ -334,7 +313,6 @@ void Editor::drawText(const CursorContext &context, const ViewState &viewState, 
     const auto indicator_width = m_theme.getDimension(DimensionId::IndicatorWidth);
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
     const auto tab_to_space = m_theme.getDimension(DimensionId::TabToSpace);
-    const auto padding_width = m_theme.getDimension(DimensionId::PaddingWidth);
 
     const auto line_height = m_theme.getLineHeight();
     const auto font_descender = m_theme.getFontDescender();
@@ -344,10 +322,7 @@ void Editor::drawText(const CursorContext &context, const ViewState &viewState, 
     const auto cursor_column =  static_cast<int32_t>(context.cursor.getColumn());
     const auto cursor_line_count = static_cast<int32_t>(context.cursor.getLineCount());
 
-    const auto string_cursor_line_count = utf8::utf8to16(std::to_string(cursor_line_count));
-    const auto cursor_line_count_width = m_theme.measure(string_cursor_line_count, true);
-    const auto margin_width = padding_width + cursor_line_count_width + padding_width;
-    const auto cursor_text_start_x = position_x + margin_width + border_size;
+    const auto cursor_text_start_x = position_x + marginWidth + border_size;
 
     // Draw text
     const auto first_line_in_viewport = scrollY / line_height;

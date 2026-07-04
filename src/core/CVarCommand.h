@@ -21,13 +21,14 @@
 
 #include <memory>
 #include <ranges>
+#include <span>
 #include <string>
-#include <unordered_map>
 
 #include "base/CVar.h"
 #include "base/CVarCallback.h"
 #include "base/CVarRegistry.h"
 #include "base/Command.h"
+#include "base/U16StringMap.h"
 #include "CursorContext.h"
 
 
@@ -45,7 +46,7 @@ class CVarCommand final : public Command<CursorContext>, public CVarRegistry {
     };
 
     /** Registered configuration variables. */
-    std::unordered_map<std::u16string, CVarEntry> m_cvars;
+    U16StringMap<CVarEntry> m_cvars;
 
 public:
     CVarCommand() = default;
@@ -61,7 +62,7 @@ public:
      * @param input Partial user input string.
      * @param itemCallback Callback to provide suggestions.
      */
-    void provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
+    void provideAutoComplete(std::span<const std::u16string_view> previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
 
     /**
      * @brief Executes the CVar command.
@@ -72,7 +73,7 @@ public:
      * @param args Arguments passed to the command.
      * @return Optional message indicating result or error.
      */
-    [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, const std::vector<std::u16string_view> &args) override;
+    [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, std::span<const std::u16string_view> args) override;
 
     /**
      * @brief Registers a new configuration variable.

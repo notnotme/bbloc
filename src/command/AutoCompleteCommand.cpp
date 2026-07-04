@@ -23,7 +23,7 @@
 #include "../core/CommandManager.h"
 
 
-const std::unordered_map<std::u16string, AutoCompleteCommand::Direction> AutoCompleteCommand::DIRECTION_MAP = {
+const U16StringMap<AutoCompleteCommand::Direction> AutoCompleteCommand::DIRECTION_MAP = {
     { u"forward", Direction::FORWARD },
     { u"backward", Direction::BACKWARD }
 };
@@ -31,7 +31,7 @@ const std::unordered_map<std::u16string, AutoCompleteCommand::Direction> AutoCom
 AutoCompleteCommand::AutoCompleteCommand(PromptState &promptState)
     : m_prompt_state(promptState) {}
 
-void AutoCompleteCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void AutoCompleteCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) previousArgs;
     if (argumentIndex != 0) {
         // Only auto-complete the first argument (direction)
@@ -45,7 +45,7 @@ void AutoCompleteCommand::provideAutoComplete(const std::vector<std::u16string_v
     }
 }
 
-std::optional<std::u16string> AutoCompleteCommand::run(CursorContext &payload, const std::vector<std::u16string_view> &args) {
+std::optional<std::u16string> AutoCompleteCommand::run(CursorContext &payload, const std::span<const std::u16string_view> args) {
     if (args.size() > 1) {
         return u"Expected 0 or 1 argument.";
     }
@@ -64,7 +64,8 @@ std::optional<std::u16string> AutoCompleteCommand::run(CursorContext &payload, c
 
     // Get and tokenize the input string
     const auto input = payload.prompt_cursor.getString();
-    const auto tokens = CommandManager::tokenize(input);
+    auto tokens = std::vector<std::u16string_view>();
+    CommandManager::tokenize(input, tokens);
 
     // Reset the history index if we were browsing it
     m_prompt_state.clearHistoryIndex();
@@ -94,17 +95,20 @@ std::optional<std::u16string> AutoCompleteCommand::run(CursorContext &payload, c
                 }
             }
 
+            // One buffer reused across candidates; addCompletion copies the view into its own storage.
+            auto completion_buffer = std::u16string();
             payload.command_feedback->on_complete_callback(lookup, [&](const std::u16string_view item) {
                 // Candidates containing a space must be quoted, unless the user already opened a quote
                 const auto needs_quote = !quote_is_open && item.find(u' ') != std::u16string_view::npos;
                 has_open_quote = quote_is_open || needs_quote;
 
-                auto completion_str = std::u16string();
+                completion_buffer.clear();
                 if (has_open_quote) {
-                    completion_str.append(u"\"");
+                    completion_buffer.push_back(u'"');
                 }
 
-                m_prompt_state.addCompletion(completion_str.append(item));
+                completion_buffer.append(item);
+                m_prompt_state.addCompletion(completion_buffer);
             });
         }
     } else {
@@ -140,28 +144,32 @@ std::optional<std::u16string> AutoCompleteCommand::run(CursorContext &payload, c
         }
 
         // Gather the arguments written before the one being completed, excluding the command name.
-        auto previous_args = std::vector<std::u16string_view>();
+        auto previous_args = std::span<const std::u16string_view>();
         if (completing_last_token && tokens.size() >= 2) {
-            previous_args.assign(tokens.begin() + 1, tokens.end() - 1);
+            previous_args = std::span(tokens).subspan(1, tokens.size() - 2);
         } else if (!completing_last_token && !tokens.empty()) {
-            previous_args.assign(tokens.begin() + 1, tokens.end());
+            previous_args = std::span(tokens).subspan(1);
         }
 
         // Try to complete commands arguments first, if the command name is incomplete, this will return an empty list
         if (!completing_command_name) {
+            // Each candidate is appended after the invariant left part, reusing the buffer;
+            // addCompletion copies the view into its own storage.
+            const auto quote_is_open = reconstituted_command.ends_with(u'"');
+            const auto base_length = reconstituted_command.size();
             payload.command_runner.getArgumentsCompletions(command_name, previous_args, argument_index, argument_to_complete,
                 [&](const std::u16string_view completion) {
                     // Candidates containing a space must be quoted, unless the user already opened a quote
-                    const auto quote_is_open = reconstituted_command.ends_with(u'"');
                     const auto needs_quote = !quote_is_open && completion.find(u' ') != std::u16string_view::npos;
                     has_open_quote = quote_is_open || needs_quote;
 
-                    auto completion_str = std::u16string(reconstituted_command);
+                    reconstituted_command.resize(base_length);
                     if (needs_quote) {
-                        completion_str.append(u"\"");
+                        reconstituted_command.push_back(u'"');
                     }
 
-                    m_prompt_state.addCompletion(completion_str.append(completion));
+                    reconstituted_command.append(completion);
+                    m_prompt_state.addCompletion(reconstituted_command);
                 });
         }
 
@@ -206,8 +214,7 @@ std::optional<std::u16string> AutoCompleteCommand::run(CursorContext &payload, c
 }
 
 AutoCompleteCommand::Direction AutoCompleteCommand::mapDirection(const std::u16string_view direction) {
-    const auto direction_str = std::u16string(direction.begin(), direction.end());
-    if (const auto &mapped_direction = DIRECTION_MAP.find(direction_str); mapped_direction != DIRECTION_MAP.end()) {
+    if (const auto &mapped_direction = DIRECTION_MAP.find(direction); mapped_direction != DIRECTION_MAP.end()) {
         return mapped_direction->second;
     }
 

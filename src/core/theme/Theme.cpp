@@ -41,7 +41,9 @@ void Theme::destroy() {
     FT_Done_FreeType(m_ft_library);
 
     // Clear data
-    m_colors.clear();
+    m_colors.fill(nullptr);
+    m_highlight_colors.fill(nullptr);
+    m_dimensions.fill(nullptr);
     m_atlas_array.destroy();
 
     // Default states
@@ -76,21 +78,11 @@ int32_t Theme::getFontSize() const {
 }
 
 const Color &Theme::getColor(const ColorId id) const {
-    const auto color = m_colors.find(id);
-    if (color == m_colors.end()) {
-        throw std::runtime_error("Theme::getColor color does not exists.");
-    }
-
-    return color->second->m_value;
+    return m_colors[static_cast<size_t>(id)]->m_value;
 }
 
 const Color &Theme::getColor(const TokenId id) const {
-    const auto color = m_highlight_colors.find(id);
-    if (color == m_highlight_colors.end()) {
-        throw std::runtime_error("Theme::getColor color does not exists.");
-    }
-
-    return color->second->m_value;
+    return m_highlight_colors[static_cast<size_t>(id)]->m_value;
 }
 
 const AtlasEntry &Theme::getCharacter(const char16_t character) {
@@ -124,12 +116,7 @@ const AtlasEntry &Theme::getCharacter(const char16_t character) {
 }
 
 int32_t Theme::getDimension(const DimensionId id) const {
-    const auto dimension = m_dimensions.find(id);
-    if (dimension == m_dimensions.end()) {
-        throw std::runtime_error("Theme::getDimension dimension does not exists.");
-    }
-
-    return dimension->second->m_value;
+    return m_dimensions[static_cast<size_t>(id)]->m_value;
 }
 
 int32_t Theme::getLineHeight() const {

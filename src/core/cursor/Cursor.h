@@ -151,6 +151,14 @@ public:
     /** @brief Returns the total number of lines in the buffer. */
     [[nodiscard]] uint32_t getLineCount() const;
 
+    /**
+     * @brief Returns the weighted character length of the longest line in the buffer.
+     *
+     * @param tabWeight The number of character widths a tab character occupies.
+     * @return The weighted length of the longest line, in characters.
+     */
+    [[nodiscard]] uint32_t getLongestLineLength(uint32_t tabWeight) const;
+
     /** @brief Returns the current line at the cursor line position (from column 0). */
     [[nodiscard]] std::u16string_view getString() const;
 

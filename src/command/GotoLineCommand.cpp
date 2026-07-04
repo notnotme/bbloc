@@ -23,7 +23,7 @@
 #include <utf8/cpp17.h>
 
 
-void GotoLineCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void GotoLineCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) previousArgs;
     (void) argumentIndex;
     (void) input;
@@ -31,7 +31,7 @@ void GotoLineCommand::provideAutoComplete(const std::vector<std::u16string_view>
     // No-op
 }
 
-std::optional<std::u16string> GotoLineCommand::run(CursorContext &payload, const std::vector<std::u16string_view> &args) {
+std::optional<std::u16string> GotoLineCommand::run(CursorContext &payload, const std::span<const std::u16string_view> args) {
     if (args.empty()) {
         // From the prompt the line number is mandatory; from the editor, ask for it interactively.
         if (payload.from_prompt) {

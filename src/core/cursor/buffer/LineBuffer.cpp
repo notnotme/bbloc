@@ -70,6 +70,10 @@ uint32_t LineBuffer::getStringCount() const {
     return static_cast<uint32_t>(m_line_data.size());
 }
 
+uint32_t LineBuffer::getLongestLineLength(const uint32_t tabWeight) const {
+    return m_longest_line.getLongestLineLength(tabWeight);
+}
+
 uint32_t LineBuffer::detachedLengthBefore(const uint32_t line) const {
     return line > m_current_line_index ? static_cast<uint32_t>(m_current_line.length()) : 0;
 }
@@ -120,6 +124,7 @@ BufferEdit LineBuffer::insert(uint32_t line, uint32_t column, const std::u16stri
         edit.new_end.column = static_cast<uint32_t>(column + characters.length());
 
         m_current_line.insert(column, characters);
+        m_longest_line.onEdit(*this, edit);
         return edit;
     }
 
@@ -207,6 +212,7 @@ BufferEdit LineBuffer::insert(uint32_t line, uint32_t column, const std::u16stri
         it->start += inserted_total - length;
     }
 
+    m_longest_line.onEdit(*this, edit);
     return edit;
 }
 
@@ -245,6 +251,7 @@ BufferEdit LineBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd, u
         edit.new_end.column = column;
 
         m_current_line.erase(column, columnEnd - column);
+        m_longest_line.onEdit(*this, edit);
         return edit;
     }
 
@@ -305,6 +312,7 @@ BufferEdit LineBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd, u
         it->start -= length + erase_length;
     }
 
+    m_longest_line.onEdit(*this, edit);
     return edit;
 }
 
@@ -321,6 +329,7 @@ BufferEdit LineBuffer::clear() {
     m_line_data.clear();
     m_line_data.emplace_back(0, 0);
     m_current_line_index = 0;
+    m_longest_line.reset();
 
     return {
         .start_byte = 0,

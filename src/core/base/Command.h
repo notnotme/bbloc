@@ -20,8 +20,8 @@
 #define COMMAND_H
 
 #include <optional>
+#include <span>
 #include <string>
-#include <vector>
 
 #include "AutoCompleteCallback.h"
 
@@ -57,7 +57,7 @@ public:
      * @param args The arguments to pass to this command.
      * @return An optional informative or error message.
      */
-    [[nodiscard]] virtual std::optional<std::u16string> run(TPayload &payload, const std::vector<std::u16string_view> &args) = 0;
+    [[nodiscard]] virtual std::optional<std::u16string> run(TPayload &payload, std::span<const std::u16string_view> args) = 0;
 
     /**
      * @brief Command-line completion function used to provide completion suggestions for command arguments.
@@ -67,7 +67,7 @@ public:
      * @param input The current partial input from the user for this argument.
      * @param itemCallback A callback to be invoked with each completion suggestion.
      */
-    virtual void provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const = 0;
+    virtual void provideAutoComplete(std::span<const std::u16string_view> previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const = 0;
 };
 
 

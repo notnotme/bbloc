@@ -25,7 +25,7 @@ SearchCommand::SearchCommand(const Action action, std::shared_ptr<CVarBool> case
     : m_action(action),
       m_case_sensitive(std::move(caseSensitive)) {}
 
-void SearchCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void SearchCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) previousArgs;
     (void) argumentIndex;
     (void) input;
@@ -33,7 +33,7 @@ void SearchCommand::provideAutoComplete(const std::vector<std::u16string_view> &
     // No-op
 }
 
-std::optional<std::u16string> SearchCommand::run(CursorContext &payload, const std::vector<std::u16string_view> &args) {
+std::optional<std::u16string> SearchCommand::run(CursorContext &payload, const std::span<const std::u16string_view> args) {
     switch (m_action) {
         case Action::SEARCH:
             return runSearch(payload, args);
@@ -51,7 +51,7 @@ std::optional<std::u16string> SearchCommand::run(CursorContext &payload, const s
     return std::nullopt;
 }
 
-std::optional<std::u16string> SearchCommand::runSearch(CursorContext &payload, const std::vector<std::u16string_view> &args) const {
+std::optional<std::u16string> SearchCommand::runSearch(CursorContext &payload, const std::span<const std::u16string_view> args) const {
     if (args.empty()) {
         // From the prompt the search term is mandatory; from the editor, ask for it interactively.
         if (payload.from_prompt) {
@@ -70,15 +70,24 @@ std::optional<std::u16string> SearchCommand::runSearch(CursorContext &payload, c
         return std::nullopt;
     }
 
-    auto term = std::u16string();
-    for (auto index = 0u; index < args.size(); ++index) {
-        if (index > 0) {
-            term.push_back(u' ');
-        }
-        term.append(args[index]);
+    // Join the arguments back with single spaces, reserving the final length up front.
+    auto joined_term = std::u16string();
+    auto term_length = args.size() - 1;
+    for (const auto &argument : args) {
+        term_length += argument.length();
     }
 
-    payload.search.term = term;
+    joined_term.reserve(term_length);
+    for (auto index = 0u; index < args.size(); ++index) {
+        if (index > 0) {
+            joined_term.push_back(u' ');
+        }
+        joined_term.append(args[index]);
+    }
+
+    // Stored before the not-found return below, so find_next keeps working after a failed search.
+    payload.search.term = std::move(joined_term);
+    const auto &term = payload.search.term.value();
 
     const auto &cursor = payload.cursor;
     const auto case_sensitive = m_case_sensitive->m_value;
@@ -147,7 +156,7 @@ std::optional<std::u16string> SearchCommand::runFind(CursorContext &payload) con
     return std::nullopt;
 }
 
-std::optional<std::u16string> SearchCommand::runReplace(CursorContext &payload, const std::vector<std::u16string_view> &args) const {
+std::optional<std::u16string> SearchCommand::runReplace(CursorContext &payload, const std::span<const std::u16string_view> args) const {
     if (args.size() != 2) {
         return u"Usage: replace <from> <to>";
     }
@@ -343,7 +352,18 @@ size_t SearchCommand::indexOf(const std::u16string_view line, const std::u16stri
         return line.find(term, from);
     }
 
-    return toLowerAscii(line).find(toLowerAscii(term), from);
+    // Manual scan replicating find semantics without lowering whole strings; in particular,
+    // an empty term matches at from whenever it fits within the line.
+    for (auto position = from; position + term.size() <= line.size(); ++position) {
+        const auto candidate = line.substr(position, term.size());
+        if (std::equal(candidate.begin(), candidate.end(), term.begin(), [](const char16_t left, const char16_t right) {
+            return toLowerAscii(left) == toLowerAscii(right);
+        })) {
+            return position;
+        }
+    }
+
+    return std::u16string_view::npos;
 }
 
 size_t SearchCommand::lastIndexOf(const std::u16string_view line, const std::u16string_view term, const size_t limit, const bool caseSensitive) {
@@ -357,18 +377,35 @@ size_t SearchCommand::lastIndexOf(const std::u16string_view line, const std::u16
         return line.rfind(term, search_position);
     }
 
-    return toLowerAscii(line).rfind(toLowerAscii(term), search_position);
-}
+    // Manual scan replicating rfind semantics; an empty term matches at min(search_position, line.size()).
+    if (term.size() > line.size()) {
+        return std::u16string_view::npos;
+    }
 
-std::u16string SearchCommand::toLowerAscii(const std::u16string_view text) {
-    auto lowered = std::u16string(text);
-    for (auto &character : lowered) {
-        if (character >= u'A' && character <= u'Z') {
-            character = static_cast<char16_t>(character - u'A' + u'a');
+    // Scan down to 0 inclusive, minding unsigned wrap-around on the last decrement.
+    const auto start = std::min(search_position, line.size() - term.size());
+    for (auto position = start;; --position) {
+        const auto candidate = line.substr(position, term.size());
+        if (std::equal(candidate.begin(), candidate.end(), term.begin(), [](const char16_t left, const char16_t right) {
+            return toLowerAscii(left) == toLowerAscii(right);
+        })) {
+            return position;
+        }
+
+        if (position == 0) {
+            break;
         }
     }
 
-    return lowered;
+    return std::u16string_view::npos;
+}
+
+char16_t SearchCommand::toLowerAscii(const char16_t character) {
+    if (character >= u'A' && character <= u'Z') {
+        return static_cast<char16_t>(character - u'A' + u'a');
+    }
+
+    return character;
 }
 
 std::u16string SearchCommand::toU16(const uint32_t value) {

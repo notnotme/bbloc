@@ -19,6 +19,8 @@
 #ifndef DIMENSION_ID_H
 #define DIMENSION_ID_H
 
+#include <cstddef>
+
 
 /**
  * @brief Enumeration of dimension identifiers used for layout and spacing.
@@ -33,6 +35,9 @@ enum class DimensionId {
     TabToSpace,     ///< Number of spaces to display per tab character.
     PageUpDown      ///< Number of lines to scroll on PageUp/PageDown events.
 };
+
+/** @brief Number of DimensionId values; must track the last enumerator of DimensionId. */
+inline constexpr std::size_t DIMENSION_ID_COUNT = static_cast<std::size_t>(DimensionId::PageUpDown) + 1;
 
 
 #endif //DIMENSION_ID_H

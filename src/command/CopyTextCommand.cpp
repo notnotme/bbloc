@@ -22,7 +22,7 @@
 #include <utf8.h>
 
 
-void CopyTextCommand::provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+void CopyTextCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) previousArgs;
     (void) input;
     (void) argumentIndex;
@@ -30,7 +30,7 @@ void CopyTextCommand::provideAutoComplete(const std::vector<std::u16string_view>
     // No-op
 }
 
-std::optional<std::u16string> CopyTextCommand::run(CursorContext &payload, const std::vector<std::u16string_view> &args) {
+std::optional<std::u16string> CopyTextCommand::run(CursorContext &payload, const std::span<const std::u16string_view> args) {
     if (!args.empty()) {
         return u"Expected 0 argument.";
     }
@@ -45,7 +45,13 @@ std::optional<std::u16string> CopyTextCommand::copySelectionToClipboard(const Cu
     }
 
     // Because the selected text returns a vector, join the lines back with line endings.
+    auto joined_length = selection->size() - 1;
+    for (const auto &line : selection.value()) {
+        joined_length += line.length();
+    }
+
     auto to_clipboard_text = std::u16string();
+    to_clipboard_text.reserve(joined_length);
     auto is_first_line = true;
     for (const auto &line : selection.value()) {
         if (!is_first_line) {

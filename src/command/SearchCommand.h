@@ -21,8 +21,8 @@
 
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
-#include <vector>
 
 #include "../core/base/AutoCompleteCallback.h"
 #include "../core/CursorContext.h"
@@ -67,14 +67,14 @@ private:
     const std::shared_ptr<CVarBool> m_case_sensitive;
 
     /**
-     * @brief Lower-cases the ASCII letters of a string, leaving other code units untouched.
+     * @brief Lower-cases an ASCII letter, leaving other code units untouched.
      *
      * Only A-Z are folded; this is the deliberate ASCII-only limitation of the v1 case-insensitive matching.
      *
-     * @param text The string to fold.
-     * @return A copy with ASCII letters lower-cased.
+     * @param character The code unit to fold.
+     * @return The lower-cased code unit.
      */
-    [[nodiscard]] static std::u16string toLowerAscii(std::u16string_view text);
+    [[nodiscard]] static char16_t toLowerAscii(char16_t character);
 
     /**
      * @brief Renders an unsigned value as a UTF-16 decimal string.
@@ -159,7 +159,7 @@ private:
      * @param args The command arguments forming the term.
      * @return A status or error message.
      */
-    [[nodiscard]] std::optional<std::u16string> runSearch(CursorContext &payload, const std::vector<std::u16string_view> &args) const;
+    [[nodiscard]] std::optional<std::u16string> runSearch(CursorContext &payload, std::span<const std::u16string_view> args) const;
 
     /**
      * @brief Runs the FIND_NEXT or FIND_PREV action using the stored term.
@@ -174,7 +174,7 @@ private:
      * @param args The command arguments: the term and its replacement.
      * @return A status or error message.
      */
-    [[nodiscard]] std::optional<std::u16string> runReplace(CursorContext &payload, const std::vector<std::u16string_view> &args) const;
+    [[nodiscard]] std::optional<std::u16string> runReplace(CursorContext &payload, std::span<const std::u16string_view> args) const;
 
 public:
     /**
@@ -194,7 +194,7 @@ public:
      * @param input The current partial input from the user for this argument.
      * @param itemCallback A callback to be invoked with each completion suggestion.
      */
-    void provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
+    void provideAutoComplete(std::span<const std::u16string_view> previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
 
     /**
      * @brief Executes the search or replace action bound to this instance.
@@ -202,7 +202,7 @@ public:
      * @param args Command arguments, whose meaning depends on the action.
      * @return An optional message indicating the result of the operation.
      */
-    [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, const std::vector<std::u16string_view> &args) override;
+    [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, std::span<const std::u16string_view> args) override;
 
     /**
      * @brief Recomputes the persistent match counter for the stored term under a new case-sensitivity mode.

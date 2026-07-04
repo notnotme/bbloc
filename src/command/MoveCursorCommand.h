@@ -19,12 +19,13 @@
 #ifndef MOVE_CURSOR_COMMAND_H
 #define MOVE_CURSOR_COMMAND_H
 
+#include <span>
 #include <string>
-#include <vector>
 
 #include "../core/base/AutoCompleteCallback.h"
 #include "../core/CursorContext.h"
 #include "../core/base/Command.h"
+#include "../core/base/U16StringMap.h"
 #include "../prompt/PromptState.h"
 
 
@@ -58,10 +59,10 @@ private:
 
 private:
     /** Lookup map to ease mapping Movement. */
-    static const std::unordered_map<std::u16string, Movement> MOVEMENT_MAP;
+    static const U16StringMap<Movement> MOVEMENT_MAP;
 
     /** Lookup map to ease mapping Boolean. */
-    static const std::unordered_map<std::u16string, Boolean> BOOLEAN_MAP;
+    static const U16StringMap<Boolean> BOOLEAN_MAP;
 
     /** Reference to the prompt state. */
     PromptState &m_prompt_state;
@@ -107,7 +108,7 @@ public:
      * @param input The current partial input from the user for this argument.
      * @param itemCallback A callback to be invoked with each completion suggestion.
      */
-    void provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
+    void provideAutoComplete(std::span<const std::u16string_view> previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
 
     /**
      * @brief Executes the cursor movement.
@@ -121,7 +122,7 @@ public:
      * @param args Command arguments specifying how to move the cursor.
      * @return An optional message indicating the new cursor position or the result of the operation.
      */
-    [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, const std::vector<std::u16string_view> &args) override;
+    [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, std::span<const std::u16string_view> args) override;
 };
 
 

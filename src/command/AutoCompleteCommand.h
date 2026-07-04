@@ -19,12 +19,13 @@
 #ifndef AUTO_COMPLETE_COMMAND_H
 #define AUTO_COMPLETE_COMMAND_H
 
+#include <span>
 #include <string>
-#include <vector>
 
 #include "../core/base/AutoCompleteCallback.h"
 #include "../core/CursorContext.h"
 #include "../core/base/Command.h"
+#include "../core/base/U16StringMap.h"
 #include "../prompt/PromptState.h"
 
 
@@ -46,7 +47,7 @@ private:
 
 private:
     /** Lookup map to ease mapping Direction. */
-    static const std::unordered_map<std::u16string, Direction> DIRECTION_MAP;
+    static const U16StringMap<Direction> DIRECTION_MAP;
 
     /** Reference to the prompt state this command will use for auto-completion. */
     PromptState &m_prompt_state;
@@ -80,7 +81,7 @@ public:
      * @param input The current partial input from the user for this argument.
      * @param itemCallback A callback to be invoked with each completion suggestion.
      */
-    void provideAutoComplete(const std::vector<std::u16string_view> &previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
+    void provideAutoComplete(std::span<const std::u16string_view> previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) const override;
 
     /**
      * @brief Executes the auto-completion command.
@@ -92,7 +93,7 @@ public:
      * @param args Command arguments that may modify the auto-completion behavior.
      * @return An optional message indicating the result of the operation.
      */
-    [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, const std::vector<std::u16string_view> &args) override;
+    [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, std::span<const std::u16string_view> args) override;
 };
 
 

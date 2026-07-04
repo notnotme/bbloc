@@ -19,8 +19,8 @@
 #ifndef COMMAND_RUNNER_H
 #define COMMAND_RUNNER_H
 
+#include <span>
 #include <string_view>
-#include <vector>
 
 
 /**
@@ -60,7 +60,7 @@ public:
      * @param input The current (partial) user input for this argument.
      * @param itemCallback Callback to receive possible argument completions.
      */
-    virtual void getArgumentsCompletions(std::u16string_view command, const std::vector<std::u16string_view> &previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) = 0;
+    virtual void getArgumentsCompletions(std::u16string_view command, std::span<const std::u16string_view> previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) = 0;
 };
 
 

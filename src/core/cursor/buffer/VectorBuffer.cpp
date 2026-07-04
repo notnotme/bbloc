@@ -34,6 +34,10 @@ uint32_t VectorBuffer::getStringCount() const {
     return m_lines.size();
 }
 
+uint32_t VectorBuffer::getLongestLineLength(const uint32_t tabWeight) const {
+    return m_longest_line.getLongestLineLength(tabWeight);
+}
+
 uint32_t VectorBuffer::getByteOffset(const uint32_t line, const uint32_t column) const {
     // Count column position byte offset, then go through all lines
     // to compute their size in byte. ! -> "\n" -> +1 length
@@ -139,6 +143,8 @@ BufferEdit VectorBuffer::insert(uint32_t line, uint32_t column, const std::u16st
     // We can now finish filling the BufferEdit since line and column probably changed values.
     edit.new_end.line = line;
     edit.new_end.column = column;
+
+    m_longest_line.onEdit(*this, edit);
     return edit;
 }
 
@@ -191,6 +197,8 @@ BufferEdit VectorBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd,
     // We can finish filling the BufferEdit struct
     edit.new_end.line = line;
     edit.new_end.column = column;
+
+    m_longest_line.onEdit(*this, edit);
     return edit;
 }
 
@@ -202,6 +210,7 @@ BufferEdit VectorBuffer::clear() {
 
     m_lines.clear();
     m_lines.emplace_back();
+    m_longest_line.reset();
     return {
         .start_byte = 0,
         .old_end_byte = buffer_size,

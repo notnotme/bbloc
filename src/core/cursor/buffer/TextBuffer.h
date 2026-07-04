@@ -56,6 +56,16 @@ public:
     [[nodiscard]] virtual uint32_t getStringCount() const = 0;
 
     /**
+     * @brief Returns the weighted character length of the longest line in the buffer.
+     *
+     * Tabs weigh tabWeight characters, every other character weighs one.
+     *
+     * @param tabWeight The number of character widths a tab character occupies.
+     * @return The weighted length of the longest line, in characters.
+     */
+    [[nodiscard]] virtual uint32_t getLongestLineLength(uint32_t tabWeight) const = 0;
+
+    /**
      * @brief Return the offset of a byte inside the buffer, from a line, column coordinates.
      *
      * @param line The line index of the wanted offset.
