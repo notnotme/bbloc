@@ -63,6 +63,12 @@ private:
         std::optional<std::u16string> term;  ///< The last searched term, if any.
         int32_t match_index = -1;            ///< Zero-based ordinal of current match, -1 when none.
         int32_t match_count = 0;             ///< Total matches for the current term, 0 when none.
+
+        /** @brief Forgets the match statistics while keeping the term, so find_next/find_prev still work. */
+        void resetMatches() {
+            match_index = -1;
+            match_count = 0;
+        }
     };
 
 public:

@@ -53,7 +53,21 @@ std::optional<std::u16string> SearchCommand::run(CursorContext &payload, const s
 
 std::optional<std::u16string> SearchCommand::runSearch(CursorContext &payload, const std::vector<std::u16string_view> &args) const {
     if (args.empty()) {
-        return u"Usage: search <term>";
+        // From the prompt the search term is mandatory; from the editor, ask for it interactively.
+        if (payload.from_prompt) {
+            return u"Usage: search <term>";
+        }
+
+        payload.command_feedback = CommandFeedback {
+            .prompt_message = u"search ",
+            .command_string = u"search",
+            .on_validate_callback = [&](const std::u16string_view input, const std::u16string_view command) -> std::optional<std::u16string> {
+                payload.command_runner.runCommand(std::u16string(command).append(u" ").append(input), true);
+                return std::nullopt;
+            }
+        };
+
+        return std::nullopt;
     }
 
     auto term = std::u16string();

@@ -163,29 +163,29 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
         // Re-count matches for the stored term in place so the indicator reflects the new mode immediately.
         SearchCommand::refreshMatchStats(m_cursor_context, m_search_case_sensitive->m_value);
     });
-    m_command_manager.registerCommand(u"quit", std::make_shared<QuitCommand>());
-    m_command_manager.registerCommand(u"open", std::make_shared<OpenFileCommand>());
-    m_command_manager.registerCommand(u"save", std::make_shared<SaveFileCommand>());
-    m_command_manager.registerCommand(u"reset_draw_time", std::make_shared<ResetCVarFloatCommand>(m_draw_time));
-    m_command_manager.registerCommand(u"reset_command_time", std::make_shared<ResetCVarFloatCommand>(m_command_time));
-    m_command_manager.registerCommand(u"set_font_size", std::make_shared<FontSizeCommand>());
-    m_command_manager.registerCommand(u"set_hl_mode", std::make_shared<SetHighLightCommand>());
-    m_command_manager.registerCommand(u"bind", m_bind_command);
-    m_command_manager.registerCommand(u"activate_prompt", std::make_shared<ActivatePromptCommand>(m_prompt_state));
-    m_command_manager.registerCommand(u"copy", std::make_shared<CopyTextCommand>());
-    m_command_manager.registerCommand(u"paste", std::make_shared<PasteTextCommand>());
-    m_command_manager.registerCommand(u"cut", std::make_shared<CutTextCommand>());
-    m_command_manager.registerCommand(u"undo", std::make_shared<UndoCommand>());
-    m_command_manager.registerCommand(u"redo", std::make_shared<RedoCommand>());
-    m_command_manager.registerCommand(u"move", std::make_shared<MoveCursorCommand>(m_prompt_state));
-    m_command_manager.registerCommand(u"goto_line", std::make_shared<GotoLineCommand>());
-    m_command_manager.registerCommand(u"search", std::make_shared<SearchCommand>(SearchCommand::Action::SEARCH, m_search_case_sensitive));
-    m_command_manager.registerCommand(u"find_next", std::make_shared<SearchCommand>(SearchCommand::Action::FIND_NEXT, m_search_case_sensitive));
-    m_command_manager.registerCommand(u"find_prev", std::make_shared<SearchCommand>(SearchCommand::Action::FIND_PREV, m_search_case_sensitive));
-    m_command_manager.registerCommand(u"replace", std::make_shared<SearchCommand>(SearchCommand::Action::REPLACE, m_search_case_sensitive));
-    m_command_manager.registerCommand(u"replace_all", std::make_shared<SearchCommand>(SearchCommand::Action::REPLACE_ALL, m_search_case_sensitive));
-    m_command_manager.registerCommand(u"exec", std::make_shared<ExecCommand>());
-    m_command_manager.registerCommand(u"auto_complete", std::make_shared<AutoCompleteCommand>(m_prompt_state));
+    m_command_manager.registerCommand(u"quit", std::make_shared<QuitCommand>(), false);
+    m_command_manager.registerCommand(u"open", std::make_shared<OpenFileCommand>(), false);
+    m_command_manager.registerCommand(u"save", std::make_shared<SaveFileCommand>(), false);
+    m_command_manager.registerCommand(u"reset_draw_time", std::make_shared<ResetCVarFloatCommand>(m_draw_time), false);
+    m_command_manager.registerCommand(u"reset_command_time", std::make_shared<ResetCVarFloatCommand>(m_command_time), false);
+    m_command_manager.registerCommand(u"set_font_size", std::make_shared<FontSizeCommand>(), false);
+    m_command_manager.registerCommand(u"set_hl_mode", std::make_shared<SetHighLightCommand>(), false);
+    m_command_manager.registerCommand(u"bind", m_bind_command, false);
+    m_command_manager.registerCommand(u"activate_prompt", std::make_shared<ActivatePromptCommand>(m_prompt_state), true);
+    m_command_manager.registerCommand(u"copy", std::make_shared<CopyTextCommand>(), false);
+    m_command_manager.registerCommand(u"paste", std::make_shared<PasteTextCommand>(), false);
+    m_command_manager.registerCommand(u"cut", std::make_shared<CutTextCommand>(), false);
+    m_command_manager.registerCommand(u"undo", std::make_shared<UndoCommand>(), false);
+    m_command_manager.registerCommand(u"redo", std::make_shared<RedoCommand>(), false);
+    m_command_manager.registerCommand(u"move", std::make_shared<MoveCursorCommand>(m_prompt_state), false);
+    m_command_manager.registerCommand(u"goto_line", std::make_shared<GotoLineCommand>(), false);
+    m_command_manager.registerCommand(u"search", std::make_shared<SearchCommand>(SearchCommand::Action::SEARCH, m_search_case_sensitive), false);
+    m_command_manager.registerCommand(u"find_next", std::make_shared<SearchCommand>(SearchCommand::Action::FIND_NEXT, m_search_case_sensitive), false);
+    m_command_manager.registerCommand(u"find_prev", std::make_shared<SearchCommand>(SearchCommand::Action::FIND_PREV, m_search_case_sensitive), false);
+    m_command_manager.registerCommand(u"replace", std::make_shared<SearchCommand>(SearchCommand::Action::REPLACE, m_search_case_sensitive), false);
+    m_command_manager.registerCommand(u"replace_all", std::make_shared<SearchCommand>(SearchCommand::Action::REPLACE_ALL, m_search_case_sensitive), false);
+    m_command_manager.registerCommand(u"exec", std::make_shared<ExecCommand>(), false);
+    m_command_manager.registerCommand(u"auto_complete", std::make_shared<AutoCompleteCommand>(m_prompt_state), true);
 
     // Don't run it "from prompt", so its not added to history
     runCommand(std::u16string(u"exec ").append(utf8::utf8to16(path)).append(u"autoexec"), false);
@@ -250,7 +250,8 @@ void ApplicationWindow::mainLoop() {
                     switch (m_cursor_context.focus_target) {
                         case FocusTarget::Editor:
                             if (m_editor.onKeyDown(m_cursor_context, m_editor_state, event.key.keysym.sym, event.key.keysym.mod)) {
-                                // If the view return true, then redraw the views
+                                // If the view return true, the text changed: redraw the views
+                                m_cursor_context.search.resetMatches();
                                 m_cursor_context.wants_redraw = true;
                                 consumed = true;
                             }
@@ -289,6 +290,7 @@ void ApplicationWindow::mainLoop() {
                         switch (m_cursor_context.focus_target) {
                             case FocusTarget::Editor:
                                 m_editor.onTextInput(m_cursor_context, m_editor_state, event.text.text);
+                                m_cursor_context.search.resetMatches();
                                 break;
                             case FocusTarget::Prompt:
                                 m_prompt.onTextInput(m_cursor_context, m_prompt_state, event.text.text);
@@ -366,7 +368,7 @@ void ApplicationWindow::mainLoop() {
 }
 
 void ApplicationWindow::getCommandCompletions(const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
-    m_command_manager.getCommandCompletions(input, itemCallback);
+    m_command_manager.getCommandCompletions(input, false, itemCallback);
 }
 
 void ApplicationWindow::getArgumentsCompletions(const std::u16string_view command, const std::vector<std::u16string_view> &previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
@@ -406,15 +408,11 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
         // Copy the feedback object so the string is still valid after reset is called.
         const auto feedback = m_cursor_context.command_feedback.value();
         const auto feedback_answer = m_prompt_cursor.getString();
-        const auto tokens = CommandManager::tokenize(feedback_answer);
         m_cursor_context.command_feedback.reset();
-        if (tokens.size() == 1) {
-            // For now only support 1 token from feedback answers
-            result = feedback.on_validate_callback(tokens[0], feedback.command_string);
-        } else {
-            // If we got no response from feedback, make it idle.
-            m_prompt_state.setRunningState(PromptState::RunningState::Idle);
-        }
+
+        // Forward the raw answer so terms containing spaces survive (e.g. search feedback).
+        // An empty answer flows to the command too, so it can report its usage.
+        result = feedback.on_validate_callback(feedback_answer, feedback.command_string);
     } else {
         const auto &tokens = CommandManager::tokenize(command);
         if (tokens.empty()) {
@@ -451,6 +449,7 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
 
             // Focus go to the prompt
             m_cursor_context.focus_target = FocusTarget::Prompt;
+            m_cursor_context.search.resetMatches();
         }
     } else {
         // The prompt state can change while command execution (e.g: activate_prompt, cancel), check it again.

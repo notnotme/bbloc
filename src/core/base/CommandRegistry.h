@@ -48,8 +48,9 @@ public:
      *
      * @param name The name used to reference the command in the console.
      * @param command A shared pointer to the Command instance to register.
+     * @param hidden If true, the command is excluded from prompt auto-completion.
      */
-    virtual void registerCommand(std::u16string_view name, std::shared_ptr<Command<TPayload>> command) = 0;
+    virtual void registerCommand(std::u16string_view name, std::shared_ptr<Command<TPayload>> command, bool hidden) = 0;
 };
 
 

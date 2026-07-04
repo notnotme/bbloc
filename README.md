@@ -61,7 +61,7 @@ Actions can be mapped to keystrokes using the `bind` command. The editor include
 - **Command Pattern**: Template-based command implementation with `Command<TPayload>`
 - **CommandManager**: Central registry managing command execution and auto-completion
 - **CommandRunner Interface**: Abstract interface for command execution from different contexts
-- **CommandFeedback**: Interactive confirmation system for user prompts (e.g., "Overwrite? [y/n]")
+- **CommandFeedback**: Interactive prompts for commands needing more input — confirmations (e.g., "Overwrite? [y/n]") or a follow-up argument with Tab completion (e.g., a file path for `open`)
 
 #### Configuration Variables (CVar)
 - **Type-Safe Storage**: Support for int32_t, bool, float, and Color types
@@ -178,6 +178,7 @@ ApplicationWindow
 | Ctrl+Shift+Z | redo | Redo the last undone modification |
 | Tab | auto_complete forward | Auto-complete input forward |
 | Shift+Tab | auto_complete backward | Auto-complete input backward |
+| Ctrl+F | search | Prompt for a term and select its first match |
 | F3 | find_next | Jump to the next match of the search term |
 | Shift+F3 | find_prev | Jump to the previous match of the search term |
 | Ctrl+G | goto_line | Prompt for a line number and jump to it |
@@ -191,7 +192,8 @@ ApplicationWindow
 | Ctrl+Shift+Y | reset_command_time | Reset command time to 0 |
 | Ctrl+Keypad+ | set_font_size + | Increase font size by 1 |
 | Ctrl+Keypad- | set_font_size - | Decrease font size by 1 |
-| Ctrl+Shift+S | save | Save current buffer to file |
+| Ctrl+O | open | Prompt for a path and open the file |
+| Ctrl+Shift+S | save | Save current buffer to file (prompts for a name when the buffer has none) |
 | Ctrl+Shift+Space | activate_prompt | Open command prompt |
 | Ctrl+Shift+Q | quit | Quit application (no save) |
 | Ctrl+Shift+L | exec romfs/light_theme | Load the light theme (temporary binding) |
@@ -202,8 +204,8 @@ ApplicationWindow
 ### File Operations
 | Command | Arguments | Description |
 |---------|-----------|-------------|
-| `open <filename>` | filename | Open file in editor, sets highlight mode by extension |
-| `save <filename> -f` | filename, -f | Save buffer with optional overwrite flag |
+| `open <filename>` | filename | Open file in editor, sets highlight mode by extension (prompts for the path when bound to a key) |
+| `save <filename> -f` | filename, -f | Save buffer with optional overwrite flag (prompts for a name when the buffer has none and it is bound to a key) |
 | `quit` | - | Exit application without saving |
 | `exec <filename>` | filename | Execute commands from file line by line |
 
@@ -226,7 +228,7 @@ ApplicationWindow
 ### Search & Replace
 | Command | Arguments | Description |
 |---------|-----------|-------------|
-| `search <term>` | term | Store the term and select its first match, reporting the match count |
+| `search <term>` | term | Store the term and select its first match, reporting the match count (prompts for the term when bound to a key) |
 | `find_next` | - | Select the next match of the stored term (wraps to the top) |
 | `find_prev` | - | Select the previous match of the stored term (wraps to the bottom) |
 | `replace <from> <to>` | from, to | Replace the next occurrence of `from` with `to` |
@@ -235,13 +237,13 @@ ApplicationWindow
 ### System
 | Command | Arguments | Description |
 |---------|-----------|-------------|
-| `activate_prompt` | - | Open command prompt |
+| `activate_prompt` | - | Open command prompt (intended for key bindings, hidden from prompt completion) |
 | `copy` | - | Copy selection to clipboard |
 | `paste` | - | Paste from clipboard |
 | `cut` | - | Cut selection to clipboard |
 | `undo` | - | Undo the last text modification |
 | `redo` | - | Redo the last undone modification |
-| `auto_complete <direction>` | direction | Provide command/argument completion |
+| `auto_complete <direction>` | direction | Provide command/argument completion (intended for key bindings, hidden from prompt completion) |
 
 ### Auto-Completion
 - Commands: Type command name and press Tab

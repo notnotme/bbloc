@@ -124,6 +124,7 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
             }
         break;
         case FocusTarget::Editor:
+            payload.search.resetMatches();
             payload.cursor.activateSelection(select_text == Boolean::TRUE);
             switch (movement) {
                 case Movement::UP:

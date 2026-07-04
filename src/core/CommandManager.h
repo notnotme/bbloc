@@ -24,6 +24,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "base/CVar.h"
 #include "base/CVarCallback.h"
@@ -49,6 +50,9 @@ private:
     /** Registered commands. */
     std::unordered_map<std::u16string, std::shared_ptr<Command<CursorContext>>> m_commands;
 
+    /** Names of commands excluded from prompt auto-completion. */
+    std::unordered_set<std::u16string> m_hidden_commands;
+
     /** The CVarCommand */
     std::shared_ptr<CVarCommand> m_cvar_command;
 
@@ -66,12 +70,16 @@ public:
     explicit CommandManager();
 
     /**
-     * @brief Registers a new command.
+     * @brief Registers a new command, optionally hidden from prompt auto-completion.
+     *
+     * Hidden commands only make sense when bound to a keystroke: they stay executable and are still
+     * suggested when completions include hidden names (e.g. the command argument of bind).
      *
      * @param name Command name (must be unique).
      * @param command The command to register.
+     * @param hidden If true, the command is excluded from prompt auto-completion.
      */
-    void registerCommand(std::u16string_view name, std::shared_ptr<Command<CursorContext>> command) override;
+    void registerCommand(std::u16string_view name, std::shared_ptr<Command<CursorContext>> command, bool hidden) override;
 
     /**
      * @brief Registers a new configuration variable (CVar).
@@ -95,9 +103,10 @@ public:
      * @brief Gathers auto-completion suggestions for command names.
      *
      * @param input Current user input string.
+     * @param includeHidden If true, commands registered as hidden are suggested as well.
      * @param itemCallback Callback to receive command name suggestions.
      */
-    void getCommandCompletions(std::u16string_view input, const AutoCompleteCallback &itemCallback);
+    void getCommandCompletions(std::u16string_view input, bool includeHidden, const AutoCompleteCallback &itemCallback);
 
     /**
      * @brief Provides auto-completions for command arguments.

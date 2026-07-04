@@ -58,6 +58,7 @@ std::optional<std::u16string> PasteTextCommand::run(CursorContext &payload, cons
 
     // Pasting text automatically deactivates any selection.
     payload.cursor.activateSelection(false);
+    payload.search.resetMatches();
 
     // Redraw and follow the cursor.
     payload.wants_redraw = true;

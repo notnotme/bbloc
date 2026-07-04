@@ -42,6 +42,7 @@ std::optional<std::u16string> ActivatePromptCommand::run(CursorContext &payload,
     // Clear the user text and set the focus to the prompt (since the editor had it if we run from a binding)
     payload.prompt_cursor.clear();
     payload.focus_target = FocusTarget::Prompt;
+    payload.search.resetMatches();
     payload.wants_redraw = true;
 
     return std::nullopt;

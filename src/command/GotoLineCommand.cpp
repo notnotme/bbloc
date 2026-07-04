@@ -41,7 +41,6 @@ std::optional<std::u16string> GotoLineCommand::run(CursorContext &payload, const
         payload.command_feedback = CommandFeedback {
             .prompt_message = u"goto_line ",
             .command_string = u"goto_line",
-            .completions_list = {},
             .on_validate_callback = [&](const std::u16string_view input, const std::u16string_view command) -> std::optional<std::u16string> {
                 payload.command_runner.runCommand(std::u16string(command).append(u" ").append(input), true);
                 return std::nullopt;
@@ -70,6 +69,7 @@ std::optional<std::u16string> GotoLineCommand::run(CursorContext &payload, const
     payload.cursor.activateSelection(false);
     payload.cursor.setPosition(line_index, 0);
     payload.stick.index = payload.cursor.getColumn();
+    payload.search.resetMatches();
     payload.scroll.follow_indicator = true;
     payload.wants_redraw = true;
 

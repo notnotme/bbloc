@@ -83,8 +83,29 @@ std::optional<std::u16string> AutoCompleteCommand::run(CursorContext &payload, c
     auto has_open_quote = false;
     if (payload.command_feedback) {
         // If feedback is active, try to gather arguments
-        for (const auto &item : payload.command_feedback->completions_list) {
-            m_prompt_state.addCompletion(item);
+        if (payload.command_feedback->on_complete_callback) {
+            // The whole answer is a single argument: strip its surrounding quotes before the lookup.
+            const auto quote_is_open = input.starts_with(u'"');
+            auto lookup = std::u16string_view(input);
+            if (quote_is_open) {
+                lookup.remove_prefix(1);
+                if (lookup.ends_with(u'"')) {
+                    lookup.remove_suffix(1);
+                }
+            }
+
+            payload.command_feedback->on_complete_callback(lookup, [&](const std::u16string_view item) {
+                // Candidates containing a space must be quoted, unless the user already opened a quote
+                const auto needs_quote = !quote_is_open && item.find(u' ') != std::u16string_view::npos;
+                has_open_quote = quote_is_open || needs_quote;
+
+                auto completion_str = std::u16string();
+                if (has_open_quote) {
+                    completion_str.append(u"\"");
+                }
+
+                m_prompt_state.addCompletion(completion_str.append(item));
+            });
         }
     } else {
         // The user is completing the last token if nothing, or only its closing quote, follows it
@@ -169,8 +190,10 @@ std::optional<std::u16string> AutoCompleteCommand::run(CursorContext &payload, c
                     payload.prompt_cursor.insert(u"\"");
                 }
 
-                // Append a space at the end of the command line, so the next argument completion can occur.
-                payload.prompt_cursor.insert(u" ");
+                // A feedback answer is a single argument: only a full command line gets the argument-separating space.
+                if (!payload.command_feedback) {
+                    payload.prompt_cursor.insert(u" ");
+                }
             }
 
             m_prompt_state.clearCompletions();

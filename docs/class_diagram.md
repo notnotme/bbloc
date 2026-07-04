@@ -23,6 +23,10 @@ classDiagram
     }
     class CommandManager
     class CVarCommand
+    class CommandFeedback {
+        <<struct>>
+        note: "prompt message + optional completion provider + validate callback"
+    }
 
     CommandRegistry~TPayload~ <|-- GlobalRegistry~TPayload~
     CVarRegistry <|-- GlobalRegistry~TPayload~
@@ -31,6 +35,7 @@ classDiagram
     CVarRegistry <|-- CVarCommand
     CommandManager *-- CVarCommand
     CommandManager o-- Command~TPayload~
+    Command~TPayload~ ..> CommandFeedback : may request
 ```
 
 ---
@@ -318,6 +323,10 @@ classDiagram
         <<struct>>
         note: "term + match index/count"
     }
+    class CommandFeedback {
+        <<struct>>
+        note: "pending interactive prompt"
+    }
     class View~TState~ {
         <<abstract>>
     }
@@ -346,6 +355,7 @@ classDiagram
     CursorContext *-- ScrollState
     CursorContext *-- ColumnStick
     CursorContext *-- SearchState
+    CursorContext *-- CommandFeedback : optional
     Theme o-- CVar
     View~TState~ o-- Renderer
     View~TState~ ..> CursorContext : receives as parameter

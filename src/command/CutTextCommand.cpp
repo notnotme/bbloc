@@ -43,6 +43,7 @@ std::optional<std::u16string> CutTextCommand::run(CursorContext &payload, const 
         // If we had some text selected, then erase it.
         payload.highlighter.edit(edit.value());
         payload.cursor.activateSelection(false);
+        payload.search.resetMatches();
 
         // If we cut some text, a redrawing is needed.
         payload.wants_redraw = true;

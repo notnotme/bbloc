@@ -23,7 +23,10 @@ bind Ctrl v paste
 bind Ctrl z undo
 bind Ctrl+Shift z redo
 
-# Save the current buffer (will ask for confirmation before erasing a new file)
+# Open a file (prompts for the path)
+bind Ctrl o open
+
+# Save the current buffer (prompts for a name when the buffer has none, and for confirmation before erasing a file)
 bind Ctrl+Shift s save
 
 # Move the cursor one line up
@@ -57,6 +60,9 @@ bind Shift PageDown "move page_down true"
 # auto complete
 bind None tab "auto_complete forward"
 bind Shift tab "auto_complete backward"
+
+# Search for a term (prompts for the term)
+bind Ctrl f search
 
 # search: jump to the next / previous match of the current search term
 bind None F3 find_next

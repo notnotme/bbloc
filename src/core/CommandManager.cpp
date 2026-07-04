@@ -30,10 +30,14 @@ CommandManager::CommandManager()
     m_commands.insert({ u"cvar", m_cvar_command });
 }
 
-void CommandManager::registerCommand(const std::u16string_view name, std::shared_ptr<Command<CursorContext>> command) {
+void CommandManager::registerCommand(const std::u16string_view name, std::shared_ptr<Command<CursorContext>> command, const bool hidden) {
     const auto &[new_entry, success] = m_commands.insert({ std::u16string(name), std::move(command) });
     if (!success) {
         throw std::runtime_error(std::string("Command already registered: ").append(utf8::utf16to8(name)));
+    }
+
+    if (hidden) {
+        m_hidden_commands.emplace(name);
     }
 }
 
@@ -57,9 +61,9 @@ std::optional<std::u16string> CommandManager::run(CursorContext &payload, const 
     return std::u16string(u"Unknown command: ").append(command);
 }
 
-void CommandManager::getCommandCompletions(const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
+void CommandManager::getCommandCompletions(const std::u16string_view input, const bool includeHidden, const AutoCompleteCallback &itemCallback) {
     for (const auto &name : std::views::keys(m_commands)) {
-        if (name.starts_with(input)) {
+        if (name.starts_with(input) && (includeHidden || !m_hidden_commands.contains(name))) {
             itemCallback(name);
         }
     }

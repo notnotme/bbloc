@@ -38,7 +38,35 @@ void OpenFileCommand::provideAutoComplete(const std::vector<std::u16string_view>
 }
 
 std::optional<std::u16string> OpenFileCommand::run(CursorContext &payload, const std::vector<std::u16string_view> &args) {
-    if (args.size() != 1) {
+    if (args.empty()) {
+        // From the prompt the filename is mandatory; from the editor, ask for it interactively.
+        if (payload.from_prompt) {
+            return u"Usage: open <filename>";
+        }
+
+        payload.command_feedback = CommandFeedback {
+            .prompt_message = u"open ",
+            .command_string = u"open",
+            .on_complete_callback = [](const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
+                CommandManager::getPathCompletions(input, false, itemCallback);
+            },
+            .on_validate_callback = [&](const std::u16string_view input, const std::u16string_view command) -> std::optional<std::u16string> {
+                // Re-quote a path containing spaces so the rerun tokenizes it back to one argument.
+                // An answer already holding a quote is passed verbatim: the tokenizer handles it.
+                auto quoted_filename = std::u16string(input);
+                if (quoted_filename.find(u' ') != std::u16string::npos && quoted_filename.find(u'"') == std::u16string::npos) {
+                    quoted_filename = std::u16string(u"\"").append(quoted_filename).append(u"\"");
+                }
+
+                payload.command_runner.runCommand(std::u16string(command).append(u" ").append(quoted_filename), true);
+                return std::nullopt;
+            }
+        };
+
+        return std::nullopt;
+    }
+
+    if (args.size() > 1) {
         return u"Usage: open <filename>";
     }
 

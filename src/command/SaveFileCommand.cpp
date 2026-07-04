@@ -44,6 +44,30 @@ void SaveFileCommand::provideAutoComplete(const std::vector<std::u16string_view>
 std::optional<std::u16string> SaveFileCommand::run(CursorContext &payload, const std::vector<std::u16string_view> &args) {
     // Check argument counts, keep the cursor name in a variable.
     const auto cursor_name = std::filesystem::path(payload.cursor.getName());
+    if (cursor_name.empty() && args.empty() && !payload.from_prompt) {
+        // From the prompt the filename is mandatory; from the editor, ask for it interactively.
+        payload.command_feedback = CommandFeedback {
+            .prompt_message = u"save ",
+            .command_string = u"save",
+            .on_complete_callback = [](const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
+                CommandManager::getPathCompletions(input, false, itemCallback);
+            },
+            .on_validate_callback = [&](const std::u16string_view input, const std::u16string_view command) -> std::optional<std::u16string> {
+                // Re-quote a path containing spaces so the rerun tokenizes it back to one argument.
+                // An answer already holding a quote is passed verbatim: the tokenizer handles it.
+                auto quoted_filename = std::u16string(input);
+                if (quoted_filename.find(u' ') != std::u16string::npos && quoted_filename.find(u'"') == std::u16string::npos) {
+                    quoted_filename = std::u16string(u"\"").append(quoted_filename).append(u"\"");
+                }
+
+                payload.command_runner.runCommand(std::u16string(command).append(u" ").append(quoted_filename), true);
+                return std::nullopt;
+            }
+        };
+
+        return std::nullopt;
+    }
+
     if (cursor_name.empty() && (args.empty() || (args.size() >= 2 && args[1] != u"-f"))) {
         return u"Usage: save <filename> [-f]";
     }
@@ -82,7 +106,11 @@ std::optional<std::u16string> SaveFileCommand::run(CursorContext &payload, const
             .prompt_message = u"File already exists, overwrite ? [y/N]: ",
             // This reuses the same command, but with "-f" argument to force overwriting.
             .command_string = std::u16string(u"save ").append(quoted_filename).append(u" -f"),
-            .completions_list = {u"n", u"y"},
+            .on_complete_callback = [](const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
+                (void) input;
+                itemCallback(u"n");
+                itemCallback(u"y");
+            },
             .on_validate_callback = [&](const std::u16string_view input, const std::u16string_view command) -> std::optional<std::u16string> {
                 if (input == u"y" || input == u"Y") {
                     payload.command_runner.runCommand(command, true);

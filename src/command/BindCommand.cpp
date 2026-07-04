@@ -70,7 +70,8 @@ void BindCommand::provideAutoComplete(const std::vector<std::u16string_view> &pr
             }
         }
     } else if (argumentIndex == 2) {
-        m_command_manager.getCommandCompletions(input, itemCallback);
+        // Hidden commands are included: binding them to a keystroke is their intended use.
+        m_command_manager.getCommandCompletions(input, true, itemCallback);
     }
 }
 
