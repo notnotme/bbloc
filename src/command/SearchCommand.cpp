@@ -144,7 +144,7 @@ std::optional<std::u16string> SearchCommand::runReplace(CursorContext &payload, 
         return u"Search term is empty.";
     }
 
-    auto &cursor = payload.cursor;
+    const auto &cursor = payload.cursor;
     const auto case_sensitive = m_case_sensitive->m_value;
     payload.search.term = std::u16string(from);
 
@@ -229,14 +229,14 @@ std::optional<SearchCommand::MatchLocation> SearchCommand::searchForward(const C
 }
 
 std::optional<SearchCommand::MatchLocation> SearchCommand::searchBackward(const Cursor &cursor, const std::u16string_view term, const uint32_t beforeLine, const uint32_t beforeColumn, const bool caseSensitive) {
-    for (auto line = static_cast<int64_t>(beforeLine); line >= 0; --line) {
-        const auto text = cursor.getString(static_cast<uint32_t>(line));
-        const auto limit = line == static_cast<int64_t>(beforeLine)
+    for (auto line = static_cast<uint32_t>(beforeLine); line > 0; --line) {
+        const auto text = cursor.getString(line);
+        const auto limit = line == static_cast<uint32_t>(beforeLine)
             ? beforeColumn
-            : static_cast<size_t>(text.length()) + 1;
+            : text.length() + 1;
 
         if (const auto position = lastIndexOf(text, term, limit, caseSensitive); position != std::u16string_view::npos) {
-            return MatchLocation { static_cast<uint32_t>(line), static_cast<uint32_t>(position) };
+            return MatchLocation { line, static_cast<uint32_t>(position) };
         }
     }
 
@@ -359,5 +359,5 @@ std::u16string SearchCommand::toLowerAscii(const std::u16string_view text) {
 
 std::u16string SearchCommand::toU16(const uint32_t value) {
     const auto digits = std::to_string(value);
-    return std::u16string(digits.begin(), digits.end());
+    return {digits.begin(), digits.end()};
 }

@@ -64,8 +64,8 @@ std::optional<std::u16string> GotoLineCommand::run(CursorContext &payload, const
 
     // User lines are 1-based; clamp into range before shifting to the 0-based buffer index.
     const auto line_count = payload.cursor.getLineCount();
-    const auto target_line = std::clamp<int64_t>(requested_line, 1, line_count);
-    const auto line_index = static_cast<uint32_t>(target_line) - 1;
+    const auto target_line = std::clamp<uint32_t>(requested_line, 1, line_count);
+    const auto line_index = target_line - 1;
 
     payload.cursor.activateSelection(false);
     payload.cursor.setPosition(line_index, 0);

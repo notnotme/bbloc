@@ -71,7 +71,7 @@ public:
      * @param payload The cursor context containing the current selection.
      * @return An optional message describing why the copy failed, or std::nullopt on success.
      */
-    [[nodiscard]] static std::optional<std::u16string> copySelectionToClipboard(CursorContext &payload);
+    [[nodiscard]] static std::optional<std::u16string> copySelectionToClipboard(const CursorContext &payload);
 };
 
 

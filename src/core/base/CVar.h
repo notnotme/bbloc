@@ -91,12 +91,13 @@ inline bool CVar::isReadOnly() const {
 }
 
 inline void CVar::provideValueCompletion(const int32_t componentIndex, const AutoCompleteCallback &itemCallback) const {
-    constexpr auto SPACE_DELIMITER = u' ';
     const auto value = getStringValue();
 
     auto index = 0;
     auto component_index = 0;
     while (index < value.length()) {
+        constexpr auto SPACE_DELIMITER = u' ';
+
         // Skip blank spaces
         if (value[index] == SPACE_DELIMITER) {
             ++index;

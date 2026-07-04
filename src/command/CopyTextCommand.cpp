@@ -38,7 +38,7 @@ std::optional<std::u16string> CopyTextCommand::run(CursorContext &payload, const
     return copySelectionToClipboard(payload);
 }
 
-std::optional<std::u16string> CopyTextCommand::copySelectionToClipboard(CursorContext &payload) {
+std::optional<std::u16string> CopyTextCommand::copySelectionToClipboard(const CursorContext &payload) {
     const auto &selection = payload.cursor.getSelectedText();
     if (!selection) {
         return u"Selection is empty.";
