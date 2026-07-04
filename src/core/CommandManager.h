@@ -114,7 +114,6 @@ public:
      * @brief Tokenizes a UTF-16 input string for command parsing. Splits the input into a list of arguments.
      *
      * Quoted arguments are preserved as single tokens.
-     * fixme: This does not play well with auto-complete
      *
      * @param input The UTF-16 input string.
      * @return Vector of UTF-16 views representing each argument token.
