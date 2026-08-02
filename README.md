@@ -40,6 +40,7 @@ The main text editing area featuring:
 - Cursor tracking and movement
 - Selection support
 - Scrollable content
+- Optional scrollbars (`cvar show_scrollbar true|false`), shown only when content overflows
 
 ### Bottom Bar (Prompt)
 An interactive command-line interface serving as both:
@@ -257,6 +258,7 @@ ApplicationWindow
 |----------|------|-------------|
 | `tab_to_space` | bool | Insert tab or spaces up to `dim_tab_to_space` |
 | `search_case_sensitive` | bool | Whether search and replace match case |
+| `show_scrollbar` | bool | Show editor scrollbars when content overflows |
 
 ### Read-Only Metrics
 | Variable | Type | Description |
@@ -279,6 +281,8 @@ ApplicationWindow
 | `col_prompt_input_text` | Color | Prompt input text color |
 | `col_border` | Color | Border color |
 | `col_cursor_indicator` | Color | Cursor indicator color |
+| `col_scrollbar` | Color | Scrollbar track color |
+| `col_scrollbar_thumb` | Color | Scrollbar thumb color |
 
 ### Highlight Colors
 | Variable | Type | Description |
@@ -303,6 +307,7 @@ ApplicationWindow
 | `dim_border_size` | int | Border size in pixels |
 | `dim_tab_to_space` | int | Spaces per tab character |
 | `dim_page_up_down` | int | Lines per page scroll |
+| `dim_scrollbar_width` | int | Scrollbar thickness in pixels |
 | `dim_font_size` | int | Font size in pixels (runtime) |
 | `dim_max_history` | int | Prompt command-history size |
 | `dim_max_undo` | int | Undo/redo history depth (1-4096) |
@@ -370,7 +375,7 @@ make
 
 ### Rendering Pipeline
 - OpenGL 4.6 (4.3 on Nintendo Switch) Core profile with double-buffered rendering
-- Batched quad rendering via QuadBuffer (8192 quads capacity)
+- Batched quad rendering via QuadBuffer: batches are staged CPU-side and uploaded per view, the GPU buffer starts at 8192 quads and grows on demand (no truncation)
 - Custom QuadProgram shader for textured quad drawing
 - Orthogonal projection matrix for UI coordinates
 - Scissor test to confine rendering per view
