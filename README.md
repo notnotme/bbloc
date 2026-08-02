@@ -19,6 +19,7 @@ bbloc is a minimalist text editor developed in C++ using SDL2, OpenGL, glad, Fre
 
 - **Syntax Highlighting**: Built on tree-sitter for C++, JSON, and INI syntax highlighting (more to come)
 - **Command-Driven Interface**: Execute operations via text commands with auto-completion
+- **Multiple Buffers**: Open several files at once and switch between them with the `buffer` command
 - **Real-Time Configuration**: Change colors, dimensions, and settings at runtime
 - **Customizable Key Bindings**: Rebind any key combination to commands
 
@@ -27,11 +28,12 @@ bbloc is a minimalist text editor developed in C++ using SDL2, OpenGL, glad, Fre
 The application window is divided into three distinct areas:
 
 ### Top Bar (InfoBar)
-Displays information about the current text buffer:
+Displays information about the active text buffer:
 - Cursor position (line, column)
 - Current syntax highlight mode
 - Font size settings
 - File information
+- Buffer position (e.g. `[2/3]`) when several buffers are open
 
 ### Center Area (Editor)
 The main text editing area featuring:
@@ -194,6 +196,9 @@ ApplicationWindow
 | Ctrl+Keypad+ | set_font_size + | Increase font size by 1 |
 | Ctrl+Keypad- | set_font_size - | Decrease font size by 1 |
 | Ctrl+O | open | Prompt for a path and open the file |
+| Ctrl+Tab | buffer next | Switch to the next open buffer |
+| Ctrl+Shift+Tab | buffer prev | Switch to the previous open buffer |
+| Ctrl+W | buffer close | Close the current buffer (no save) |
 | Ctrl+Shift+S | save | Save current buffer to file (prompts for a name when the buffer has none) |
 | Ctrl+Shift+Space | activate_prompt | Open command prompt |
 | Ctrl+Shift+Q | quit | Quit application (no save) |
@@ -205,7 +210,8 @@ ApplicationWindow
 ### File Operations
 | Command | Arguments | Description |
 |---------|-----------|-------------|
-| `open <filename>` | filename | Open file in editor, sets highlight mode by extension (prompts for the path when bound to a key) |
+| `open <filename>` | filename | Open file in editor, sets highlight mode by extension (prompts for the path when bound to a key); opens a new buffer unless the active one is untouched |
+| `buffer <next\|prev\|close\|name>` | action or buffer name | Cycle through the open buffers, close the active one (no save), or switch to a buffer by name |
 | `save <filename> -f` | filename, -f | Save buffer with optional overwrite flag (prompts for a name when the buffer has none and it is bound to a key) |
 | `quit` | - | Exit application without saving |
 | `exec <filename>` | filename | Execute commands from file line by line |
@@ -398,7 +404,7 @@ make
 
 ### State Management
 - Single-threaded event loop architecture
-- CursorContext for runtime cursor state
+- CursorContext for runtime cursor state, one per open buffer, managed by CursorContextManager (views render the active one)
 - ViewState hierarchy for view-specific data
 - FocusTarget for input routing
 - CommandFeedback for interactive prompts
@@ -420,10 +426,12 @@ make
 - Tab handling (space expansion)
 - Selection and clipboard operations
 - Undo/redo (linear, snapshot-based, 64 entries deep)
+- Multiple open buffers with per-buffer scroll, search, undo, and highlight state
 
 ### Known Limitations
 - Tab alignment may not be perfect with mixed spaces
 - Basic error handling
+- No dirty-flag tracking: `buffer close` closes without warning about unsaved changes
 
 ### Future Enhancements (no ordering)
 - Inline documentation needs improvement, to be re-done
