@@ -31,9 +31,11 @@
 
 Editor::Editor(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram)
     : View(commandController, theme, quadProgram),
-      m_is_tab_to_space(std::make_shared<CVarBool>(true)) {
+      m_is_tab_to_space(std::make_shared<CVarBool>(true)),
+      m_show_scrollbar(std::make_shared<CVarBool>(true)) {
     // Register cvars
     registerTabToSpaceCVar();
+    registerShowScrollbarCVar();
 }
 
 void Editor::render(CursorContext &context, ViewState &viewState, QuadBuffer &quadBuffer, const float dt) {
@@ -61,6 +63,7 @@ void Editor::render(CursorContext &context, ViewState &viewState, QuadBuffer &qu
     const auto batch_start = quadBuffer.beginBatch(ApplicationWindow::EDITOR_DEFAULT_QUAD_COUNT);
     drawBackground(quadBuffer, viewState, margin_width);
     drawMarginText(quadBuffer, context, viewState, cursor_line_count_width, scroll_y);
+    drawScrollbars(quadBuffer, context, viewState, margin_width);
 
     const auto quads_count_before_text = quadBuffer.getCount();
     drawText(quadBuffer, context, viewState, scroll_x, scroll_y, margin_width);
@@ -76,8 +79,11 @@ void Editor::render(CursorContext &context, ViewState &viewState, QuadBuffer &qu
     glScissor(position_x, m_window_height - position_y - height, width, height);
     m_quad_program.draw(batch_start, quads_count_before_text);
 
-    // Draw cursor text
-    glScissor(position_x + margin_width + border_size, m_window_height - position_y - height, width - margin_width - border_size, height);
+    // Draw cursor text, keeping glyphs from drawing under the scrollbars
+    auto v_bar_width = 0;
+    auto h_bar_height = 0;
+    computeScrollbarSizes(context, viewState, margin_width, v_bar_width, h_bar_height);
+    glScissor(position_x + margin_width + border_size, m_window_height - position_y - height + h_bar_height, width - margin_width - border_size - v_bar_width, height - h_bar_height);
 
     const auto draw_offset = batch_start + quads_count_before_text;
     m_quad_program.draw(draw_offset, quadBuffer.getCount() - quads_count_before_text);
@@ -190,6 +196,11 @@ void Editor::updateScroll(CursorContext &context, const ViewState &viewState, co
     const auto width = viewState.getWidth();
     const auto height = viewState.getHeight();
 
+    // The scrollbars reserve screen space; the usable text area shrinks accordingly
+    auto v_bar_width = 0;
+    auto h_bar_height = 0;
+    computeScrollbarSizes(context, viewState, marginWidth, v_bar_width, h_bar_height);
+
     if (context.scroll.follow_indicator) {
         const auto scroll_x = context.scroll.x;
         const auto scroll_y = context.scroll.y;
@@ -201,15 +212,15 @@ void Editor::updateScroll(CursorContext &context, const ViewState &viewState, co
         // Vertical scroll
         if (indicator_y < scroll_y) {
             context.scroll.y = indicator_y;
-        } else if (indicator_y > height + scroll_y - line_height) {
-            context.scroll.y = indicator_y - (height - line_height);
+        } else if (indicator_y > height - h_bar_height + scroll_y - line_height) {
+            context.scroll.y = indicator_y - (height - h_bar_height - line_height);
         }
 
         // Horizontal scroll
         if (indicator_x < scroll_x) {
             context.scroll.x = indicator_x;
-        } else if (indicator_x > width - marginWidth - border_size + scroll_x) {
-            context.scroll.x = indicator_x - width + marginWidth + border_size + indicator_width;
+        } else if (indicator_x > width - marginWidth - border_size - v_bar_width + scroll_x) {
+            context.scroll.x = indicator_x - width + marginWidth + border_size + v_bar_width + indicator_width;
         }
     } else {
         // Update max-scroll values
@@ -217,8 +228,8 @@ void Editor::updateScroll(CursorContext &context, const ViewState &viewState, co
         const auto scroll_y = context.scroll.y;
         const auto tab_to_space = static_cast<uint32_t>(m_theme.getDimension(DimensionId::TabToSpace));
         const auto longest_line_width = static_cast<int32_t>(context.cursor.getLongestLineLength(tab_to_space)) * m_theme.getFontAdvance();
-        const auto max_scroll_y = cursor_line_count * line_height - height;
-        const auto max_scroll_x = longest_line_width - (width - marginWidth - border_size - indicator_width);
+        const auto max_scroll_y = cursor_line_count * line_height - (height - h_bar_height);
+        const auto max_scroll_x = longest_line_width - (width - marginWidth - border_size - indicator_width - v_bar_width);
         context.scroll.x = std::clamp(scroll_x, 0, max_scroll_x < 0 ? 0 : max_scroll_x);
         context.scroll.y = std::clamp(scroll_y, 0, max_scroll_y < 0 ? 0 : max_scroll_y);
     }
@@ -412,6 +423,103 @@ void Editor::drawText(QuadBuffer &quadBuffer, const CursorContext &context, cons
     }
 }
 
+void Editor::computeScrollbarSizes(const CursorContext &context, const ViewState &viewState, const int32_t marginWidth, int32_t &vBarWidth, int32_t &hBarHeight) const {
+    vBarWidth = 0;
+    hBarHeight = 0;
+    if (!m_show_scrollbar->m_value) {
+        return;
+    }
+
+    // Need some variables
+    const auto bar_size = m_theme.getDimension(DimensionId::ScrollbarWidth);
+    const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
+    const auto tab_to_space = static_cast<uint32_t>(m_theme.getDimension(DimensionId::TabToSpace));
+    const auto line_height = m_theme.getLineHeight();
+
+    const auto height = viewState.getHeight();
+    const auto text_width = viewState.getWidth() - marginWidth - border_size;
+
+    const auto content_height = static_cast<int32_t>(context.cursor.getLineCount()) * line_height;
+    const auto content_width = static_cast<int32_t>(context.cursor.getLongestLineLength(tab_to_space)) * m_theme.getFontAdvance();
+
+    // Each bar consumes space on the other axis, so a bar becoming visible can make the other one
+    // necessary. Two rounds are enough: first decide with the full sizes, then with the reduced ones.
+    auto v_visible = content_height > height;
+    auto h_visible = content_width > text_width;
+    v_visible = content_height > height - (h_visible ? bar_size : 0);
+    h_visible = content_width > text_width - (v_visible ? bar_size : 0);
+
+    vBarWidth = v_visible ? bar_size : 0;
+    hBarHeight = h_visible ? bar_size : 0;
+}
+
+void Editor::drawScrollbars(QuadBuffer &quadBuffer, const CursorContext &context, const ViewState &viewState, const int32_t marginWidth) const {
+    if (!m_show_scrollbar->m_value) {
+        return;
+    }
+
+    auto v_bar_width = 0;
+    auto h_bar_height = 0;
+    computeScrollbarSizes(context, viewState, marginWidth, v_bar_width, h_bar_height);
+    if (v_bar_width == 0 && h_bar_height == 0) {
+        // The content fits entirely in the view, both bars are auto-hidden
+        return;
+    }
+
+    // Need some variables
+    const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
+    const auto tab_to_space = static_cast<uint32_t>(m_theme.getDimension(DimensionId::TabToSpace));
+    const auto line_height = m_theme.getLineHeight();
+    const auto font_advance = m_theme.getFontAdvance();
+
+    const auto &track_color = m_theme.getColor(ColorId::ScrollbarBackground);
+    const auto &thumb_color = m_theme.getColor(ColorId::ScrollbarThumb);
+
+    // Get the vew geometry
+    const auto position_x = viewState.getPositionX();
+    const auto position_y = viewState.getPositionY();
+    const auto width = viewState.getWidth();
+    const auto height = viewState.getHeight();
+
+    // Minimum thumb size in pixels, so it stays visible on huge contents
+    constexpr auto MIN_THUMB_SIZE = int64_t{16};
+
+    if (v_bar_width > 0) {
+        // The track is drawn full-height on purpose: it also covers the corner square when both bars are visible
+        drawQuad(quadBuffer, position_x + width - v_bar_width, position_y, v_bar_width, height, track_color);
+
+        // Thumb size and position are proportional to the visible / content heights (64-bit intermediates)
+        const auto view_h = static_cast<int64_t>(height - h_bar_height);
+        if (view_h > 0) {
+            const auto content_h = std::max(int64_t{1}, static_cast<int64_t>(context.cursor.getLineCount()) * line_height);
+            const auto thumb_h = std::min(view_h, std::max(MIN_THUMB_SIZE, view_h * view_h / content_h));
+            const auto thumb_y = position_y + static_cast<int64_t>(context.scroll.y) * (view_h - thumb_h) / std::max(int64_t{1}, content_h - view_h);
+            const auto clamped_thumb_y = std::clamp(thumb_y, static_cast<int64_t>(position_y), position_y + view_h - thumb_h);
+            drawQuad(quadBuffer, position_x + width - v_bar_width, static_cast<int32_t>(clamped_thumb_y), v_bar_width, static_cast<int32_t>(thumb_h), thumb_color);
+        }
+    }
+
+    if (h_bar_height > 0) {
+        // The horizontal bar spans the text area only, and stops before the vertical bar
+        const auto text_x = position_x + marginWidth + border_size;
+        const auto view_w = static_cast<int64_t>(width - marginWidth - border_size - v_bar_width);
+        if (view_w > 0) {
+            drawQuad(quadBuffer, text_x, position_y + height - h_bar_height, static_cast<int32_t>(view_w), h_bar_height, track_color);
+
+            // Thumb size and position are proportional to the visible / content widths (64-bit intermediates)
+            const auto content_w = std::max(int64_t{1}, static_cast<int64_t>(context.cursor.getLongestLineLength(tab_to_space)) * font_advance);
+            const auto thumb_w = std::min(view_w, std::max(MIN_THUMB_SIZE, view_w * view_w / content_w));
+            const auto thumb_x = text_x + static_cast<int64_t>(context.scroll.x) * (view_w - thumb_w) / std::max(int64_t{1}, content_w - view_w);
+            const auto clamped_thumb_x = std::clamp(thumb_x, static_cast<int64_t>(text_x), text_x + view_w - thumb_w);
+            drawQuad(quadBuffer, static_cast<int32_t>(clamped_thumb_x), position_y + height - h_bar_height, static_cast<int32_t>(thumb_w), h_bar_height, thumb_color);
+        }
+    }
+}
+
 void Editor::registerTabToSpaceCVar() const {
     m_command_controller.registerCvar(u"tab_to_space", m_is_tab_to_space, nullptr);
+}
+
+void Editor::registerShowScrollbarCVar() const {
+    m_command_controller.registerCvar(u"show_scrollbar", m_show_scrollbar, nullptr);
 }

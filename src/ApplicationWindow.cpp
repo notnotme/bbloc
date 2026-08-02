@@ -304,6 +304,8 @@ void ApplicationWindow::mainLoop() {
                     const auto line_height = m_theme.getLineHeight();
                     const auto scroll_amount = event.wheel.y * -line_height;
                     m_cursor_context.scroll.y = m_cursor_context.scroll.y + scroll_amount;
+                    // Horizontal wheel: positive wheel.x means scrolling right, matching a scroll.x increase
+                    m_cursor_context.scroll.x = m_cursor_context.scroll.x + event.wheel.x * m_theme.getFontAdvance();
                     m_cursor_context.wants_redraw = true;
                 }
                 break;

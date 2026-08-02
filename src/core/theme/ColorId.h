@@ -39,11 +39,13 @@ enum class ColorId {
     PromptText,             ///< Text color for static prompt messages.
     PromptInputText,        ///< Text color for user input in the prompt.
     Border,                 ///< Color used for borders (e.g. between components).
-    CursorIndicator         ///< Color of the cursor indicator.
+    CursorIndicator,        ///< Color of the cursor indicator.
+    ScrollbarBackground,    ///< Background color of the scrollbar tracks.
+    ScrollbarThumb          ///< Color of the scrollbar thumbs.
 };
 
 /** @brief Number of ColorId values; must track the last enumerator of ColorId. */
-inline constexpr std::size_t COLOR_ID_COUNT = static_cast<std::size_t>(ColorId::CursorIndicator) + 1;
+inline constexpr std::size_t COLOR_ID_COUNT = static_cast<std::size_t>(ColorId::ScrollbarThumb) + 1;
 
 
 #endif //COLOR_ID_H

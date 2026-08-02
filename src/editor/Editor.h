@@ -42,9 +42,38 @@ private:
     /** CVar for toggling tab-to-space replacement in input. */
     std::shared_ptr<CVarBool> m_is_tab_to_space;
 
+    /** CVar for toggling the editor scrollbars visibility. */
+    std::shared_ptr<CVarBool> m_show_scrollbar;
+
 private:
     /** @brief Registers the tab_to_space cvar into the command manager. */
     void registerTabToSpaceCVar() const;
+
+    /** @brief Registers the show_scrollbar cvar into the command manager. */
+    void registerShowScrollbarCVar() const;
+
+    /**
+     * @brief Computes the effective scrollbar sizes for the current frame.
+     *
+     * A bar size is 0 when the scrollbars are disabled or when the content fits on that axis.
+     *
+     * @param context A reference to the cursor context.
+     * @param viewState A reference to the Editor view state.
+     * @param marginWidth The width of the margin, without the border size.
+     * @param vBarWidth Receives the width of the vertical scrollbar, 0 when hidden.
+     * @param hBarHeight Receives the height of the horizontal scrollbar, 0 when hidden.
+     */
+    void computeScrollbarSizes(const CursorContext &context, const ViewState &viewState, int32_t marginWidth, int32_t &vBarWidth, int32_t &hBarHeight) const;
+
+    /**
+     * @brief Draw the visual-only scrollbars (tracks and thumbs) of the editor.
+     *
+     * @param quadBuffer A reference to the quad buffer receiving the quads.
+     * @param context A reference to the cursor context.
+     * @param viewState A reference to the Editor view state.
+     * @param marginWidth The width of the margin, without the border size.
+     */
+    void drawScrollbars(QuadBuffer &quadBuffer, const CursorContext &context, const ViewState &viewState, int32_t marginWidth) const;
 
     /**
      * @brief: Compute scroll position and max scroll for the horizontal and vertical axis.
