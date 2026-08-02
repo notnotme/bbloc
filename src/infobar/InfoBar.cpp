@@ -28,14 +28,14 @@
 #include "../core/theme/DimensionId.h"
 
 
-InfoBar::InfoBar(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
-    : View(commandController, theme, quadProgram, quadBuffer) {}
+InfoBar::InfoBar(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram)
+    : View(commandController, theme, quadProgram) {}
 
-void InfoBar::render(CursorContext &context, ViewState &viewState, const float dt) {
-    m_quad_buffer.map(ApplicationWindow::INFO_BAR_BUFFER_QUAD_OFFSET, ApplicationWindow::INFO_BAR_BUFFER_QUAD_COUNT);
-    drawBackground(viewState);
-    drawText(context, viewState);
-    m_quad_buffer.unmap();
+void InfoBar::render(CursorContext &context, ViewState &viewState, QuadBuffer &quadBuffer, const float dt) {
+    const auto batch_start = quadBuffer.beginBatch(ApplicationWindow::INFO_BAR_DEFAULT_QUAD_COUNT);
+    drawBackground(quadBuffer, viewState);
+    drawText(quadBuffer, context, viewState);
+    quadBuffer.endBatch();
 
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
@@ -45,7 +45,7 @@ void InfoBar::render(CursorContext &context, ViewState &viewState, const float d
 
     // Set the scissor area and draw the buffer
     glScissor(position_x, m_window_height - position_y - height, width, height);
-    m_quad_program.draw(ApplicationWindow::INFO_BAR_BUFFER_QUAD_OFFSET, m_quad_buffer.getCount());
+    m_quad_program.draw(batch_start, quadBuffer.getCount());
 }
 
 bool InfoBar::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
@@ -64,7 +64,7 @@ void InfoBar::onTextInput(CursorContext &context, ViewState &viewState, const ch
     (void) text;
 }
 
-void InfoBar::drawBackground(const ViewState &viewState) const {
+void InfoBar::drawBackground(QuadBuffer &quadBuffer, const ViewState &viewState) const {
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
     const auto position_y = viewState.getPositionY();
@@ -76,11 +76,11 @@ void InfoBar::drawBackground(const ViewState &viewState) const {
     const auto &background_color = m_theme.getColor(ColorId::InfoBarBackground);
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
 
-    drawQuad(position_x, position_y, width, height - border_size, background_color);
-    drawQuad(position_x, position_y + height - border_size, width, border_size, border_color);
+    drawQuad(quadBuffer, position_x, position_y, width, height - border_size, background_color);
+    drawQuad(quadBuffer, position_x, position_y + height - border_size, width, border_size, border_color);
 }
 
-void InfoBar::drawText(const CursorContext &context, const ViewState &viewState) const {
+void InfoBar::drawText(QuadBuffer &quadBuffer, const CursorContext &context, const ViewState &viewState) const {
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
     const auto position_y = viewState.getPositionY();
@@ -112,7 +112,6 @@ void InfoBar::drawText(const CursorContext &context, const ViewState &viewState)
         std::pair { right_text_offset, string_info }
     };
 
-    auto quad_in_buffer = m_quad_buffer.getCount();
     const auto pen_position_y = position_y + line_height + font_descender;
     for (const auto &[x_offset, string] : strings) {
         auto pen_position_x = position_x + x_offset;
@@ -125,15 +124,9 @@ void InfoBar::drawText(const CursorContext &context, const ViewState &viewState)
                     pen_position_x += font_advance * tab_to_space;
                 break;
                 default:
-                    if (quad_in_buffer >= ApplicationWindow::INFO_BAR_BUFFER_QUAD_COUNT) {
-                        // The info bar quad region is full, truncate the remaining text for this frame
-                        return;
-                    }
-
                     const auto &character = m_theme.getCharacter(c);
-                    drawCharacter(pen_position_x, pen_position_y, character, text_color);
+                    drawCharacter(quadBuffer, pen_position_x, pen_position_y, character, text_color);
                     pen_position_x += font_advance;
-                    ++quad_in_buffer;
                 break;
             }
         }

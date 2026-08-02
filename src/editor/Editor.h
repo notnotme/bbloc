@@ -58,31 +58,34 @@ private:
     /**
      * @brief: Draw the background layer of the editor.
      *
+     * @param quadBuffer A reference to the quad buffer receiving the quads.
      * @param viewState A reference to the Editor view state.
      * @param marginWidth The width of the margin, without the border size.
      */
-    void drawBackground(const ViewState &viewState, int32_t marginWidth) const;
+    void drawBackground(QuadBuffer &quadBuffer, const ViewState &viewState, int32_t marginWidth) const;
 
     /**
      * @brief: Draw the text layer in the left margin of the editor.
      *
+     * @param quadBuffer A reference to the quad buffer receiving the quads.
      * @param context A reference to the cursor context.
      * @param viewState A reference to the Editor view state.
      * @param lineCountWidth The width in pixel of the greatest line number.
      * @param scrollY The editor y scroll offset.
      */
-    void drawMarginText(const CursorContext &context, const ViewState &viewState, int32_t lineCountWidth, int32_t scrollY) const;
+    void drawMarginText(QuadBuffer &quadBuffer, const CursorContext &context, const ViewState &viewState, int32_t lineCountWidth, int32_t scrollY) const;
 
     /**
      * @brief Draw the text layer (glyphs, selection, and cursor indicator) of the editor.
      *
+     * @param quadBuffer A reference to the quad buffer receiving the quads.
      * @param context A reference to the cursor context.
      * @param viewState A reference to the Editor view state.
      * @param scrollX The editor x scroll offset.
      * @param scrollY The editor y scroll offset.
      * @param marginWidth The width of the margin, without the border size.
      */
-    void drawText(const CursorContext &context, const ViewState &viewState, int32_t scrollX, int32_t scrollY, int32_t marginWidth) const;
+    void drawText(QuadBuffer &quadBuffer, const CursorContext &context, const ViewState &viewState, int32_t scrollX, int32_t scrollY, int32_t marginWidth) const;
 
 public:
     /**
@@ -91,18 +94,18 @@ public:
      * @param commandController Reference to the CommandController.
      * @param theme Reference to the Theme for rendering.
      * @param quadProgram Reference to the QuadProgram shader.
-     * @param quadBuffer Reference to the geometry buffer.
      */
-    explicit Editor(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
+    explicit Editor(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram);
 
     /**
      * @brief Renders the text editor to the screen.
      *
      * @param context Reference to the cursor context.
      * @param viewState State of the editor view.
+     * @param quadBuffer Reference to the quad buffer used to build this frame's geometry.
      * @param dt Time delta since the last frame.
      */
-    void render(CursorContext &context, ViewState &viewState, float dt) override;
+    void render(CursorContext &context, ViewState &viewState, QuadBuffer &quadBuffer, float dt) override;
 
     /**
      * @brief Handles key down events in the editor.

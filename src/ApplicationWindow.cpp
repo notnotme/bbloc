@@ -57,9 +57,9 @@ ApplicationWindow::ApplicationWindow()
     : p_sdl_window(nullptr),
       m_sdl_gl_context(nullptr),
       m_cursor_context(*this, m_theme, m_prompt_cursor, std::make_unique<LineBuffer>()),
-      m_info_bar(m_command_manager, m_theme, m_quad_program, m_quad_buffer),
-      m_editor(m_command_manager, m_theme, m_quad_program, m_quad_buffer),
-      m_prompt(m_command_manager, m_theme, m_quad_program, m_quad_buffer),
+      m_info_bar(m_command_manager, m_theme, m_quad_program),
+      m_editor(m_command_manager, m_theme, m_quad_program),
+      m_prompt(m_command_manager, m_theme, m_quad_program),
       m_prompt_state(m_command_manager),
       m_command_time(std::make_shared<CVarFloat>(0.0f, true)),
       m_draw_time(std::make_shared<CVarFloat>(0.0f, true)),
@@ -137,7 +137,7 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
 
     // Create the quad buffer
     updateOrthogonal(width, height);
-    m_quad_buffer.create(MAX_QUADS);
+    m_quad_buffer.create(DEFAULT_QUAD_CAPACITY);
 
     // Create the quad shader
     m_quad_program.create();
@@ -339,9 +339,10 @@ void ApplicationWindow::mainLoop() {
 
             // Render everything on screen.
             m_cursor_context.highlighter.parse();
-            m_info_bar.render(m_cursor_context, m_info_bar_state, dt);
-            m_editor.render(m_cursor_context, m_editor_state, dt);
-            m_prompt.render(m_cursor_context, m_prompt_state, dt);
+            m_quad_buffer.resetFrame();
+            m_info_bar.render(m_cursor_context, m_info_bar_state, m_quad_buffer, dt);
+            m_editor.render(m_cursor_context, m_editor_state, m_quad_buffer, dt);
+            m_prompt.render(m_cursor_context, m_prompt_state, m_quad_buffer, dt);
 
             // todo: Uncomment for debug purpose.
             // std::cout << "view updated " << std::endl;

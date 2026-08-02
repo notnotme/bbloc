@@ -43,17 +43,19 @@ private:
     /**
      * @brief: Draw the background layer of the info bar.
      *
+     * @param quadBuffer A reference to the quad buffer receiving the quads.
      * @param viewState A reference to the InfoBar view state.
      */
-    void drawBackground(const ViewState &viewState) const;
+    void drawBackground(QuadBuffer &quadBuffer, const ViewState &viewState) const;
 
     /**
       * @brief: Draw the text layer of the info bar.
       *
+      * @param quadBuffer A reference to the quad buffer receiving the quads.
       * @param context A reference to the cursor context.
       * @param viewState A reference to the InfoBar view state.
       */
-    void drawText(const CursorContext &context, const ViewState &viewState) const;
+    void drawText(QuadBuffer &quadBuffer, const CursorContext &context, const ViewState &viewState) const;
 
 public:
     /**
@@ -62,18 +64,18 @@ public:
      * @param commandController Reference to the command controller.
      * @param theme Reference to the Theme (fonts, colors, etc.).
      * @param quadProgram Reference to the quad shader program.
-     * @param quadBuffer Reference to the quad buffer.
      */
-    explicit InfoBar(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
+    explicit InfoBar(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram);
 
     /**
      * @brief Renders the InfoBar.
      *
      * @param context Reference to the cursor context.
      * @param viewState The InfoBarState of this view.
+     * @param quadBuffer Reference to the quad buffer used to build this frame's geometry.
      * @param dt Time delta since the last frame.
      */
-    void render(CursorContext &context, ViewState &viewState, float dt) override;
+    void render(CursorContext &context, ViewState &viewState, QuadBuffer &quadBuffer, float dt) override;
 
     /**
      * @brief InfoBar does not handle key input.

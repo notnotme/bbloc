@@ -39,17 +39,19 @@ private:
     /**
      * @brief: Draw the background layer of the prompt.
      *
+     * @param quadBuffer A reference to the quad buffer receiving the quads.
      * @param viewState A reference to the Prompt view state.
      */
-    void drawBackground(const PromptState &viewState) const;
+    void drawBackground(QuadBuffer &quadBuffer, const PromptState &viewState) const;
 
     /**
      * @brief: Draw the text layer of the prompt.
      *
+     * @param quadBuffer A reference to the quad buffer receiving the quads.
      * @param context A reference to the cursor context.
      * @param viewState A reference to the Prompt view state.
      */
-    void drawText(const CursorContext &context, const PromptState &viewState) const;
+    void drawText(QuadBuffer &quadBuffer, const CursorContext &context, const PromptState &viewState) const;
 
 public:
     /**
@@ -58,18 +60,18 @@ public:
      * @param commandController Reference to the CommandManager instance.
      * @param theme Reference to the Theme manager for styling.
      * @param quadProgram Reference to the QuadProgram for rendering.
-     * @param quadBuffer Reference to the QuadBuffer for geometry submission.
      */
-    explicit Prompt(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
+    explicit Prompt(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram);
 
     /**
      * @brief Renders the command prompt on screen.
      *
      * @param context Reference to the cursor context.
      * @param viewState The associated PromptState for layout/input data.
+     * @param quadBuffer Reference to the quad buffer used to build this frame's geometry.
      * @param dt Time delta since the last frame.
      */
-    void render(CursorContext &context, PromptState &viewState, float dt) override;
+    void render(CursorContext &context, PromptState &viewState, QuadBuffer &quadBuffer, float dt) override;
 
     /**
      * @brief Handles key events while the prompt is active.

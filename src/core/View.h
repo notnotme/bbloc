@@ -50,9 +50,6 @@ protected:
     /** Reference to the shader program for quad rendering. */
     QuadProgram &m_quad_program;
 
-    /** Reference to the quad buffer used to build the glyph buffer. */
-    QuadBuffer &m_quad_buffer;
-
     /** Current window width in pixels. */
     int32_t m_window_width;
 
@@ -60,25 +57,27 @@ protected:
     int32_t m_window_height;
 
     /**
-     * @brief Helper to push a new quad into m_quad_buffer.
+     * @brief Helper to push a new quad into the quad buffer.
      *
+     * @param quadBuffer Reference to the quad buffer receiving the quad.
      * @param x The x position of the quad.
      * @param y The y position of the quad.
      * @param width The width of the quad.
      * @param height The height of the quad.
      * @param color Reference to the color to be used by this quad.
      */
-    void drawQuad(int32_t x, int32_t y, int32_t width, int32_t height, const Color &color) const;
+    void drawQuad(QuadBuffer &quadBuffer, int32_t x, int32_t y, int32_t width, int32_t height, const Color &color) const;
 
     /**
-     * @brief Helper to push a new character inside m_quad_buffer.
+     * @brief Helper to push a new character inside the quad buffer.
      *
+     * @param quadBuffer Reference to the quad buffer receiving the quad.
      * @param x The x position of the character.
      * @param y The y position of the character.
      * @param character The character to draw (from AtlasEntry).
      * @param color The color to be used to draw this character.
      */
-    void drawCharacter(int32_t x, int32_t y, const AtlasEntry &character, const Color &color) const;
+    void drawCharacter(QuadBuffer &quadBuffer, int32_t x, int32_t y, const AtlasEntry &character, const Color &color) const;
 
 public:
     /** @brief Deleted copy constructor. */
@@ -96,18 +95,18 @@ public:
      * @param commandController Reference to a command controller.
      * @param theme Reference to the theme manager.
      * @param quadProgram Reference to the quad shader program.
-     * @param quadBuffer Reference to the quad geometry buffer.
      */
-    explicit View(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer);
+    explicit View(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram);
 
     /**
      * @brief Renders the view contents.
      *
      * @param context Reference to the cursor context to render.
      * @param viewState Reference to the view-specific state.
+     * @param quadBuffer Reference to the quad buffer used to build this frame's geometry.
      * @param dt Delta time in seconds (useful for animations or transitions).
      */
-    virtual void render(CursorContext &context, TState &viewState, float dt) = 0;
+    virtual void render(CursorContext &context, TState &viewState, QuadBuffer &quadBuffer, float dt) = 0;
 
     /**
      * @brief Handles key press events.
@@ -139,11 +138,10 @@ public:
 };
 
 template <typename TState>
-View<TState>::View(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
+View<TState>::View(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram)
     : m_command_controller(commandController),
       m_theme(theme),
       m_quad_program(quadProgram),
-      m_quad_buffer(quadBuffer),
       m_window_width(0),
       m_window_height(0) {}
 
@@ -154,8 +152,8 @@ void View<TState>::resizeWindow(const int32_t width, const int32_t height) {
 }
 
 template <typename TState>
-void View<TState>::drawQuad(const int32_t x, const int32_t y, const int32_t width, const int32_t height, const Color &color) const {
-    m_quad_buffer.insert(
+void View<TState>::drawQuad(QuadBuffer &quadBuffer, const int32_t x, const int32_t y, const int32_t width, const int32_t height, const Color &color) const {
+    quadBuffer.insert(
         static_cast<int16_t>(x),
         static_cast<int16_t>(y),
         static_cast<uint16_t>(width),
@@ -164,8 +162,8 @@ void View<TState>::drawQuad(const int32_t x, const int32_t y, const int32_t widt
 }
 
 template<typename TState>
-void View<TState>::drawCharacter(const int32_t x, const int32_t y, const AtlasEntry &character, const Color &color) const {
-    m_quad_buffer.insert(
+void View<TState>::drawCharacter(QuadBuffer &quadBuffer, const int32_t x, const int32_t y, const AtlasEntry &character, const Color &color) const {
+    quadBuffer.insert(
         static_cast<int16_t>(x + character.bearing_x),
         static_cast<int16_t>(y - character.bearing_y),
         character.width, character.height,

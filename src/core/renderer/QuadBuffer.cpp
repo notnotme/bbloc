@@ -18,14 +18,15 @@
  */
 #include "QuadBuffer.h"
 
+#include <algorithm>
 #include <stdexcept>
 
 
 QuadBuffer::QuadBuffer()
-    : p_data(nullptr),
-      m_vertex_buffer(0),
+    : m_vertex_buffer(0),
       m_capacity(0),
-      m_count(0) {
+      m_frame_count(0),
+      m_batch_start(0) {
 }
 
 void QuadBuffer::create(const uint32_t capacity) {
@@ -38,31 +39,45 @@ void QuadBuffer::create(const uint32_t capacity) {
 
     const auto size_in_bytes = static_cast<GLsizeiptr>(sizeof(QuadVertex) * m_capacity);
     glNamedBufferData(m_vertex_buffer, size_in_bytes, nullptr, GL_DYNAMIC_DRAW);
+    m_staging.reserve(m_capacity);
 }
 
-void QuadBuffer::map(const uint32_t start, const uint32_t count) {
-    const auto map_offset_in_byte = static_cast<GLintptr>(start * sizeof(QuadVertex));
-    const auto count_size_in_byte = static_cast<GLsizeiptr>(count * sizeof(QuadVertex));
-    const auto raw_buffer_data = glMapNamedBufferRange(m_vertex_buffer, map_offset_in_byte, count_size_in_byte,
-                                                GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT |
-                                                GL_MAP_FLUSH_EXPLICIT_BIT);
+void QuadBuffer::resetFrame() {
+    m_frame_count = 0;
+}
 
-    p_data = static_cast<QuadVertex*>(raw_buffer_data);
-    if (p_data == nullptr) {
-        throw std::runtime_error("Failed to map vertex buffer");
+uint32_t QuadBuffer::beginBatch(const uint32_t reserveHint) {
+    m_batch_start = m_frame_count;
+    m_staging.clear();
+    if (reserveHint > 0) {
+        m_staging.reserve(reserveHint);
     }
 
-    m_count = 0;
+    return m_batch_start;
 }
 
-void QuadBuffer::unmap() const {
-    const auto count_size_in_bytes = static_cast<GLsizeiptr>(m_count * sizeof(QuadVertex));
-    glFlushMappedNamedBufferRange(m_vertex_buffer, 0, count_size_in_bytes);
-    glUnmapNamedBuffer(m_vertex_buffer);
+void QuadBuffer::endBatch() {
+    const auto batch_count = static_cast<uint32_t>(m_staging.size());
+    const auto needed_capacity = m_batch_start + batch_count;
+    if (needed_capacity > m_capacity) {
+        // Regrow by orphaning: previous batches of this frame are already drawn, their storage
+        // is kept alive by the driver until those draws complete.
+        m_capacity = std::max(needed_capacity, m_capacity * 2);
+        const auto capacity_in_bytes = static_cast<GLsizeiptr>(sizeof(QuadVertex) * m_capacity);
+        glNamedBufferData(m_vertex_buffer, capacity_in_bytes, nullptr, GL_DYNAMIC_DRAW);
+    }
+
+    if (batch_count > 0) {
+        const auto batch_offset_in_bytes = static_cast<GLintptr>(m_batch_start * sizeof(QuadVertex));
+        const auto batch_size_in_bytes = static_cast<GLsizeiptr>(batch_count * sizeof(QuadVertex));
+        glNamedBufferSubData(m_vertex_buffer, batch_offset_in_bytes, batch_size_in_bytes, m_staging.data());
+    }
+
+    m_frame_count = needed_capacity;
 }
 
 void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, const uint16_t height, const uint8_t tint_r, const uint8_t tint_g, const uint8_t tint_b, const uint8_t tint_a) {
-    auto &vertex = p_data[m_count];
+    auto &vertex = m_staging.emplace_back();
     vertex.translation_x = x;
     vertex.translation_y = y;
     vertex.width = width;
@@ -72,12 +87,10 @@ void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, 
     vertex.tint_b = tint_b;
     vertex.tint_a = tint_a;
     vertex.texture_layer = 255;
-
-    ++m_count;
 }
 
 void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, const uint16_t height, const uint8_t texture_s, const uint8_t texture_t, const uint8_t texture_layer) {
-    auto &vertex = p_data[m_count];
+    auto &vertex = m_staging.emplace_back();
     vertex.translation_x = x;
     vertex.translation_y = y;
     vertex.width = width;
@@ -89,12 +102,10 @@ void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, 
     vertex.tint_b = 255;
     vertex.tint_a = 255;
     vertex.texture_layer = texture_layer;
-
-    ++m_count;
 }
 
 void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, const uint16_t height, const uint8_t texture_s, const uint8_t texture_t, const uint8_t texture_layer, const uint8_t tint_r, const uint8_t tint_g, const uint8_t tint_b, const uint8_t tint_a) {
-    auto &vertex = p_data[m_count];
+    auto &vertex = m_staging.emplace_back();
     vertex.translation_x = x;
     vertex.translation_y = y;
     vertex.width = width;
@@ -106,16 +117,16 @@ void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, 
     vertex.tint_b = tint_b;
     vertex.tint_a = tint_a;
     vertex.texture_layer = texture_layer;
-
-    ++m_count;
 }
 
 void QuadBuffer::destroy() {
     glDeleteBuffers(1, &m_vertex_buffer);
-    p_data = nullptr;
+    m_staging.clear();
+    m_staging.shrink_to_fit();
     m_vertex_buffer = 0;
     m_capacity = 0;
-    m_count = 0;
+    m_frame_count = 0;
+    m_batch_start = 0;
 }
 
 GLuint QuadBuffer::getBuffer() const {
@@ -123,5 +134,5 @@ GLuint QuadBuffer::getBuffer() const {
 }
 
 uint32_t QuadBuffer::getCount() const {
-    return m_count;
+    return static_cast<uint32_t>(m_staging.size());
 }

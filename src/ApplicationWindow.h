@@ -50,26 +50,17 @@
  */
 class ApplicationWindow final : public CommandRunner {
 public:
-    /** Maximum number of renderable quads in m_quad_buffer. */
-    static constexpr auto MAX_QUADS = 8192;
+    /** Initial capacity of m_quad_buffer in quads; the buffer regrows on demand. */
+    static constexpr auto DEFAULT_QUAD_CAPACITY = 8192;
 
-    /** Start offset of quads in m_quad_buffer in the info bar view */
-    static constexpr auto INFO_BAR_BUFFER_QUAD_OFFSET = 0;
+    /** Default quad count reserved for the info bar view batch */
+    static constexpr auto INFO_BAR_DEFAULT_QUAD_COUNT = 1024;
 
-    /** Maximum quads available for the info bar view */
-    static constexpr auto INFO_BAR_BUFFER_QUAD_COUNT = 1024;
+    /** Default quad count reserved for the prompt view batch */
+    static constexpr auto PROMPT_DEFAULT_QUAD_COUNT = 1024;
 
-    /** Start offset of quads in m_quad_buffer in the prompt view */
-    static constexpr auto PROMPT_BUFFER_QUAD_OFFSET = INFO_BAR_BUFFER_QUAD_COUNT;
-
-    /** Maximum quads available for the prompt view */
-    static constexpr auto PROMPT_BUFFER_QUAD_COUNT = 1024;
-
-    /** Start offset of quads in m_quad_buffer in the editor view */
-    static constexpr auto EDITOR_BUFFER_QUAD_OFFSET = INFO_BAR_BUFFER_QUAD_COUNT + PROMPT_BUFFER_QUAD_COUNT;
-
-    /** Maximum quads available for the editor view */
-    static constexpr auto EDITOR_BUFFER_QUAD_COUNT = 8192 - EDITOR_BUFFER_QUAD_OFFSET;
+    /** Default quad count reserved for the editor view batch */
+    static constexpr auto EDITOR_DEFAULT_QUAD_COUNT = DEFAULT_QUAD_CAPACITY - INFO_BAR_DEFAULT_QUAD_COUNT - PROMPT_DEFAULT_QUAD_COUNT;
 
 private:
     /** SDL window handle. */

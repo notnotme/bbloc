@@ -29,14 +29,14 @@
 #include "../core/theme/DimensionId.h"
 
 
-Editor::Editor(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
-    : View(commandController, theme, quadProgram, quadBuffer),
+Editor::Editor(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram)
+    : View(commandController, theme, quadProgram),
       m_is_tab_to_space(std::make_shared<CVarBool>(true)) {
     // Register cvars
     registerTabToSpaceCVar();
 }
 
-void Editor::render(CursorContext &context, ViewState &viewState, const float dt) {
+void Editor::render(CursorContext &context, ViewState &viewState, QuadBuffer &quadBuffer, const float dt) {
     // Need some variable
     const auto padding_width = m_theme.getDimension(DimensionId::PaddingWidth);
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
@@ -57,14 +57,14 @@ void Editor::render(CursorContext &context, ViewState &viewState, const float dt
     const auto scroll_x = context.scroll.x;
     const auto scroll_y = context.scroll.y;
 
-    // Map the editor buffer region, keep a variable to know how many quads we have before the cursor text
-    m_quad_buffer.map(ApplicationWindow::EDITOR_BUFFER_QUAD_OFFSET, ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT);
-    drawBackground(viewState, margin_width);
-    drawMarginText(context, viewState, cursor_line_count_width, scroll_y);
+    // Begin the editor batch, keep a variable to know how many quads we have before the cursor text
+    const auto batch_start = quadBuffer.beginBatch(ApplicationWindow::EDITOR_DEFAULT_QUAD_COUNT);
+    drawBackground(quadBuffer, viewState, margin_width);
+    drawMarginText(quadBuffer, context, viewState, cursor_line_count_width, scroll_y);
 
-    const auto quads_count_before_text = m_quad_buffer.getCount();
-    drawText(context, viewState, scroll_x, scroll_y, margin_width);
-    m_quad_buffer.unmap();
+    const auto quads_count_before_text = quadBuffer.getCount();
+    drawText(quadBuffer, context, viewState, scroll_x, scroll_y, margin_width);
+    quadBuffer.endBatch();
 
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
@@ -74,13 +74,13 @@ void Editor::render(CursorContext &context, ViewState &viewState, const float dt
 
     // Draw backgrounds and line number
     glScissor(position_x, m_window_height - position_y - height, width, height);
-    m_quad_program.draw(ApplicationWindow::EDITOR_BUFFER_QUAD_OFFSET, quads_count_before_text);
+    m_quad_program.draw(batch_start, quads_count_before_text);
 
     // Draw cursor text
     glScissor(position_x + margin_width + border_size, m_window_height - position_y - height, width - margin_width - border_size, height);
 
-    const auto draw_offset = ApplicationWindow::EDITOR_BUFFER_QUAD_OFFSET + quads_count_before_text;
-    m_quad_program.draw(draw_offset, m_quad_buffer.getCount() - quads_count_before_text);
+    const auto draw_offset = batch_start + quads_count_before_text;
+    m_quad_program.draw(draw_offset, quadBuffer.getCount() - quads_count_before_text);
 }
 
 bool Editor::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
@@ -224,7 +224,7 @@ void Editor::updateScroll(CursorContext &context, const ViewState &viewState, co
     }
 }
 
-void Editor::drawBackground(const ViewState &viewState, const int32_t marginWidth) const {
+void Editor::drawBackground(QuadBuffer &quadBuffer, const ViewState &viewState, const int32_t marginWidth) const {
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
     const auto position_y = viewState.getPositionY();
@@ -238,12 +238,12 @@ void Editor::drawBackground(const ViewState &viewState, const int32_t marginWidt
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
 
     // Draw left background margin, right border and editor background -> 3 quads
-    drawQuad(position_x, position_y, marginWidth, height, margin_color);
-    drawQuad(position_x + marginWidth, position_y, border_size, height, border_color);
-    drawQuad(position_x + marginWidth + border_size, position_y, width - marginWidth - border_size, height, background_color);
+    drawQuad(quadBuffer, position_x, position_y, marginWidth, height, margin_color);
+    drawQuad(quadBuffer, position_x + marginWidth, position_y, border_size, height, border_color);
+    drawQuad(quadBuffer, position_x + marginWidth + border_size, position_y, width - marginWidth - border_size, height, background_color);
 }
 
-void Editor::drawMarginText(const CursorContext &context, const ViewState &viewState, const int32_t lineCountWidth, const int32_t scrollY) const {
+void Editor::drawMarginText(QuadBuffer &quadBuffer, const CursorContext &context, const ViewState &viewState, const int32_t lineCountWidth, const int32_t scrollY) const {
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
     const auto position_y = viewState.getPositionY();
@@ -268,7 +268,6 @@ void Editor::drawMarginText(const CursorContext &context, const ViewState &viewS
     constexpr auto MAX_LINE_NUMBER_DIGITS = std::numeric_limits<uint32_t>::digits10 + 1;
     std::array<char16_t, MAX_LINE_NUMBER_DIGITS> line_number_digits{};
 
-    auto quad_in_buffer = m_quad_buffer.getCount();
     while (line_index < cursor_line_count) {
         if (line_index >= 0) {
             // Fill the buffer from its end, least significant digit first
@@ -280,15 +279,9 @@ void Editor::drawMarginText(const CursorContext &context, const ViewState &viewS
 
             pen_position_x = position_x + padding_width + lineCountWidth - digit_count * font_advance;
             for (auto digit_index = MAX_LINE_NUMBER_DIGITS - digit_count; digit_index < MAX_LINE_NUMBER_DIGITS; ++digit_index) {
-                if (quad_in_buffer >= ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT) {
-                    // The editor quad region is full, truncate the remaining text for this frame
-                    return;
-                }
-
                 const auto &character = m_theme.getCharacter(line_number_digits[digit_index]);
-                drawCharacter(pen_position_x, pen_position_y, character, line_number_color);
+                drawCharacter(quadBuffer, pen_position_x, pen_position_y, character, line_number_color);
                 pen_position_x += font_advance;
-                ++quad_in_buffer;
             }
         }
 
@@ -302,7 +295,7 @@ void Editor::drawMarginText(const CursorContext &context, const ViewState &viewS
     }
 }
 
-void Editor::drawText(const CursorContext &context, const ViewState &viewState, const int32_t scrollX, const int32_t scrollY, const int32_t marginWidth) const {
+void Editor::drawText(QuadBuffer &quadBuffer, const CursorContext &context, const ViewState &viewState, const int32_t scrollX, const int32_t scrollY, const int32_t marginWidth) const {
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
     const auto position_y = viewState.getPositionY();
@@ -331,7 +324,6 @@ void Editor::drawText(const CursorContext &context, const ViewState &viewState, 
     auto pen_position_y = line_scroll_offset_y + position_y + line_height + font_descender;
     auto line_index = first_line_in_viewport;
 
-    auto quad_in_buffer = m_quad_buffer.getCount();
     while (line_index < cursor_line_count) {
         if (line_index >= 0) {
             // Get the string at line_index
@@ -340,46 +332,32 @@ void Editor::drawText(const CursorContext &context, const ViewState &viewState, 
             const auto is_cursor_line = cursor_line == line_index;
 
             if (is_cursor_line) {
-                if (quad_in_buffer >= ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT) {
-                    // The editor quad region is full, truncate the remaining text for this frame
-                    return;
-                }
-                ++quad_in_buffer;
-
                 // Begin current line bg
                 const auto &line_background_color = m_theme.getColor(ColorId::LineBackground);
-                drawQuad(cursor_text_start_x, pen_position_y - line_height - font_descender, width, line_height, line_background_color);
+                drawQuad(quadBuffer, cursor_text_start_x, pen_position_y - line_height - font_descender, width, line_height, line_background_color);
             }
 
             if (const auto &selected_range = context.cursor.getSelectedRange()) {
-                if (quad_in_buffer >= ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT) {
-                    return;
-                }
-
                 // Check if the selected range is in the viewport
                 const auto &selected_background_color = m_theme.getColor(ColorId::SelectedTextBackground);
                 if (selected_range->line_start == line_index && selected_range->line_end == line_index) {
-                    ++quad_in_buffer;
                     // The selection start / end on the same line. Select only a range of text.
                     const auto selected_text = string.substr(selected_range->column_start, selected_range->column_end - selected_range->column_start);
                     const auto selected_text_width = m_theme.measure(selected_text, false);
                     const auto selection_start_x = m_theme.measure(string.substr(0, selected_range->column_start), false);
-                    drawQuad(cursor_text_start_x - scrollX + selection_start_x, pen_position_y - line_height - font_descender, selected_text_width, line_height, selected_background_color);
+                    drawQuad(quadBuffer, cursor_text_start_x - scrollX + selection_start_x, pen_position_y - line_height - font_descender, selected_text_width, line_height, selected_background_color);
                 } else if (line_index == selected_range->line_start) {
-                    ++quad_in_buffer;
                     // First line of selected text, the selection starts at column until the end of the text area.
                     const auto selection_start_x = m_theme.measure(string.substr(0, selected_range->column_start), false);
-                    drawQuad(cursor_text_start_x - scrollX + selection_start_x, pen_position_y - line_height - font_descender, width - selection_start_x, line_height, selected_background_color);
+                    drawQuad(quadBuffer, cursor_text_start_x - scrollX + selection_start_x, pen_position_y - line_height - font_descender, width - selection_start_x, line_height, selected_background_color);
                 } else if (line_index == selected_range->line_end) {
-                    ++quad_in_buffer;
                     // Last line of selected text, the selection starts at the margin border, until the end column.
                     const auto selected_text = string.substr(0, selected_range->column_end);
                     const auto selected_text_width = m_theme.measure(selected_text, false);
-                    drawQuad(cursor_text_start_x - scrollX, pen_position_y - line_height - font_descender, selected_text_width, line_height, selected_background_color);
+                    drawQuad(quadBuffer, cursor_text_start_x - scrollX, pen_position_y - line_height - font_descender, selected_text_width, line_height, selected_background_color);
                 } else if (line_index > selected_range->line_start && line_index < selected_range->line_end) {
-                    ++quad_in_buffer;
                     // In between two selected lines, the selection takes the whole width
-                    drawQuad(cursor_text_start_x, pen_position_y - line_height - font_descender, width, line_height, selected_background_color);
+                    drawQuad(quadBuffer, cursor_text_start_x, pen_position_y - line_height - font_descender, width, line_height, selected_background_color);
                 }
             }
 
@@ -391,10 +369,6 @@ void Editor::drawText(const CursorContext &context, const ViewState &viewState, 
                 if (pen_position_x > position_x + width) {
                     // Nothing more is visible
                     break;
-                }
-
-                if (quad_in_buffer >= ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT) {
-                    return;
                 }
 
                 switch (const auto c = string[character_column]) {
@@ -410,10 +384,9 @@ void Editor::drawText(const CursorContext &context, const ViewState &viewState, 
                             const auto token_id = context.highlighter.getHighLightAtPosition(line_index, character_column);
                             const auto &character = m_theme.getCharacter(c);
                             const auto &character_color = m_theme.getColor(token_id);
-                            drawCharacter(pen_position_x, pen_position_y, character, character_color);
+                            drawCharacter(quadBuffer, pen_position_x, pen_position_y, character, character_color);
                         }
                         pen_position_x += font_advance;
-                        ++quad_in_buffer;
                     break;
                 }
 
@@ -423,14 +396,9 @@ void Editor::drawText(const CursorContext &context, const ViewState &viewState, 
             }
 
             if (is_cursor_line) {
-                if (quad_in_buffer >= ApplicationWindow::EDITOR_BUFFER_QUAD_COUNT) {
-                    return;
-                }
-                ++quad_in_buffer;
-
                 // begin indicator
                 const auto &indicator_color = m_theme.getColor(ColorId::CursorIndicator);
-                drawQuad(cursor_position_x, pen_position_y - line_height - font_descender, indicator_width, line_height, indicator_color);
+                drawQuad(quadBuffer, cursor_position_x, pen_position_y - line_height - font_descender, indicator_width, line_height, indicator_color);
             }
         }
 

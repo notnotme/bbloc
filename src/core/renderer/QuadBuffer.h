@@ -19,6 +19,8 @@
 #ifndef QUAD_BUFFER_H
 #define QUAD_BUFFER_H
 
+#include <vector>
+
 #include <glad/glad.h>
 
 #include "QuadVertex.h"
@@ -28,20 +30,29 @@
  * @brief A buffer for storing and managing quad geometry for rendering.
  *
  * This class provides an interface for inserting textured or tinted quads into a GPU buffer.
+ * Quads are staged CPU-side per batch, then uploaded on endBatch(). The GPU buffer grows
+ * on demand, so a batch is never truncated.
+ *
+ * A frame is made of consecutive batches: call resetFrame() once per frame, then for each
+ * batch beginBatch() / insert(...) / endBatch(). Each batch must be drawn before the next
+ * one begins, as a regrow orphans the previous GPU storage.
  */
 class QuadBuffer final {
 private:
-    /** Pointer to the CPU-side mapped vertex data. */
-    QuadVertex *p_data;
+    /** CPU-side staging storage for the current batch. */
+    std::vector<QuadVertex> m_staging;
 
     /** Handle to the OpenGL vertex buffer object. */
     GLuint m_vertex_buffer;
 
-    /** Maximum number of quads the buffer can hold. */
+    /** Current GPU buffer capacity, in quads. */
     uint32_t m_capacity;
 
-    /** Number of quads currently inserted into the mapped range of the buffer. */
-    uint32_t m_count;
+    /** Number of quads committed to the GPU buffer since resetFrame(). */
+    uint32_t m_frame_count;
+
+    /** Index of the first quad of the current batch within the GPU buffer. */
+    uint32_t m_batch_start;
 
 public:
     /** @brief Deleted copy constructor. */
@@ -54,25 +65,35 @@ public:
     explicit QuadBuffer();
 
     /**
-     * @brief Initializes the buffer with a specific quad capacity.
+     * @brief Initializes the buffer with an initial quad capacity.
      *
-     * @param capacity Number of quads the buffer should support.
+     * The capacity is a starting point: the buffer regrows on demand in endBatch().
+     *
+     * @param capacity Initial number of quads the buffer supports.
      */
     void create(uint32_t capacity);
 
     /** @brief Destroys the buffer and releases GPU resources. */
     void destroy();
 
-    /**
-     * @brief Maps a portion of the buffer to CPU address space.
-     *
-     * @param start Index of the first quad to map.
-     * @param count Number of quads to map.
-     */
-    void map(uint32_t start, uint32_t count);
+    /** @brief Starts a new frame: the next batch is placed at the start of the buffer. */
+    void resetFrame();
 
-    /** @brief Unmaps and flushes the buffer, uploading data to the GPU. */
-    void unmap() const;
+    /**
+     * @brief Starts a new batch of quads at the current frame position.
+     *
+     * @param reserveHint Expected quad count of the batch, used to pre-allocate the staging storage.
+     * @return Index of the first quad of this batch, to be used as draw offset.
+     */
+    uint32_t beginBatch(uint32_t reserveHint = 0);
+
+    /**
+     * @brief Uploads the staged quads of the current batch to the GPU buffer.
+     *
+     * Regrows the GPU buffer (never shrinking) when the batch does not fit. A regrow orphans
+     * the previous storage, so batches already uploaded this frame must be drawn beforehand.
+     */
+    void endBatch();
 
 /**
      * @brief Inserts a plain tinted quad into the buffer.
@@ -125,7 +146,7 @@ public:
     /** @brief Returns the OpenGL buffer ID. */
     [[nodiscard]] GLuint getBuffer() const;
 
-    /** @brief Returns the number of quads currently inserted into the buffer. */
+    /** @brief Returns the number of quads currently inserted into the current batch. */
     [[nodiscard]] uint32_t getCount() const;
 };
 

@@ -27,15 +27,14 @@
 #include "../core/theme/DimensionId.h"
 
 
-Prompt::Prompt(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram, QuadBuffer &quadBuffer)
-    : View(commandController, theme, quadProgram, quadBuffer) {}
+Prompt::Prompt(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram)
+    : View(commandController, theme, quadProgram) {}
 
-void Prompt::render(CursorContext &context, PromptState &viewState, float dt) {
-    // Map 1024 quads
-    m_quad_buffer.map(ApplicationWindow::PROMPT_BUFFER_QUAD_OFFSET, ApplicationWindow::PROMPT_BUFFER_QUAD_COUNT);
-    drawBackground(viewState);
-    drawText(context, viewState);
-    m_quad_buffer.unmap();
+void Prompt::render(CursorContext &context, PromptState &viewState, QuadBuffer &quadBuffer, float dt) {
+    const auto batch_start = quadBuffer.beginBatch(ApplicationWindow::PROMPT_DEFAULT_QUAD_COUNT);
+    drawBackground(quadBuffer, viewState);
+    drawText(quadBuffer, context, viewState);
+    quadBuffer.endBatch();
 
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
@@ -45,7 +44,7 @@ void Prompt::render(CursorContext &context, PromptState &viewState, float dt) {
 
     // Set the scissor area and draw the buffer
     glScissor(position_x, m_window_height - position_y - height, width, height);
-    m_quad_program.draw(ApplicationWindow::PROMPT_BUFFER_QUAD_OFFSET, m_quad_buffer.getCount());
+    m_quad_program.draw(batch_start, quadBuffer.getCount());
 }
 
 bool Prompt::onKeyDown(CursorContext &context, PromptState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
@@ -119,7 +118,7 @@ void Prompt::onTextInput(CursorContext &context, PromptState &viewState, const c
     //todo: viewState.follow_indicator = true;
 }
 
-void Prompt::drawBackground(const PromptState &viewState) const {
+void Prompt::drawBackground(QuadBuffer &quadBuffer, const PromptState &viewState) const {
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
     const auto position_y = viewState.getPositionY();
@@ -131,11 +130,11 @@ void Prompt::drawBackground(const PromptState &viewState) const {
     const auto &background_color = m_theme.getColor(ColorId::InfoBarBackground);
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
 
-    drawQuad(position_x, position_y + border_size, width, height - border_size, background_color);
-    drawQuad(position_x, position_y, width, border_size, border_color);
+    drawQuad(quadBuffer, position_x, position_y + border_size, width, height - border_size, background_color);
+    drawQuad(quadBuffer, position_x, position_y, width, border_size, border_color);
 }
 
-void Prompt::drawText(const CursorContext &context, const PromptState &viewState) const {
+void Prompt::drawText(QuadBuffer &quadBuffer, const CursorContext &context, const PromptState &viewState) const {
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
     const auto position_y = viewState.getPositionY();
@@ -155,12 +154,7 @@ void Prompt::drawText(const CursorContext &context, const PromptState &viewState
     auto pen_position_x = position_x + padding_width;
 
     // Draw the prompt text
-    auto quad_in_buffer = m_quad_buffer.getCount();
     for (const auto prompt_text = viewState.getPromptText(); const auto c : prompt_text) {
-        if (quad_in_buffer == ApplicationWindow::PROMPT_BUFFER_QUAD_COUNT) {
-            throw std::runtime_error("Not enough quad allowed to render the prompt.");
-        }
-
         switch (c) {
             case ' ' :
                 pen_position_x += font_advance;
@@ -170,9 +164,8 @@ void Prompt::drawText(const CursorContext &context, const PromptState &viewState
             break;
             default:
                 const auto &character = m_theme.getCharacter(c);
-                drawCharacter(pen_position_x, pen_position_y, character, prompt_text_color);
+                drawCharacter(quadBuffer, pen_position_x, pen_position_y, character, prompt_text_color);
                 pen_position_x += font_advance;
-                ++quad_in_buffer;
             break;
         }
 
@@ -191,10 +184,6 @@ void Prompt::drawText(const CursorContext &context, const PromptState &viewState
     // Needs to keep track of the cursor position indicator
     auto cursor_position_x = pen_position_x;
     for (auto character_column = 0; character_column < string_length; ++character_column) {
-        if (quad_in_buffer == ApplicationWindow::PROMPT_BUFFER_QUAD_COUNT) {
-            throw std::runtime_error("Not enough quad allowed to render the prompt.");
-        }
-
         switch (const auto c = string[character_column]) {
             case ' ' :
                 pen_position_x += font_advance;
@@ -204,9 +193,8 @@ void Prompt::drawText(const CursorContext &context, const PromptState &viewState
             break;
             default:
                 const auto &character = m_theme.getCharacter(c);
-                drawCharacter(pen_position_x, pen_position_y, character, input_text_color);
+                drawCharacter(quadBuffer, pen_position_x, pen_position_y, character, input_text_color);
                 pen_position_x += font_advance;
-                ++quad_in_buffer;
             break;
         }
 
@@ -223,14 +211,9 @@ void Prompt::drawText(const CursorContext &context, const PromptState &viewState
 
     // Draw the cursor position indicator
     if (viewState.getRunningState() == PromptState::RunningState::Running) {
-        if (quad_in_buffer == ApplicationWindow::PROMPT_BUFFER_QUAD_COUNT) {
-            throw std::runtime_error("Not enough quad allowed to render the prompt.");
-        }
-        ++quad_in_buffer;
-
         const auto &indicator_color = m_theme.getColor(ColorId::CursorIndicator);
         const auto indicator_width = m_theme.getDimension(DimensionId::IndicatorWidth);
-        drawQuad(cursor_position_x, pen_position_y - line_height - font_descender, indicator_width, line_height, indicator_color);
+        drawQuad(quadBuffer, cursor_position_x, pen_position_y - line_height - font_descender, indicator_width, line_height, indicator_color);
     }
 
     // Draw a right-aligned "index/total" counter. History and completion counters only exist while
@@ -253,13 +236,8 @@ void Prompt::drawText(const CursorContext &context, const PromptState &viewState
         const auto indicator_text_width = m_theme.measure(string_indicator, true);
         pen_position_x = position_x + width - padding_width - indicator_text_width;
         for (const auto c : string_indicator) {
-            if (quad_in_buffer == ApplicationWindow::PROMPT_BUFFER_QUAD_COUNT) {
-                throw std::runtime_error("Not enough quad allowed to render the prompt.");
-            }
-            ++quad_in_buffer;
-
             const auto &character = m_theme.getCharacter(c);
-            drawCharacter(pen_position_x, pen_position_y, character, prompt_text_color);
+            drawCharacter(quadBuffer, pen_position_x, pen_position_y, character, prompt_text_color);
             pen_position_x += font_advance;
         }
     }
