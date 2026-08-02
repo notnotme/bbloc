@@ -19,6 +19,7 @@
 #ifndef CURSOR_CONTEXT_H
 #define CURSOR_CONTEXT_H
 
+#include <cstddef>
 #include <optional>
 #include <string>
 
@@ -90,6 +91,10 @@ public:
 
     bool wants_redraw = true;       ///< indicate that the view and parents or sibling should redraw due to state change.
     bool from_prompt = false;       ///< True when the current command was invoked from the interactive prompt.
+
+    /** Position of this context among the open ones, maintained by CursorContextManager. */
+    size_t buffer_index = 1;        ///< 1-based index of this context among the open contexts.
+    size_t buffer_count = 1;        ///< Total number of open contexts.
 
     /**
      * @brief Constructs a CursorContext with the required runtime object and a buffer.

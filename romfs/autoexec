@@ -26,6 +26,13 @@ bind Ctrl+Shift z redo
 # Open a file (prompts for the path)
 bind Ctrl o open
 
+# Cycle through the open buffers
+bind Ctrl tab "buffer next"
+bind Ctrl+Shift tab "buffer prev"
+
+# Close the current buffer (without saving)
+bind Ctrl w "buffer close"
+
 # Save the current buffer (prompts for a name when the buffer has none, and for confirmation before erasing a file)
 bind Ctrl+Shift s save
 

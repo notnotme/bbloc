@@ -31,6 +31,7 @@
 #include "command/ActivatePromptCommand.h"
 #include "command/AutoCompleteCommand.h"
 #include "command/BindCommand.h"
+#include "command/BufferCommand.h"
 #include "command/CopyTextCommand.h"
 #include "command/CutTextCommand.h"
 #include "command/ExecCommand.h"
@@ -46,9 +47,6 @@
 #include "command/SearchCommand.h"
 #include "command/SetHighLightCommand.h"
 #include "command/UndoCommand.h"
-#include "core/cursor/buffer/StringBuffer.h"
-#include "core/cursor/buffer/VectorBuffer.h"
-#include "core/cursor/buffer/LineBuffer.h"
 #include "core/theme/DimensionId.h"
 #include "core/FocusTarget.h"
 
@@ -56,14 +54,14 @@
 ApplicationWindow::ApplicationWindow()
     : p_sdl_window(nullptr),
       m_sdl_gl_context(nullptr),
-      m_cursor_context(*this, m_theme, m_prompt_cursor, std::make_unique<LineBuffer>()),
+      m_max_undo(std::make_shared<CVarInt>(64)),
+      m_context_manager(*this, m_theme, m_prompt_cursor, m_max_undo),
       m_info_bar(m_command_manager, m_theme, m_quad_program),
       m_editor(m_command_manager, m_theme, m_quad_program),
       m_prompt(m_command_manager, m_theme, m_quad_program),
       m_prompt_state(m_command_manager),
       m_command_time(std::make_shared<CVarFloat>(0.0f, true)),
       m_draw_time(std::make_shared<CVarFloat>(0.0f, true)),
-      m_max_undo(std::make_shared<CVarInt>(64)),
       m_search_case_sensitive(std::make_shared<CVarBool>(false)),
       m_bind_command(std::make_shared<BindCommand>(m_command_manager)),
       m_orthogonal() {}
@@ -153,18 +151,19 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     // Register cvars and commands then run autoexec
     m_command_manager.registerCvar(u"inf_draw_time", m_draw_time, nullptr);
     m_command_manager.registerCvar(u"inf_command_time", m_command_time, nullptr);
-    m_cursor_context.cursor.shareMaxHistoryDepth(m_max_undo);
     m_command_manager.registerCvar(u"dim_max_undo", m_max_undo, [this] {
         // Clamp the depth so the user cannot exhaust memory or disable history entirely.
         m_max_undo->m_value = std::clamp(m_max_undo->m_value, 1, 4096);
-        m_cursor_context.cursor.setMaxHistoryDepth();
+        // Every open context shares the depth CVar: trim them all.
+        m_context_manager.applyMaxHistoryDepth();
     });
     m_command_manager.registerCvar(u"search_case_sensitive", m_search_case_sensitive, [this] {
         // Re-count matches for the stored term in place so the indicator reflects the new mode immediately.
-        SearchCommand::refreshMatchStats(m_cursor_context, m_search_case_sensitive->m_value);
+        SearchCommand::refreshMatchStats(m_context_manager.active(), m_search_case_sensitive->m_value);
     });
     m_command_manager.registerCommand(u"quit", std::make_shared<QuitCommand>(), false);
-    m_command_manager.registerCommand(u"open", std::make_shared<OpenFileCommand>(), false);
+    m_command_manager.registerCommand(u"open", std::make_shared<OpenFileCommand>(m_context_manager), false);
+    m_command_manager.registerCommand(u"buffer", std::make_shared<BufferCommand>(m_context_manager), false);
     m_command_manager.registerCommand(u"save", std::make_shared<SaveFileCommand>(), false);
     m_command_manager.registerCommand(u"reset_draw_time", std::make_shared<ResetCVarFloatCommand>(m_draw_time), false);
     m_command_manager.registerCommand(u"reset_command_time", std::make_shared<ResetCVarFloatCommand>(m_command_time), false);
@@ -191,7 +190,7 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     runCommand(std::u16string(u"exec ").append(utf8::utf8to16(path)).append(u"autoexec"), false);
 
     if (argc > 1) {
-        // Single editor buffer: only the first path is opened
+        // Only the first path is opened; it loads into the pristine startup buffer
         openFile(argv[1]);
     }
 }
@@ -239,34 +238,42 @@ void ApplicationWindow::mainLoop() {
                             m_info_bar.resizeWindow(window_width, window_height);
                             m_editor.resizeWindow(window_width, window_height);
                             m_prompt.resizeWindow(window_width, window_height);
-                            m_cursor_context.wants_redraw = true;
+                            m_context_manager.active().wants_redraw = true;
                         break;
                         default:
                         break;
                     }
                 break;
                 case SDL_KEYDOWN: {
-                    bool consumed = false;
-                    switch (m_cursor_context.focus_target) {
-                        case FocusTarget::Editor:
-                            if (m_editor.onKeyDown(m_cursor_context, m_editor_state, event.key.keysym.sym, event.key.keysym.mod)) {
-                                // If the view return true, the text changed: redraw the views
-                                m_cursor_context.search.resetMatches();
-                                m_cursor_context.wants_redraw = true;
-                                consumed = true;
-                            }
-                        break;
-                        case FocusTarget::Prompt:
-                            if (m_prompt.onKeyDown(m_cursor_context, m_prompt_state, event.key.keysym.sym, event.key.keysym.mod)) {
-                                // If the view return true, then redraw the views
-                                m_cursor_context.wants_redraw = true;
-                                consumed = true;
-                            }
-                        break;
-                    }
+                    // Chords are shortcuts, never editing keys: skip the focused view and go straight
+                    // to the bindings (same rationale as the SDL_TEXTINPUT chord rule below)
+                    const auto is_chord = event.key.keysym.mod & (KMOD_CTRL | KMOD_LALT);
 
-                    if (consumed) {
-                        break;
+                    if (!is_chord) {
+                        // The bound command below may switch the active context; this reference is not used past it.
+                        auto &context = m_context_manager.active();
+                        bool consumed = false;
+                        switch (context.focus_target) {
+                            case FocusTarget::Editor:
+                                if (m_editor.onKeyDown(context, m_editor_state, event.key.keysym.sym, event.key.keysym.mod)) {
+                                    // If the view return true, the text changed: redraw the views
+                                    context.search.resetMatches();
+                                    context.wants_redraw = true;
+                                    consumed = true;
+                                }
+                            break;
+                            case FocusTarget::Prompt:
+                                if (m_prompt.onKeyDown(context, m_prompt_state, event.key.keysym.sym, event.key.keysym.mod)) {
+                                    // If the view return true, then redraw the views
+                                    context.wants_redraw = true;
+                                    consumed = true;
+                                }
+                            break;
+                        }
+
+                        if (consumed) {
+                            break;
+                        }
                     }
 
                     if (const auto command = m_bind_command->getBinding(event.key.keysym.sym, event.key.keysym.mod)) {
@@ -286,14 +293,15 @@ void ApplicationWindow::mainLoop() {
                     const auto block_text_input = SDL_GetModState() & (KMOD_CTRL | KMOD_LALT);
                     if (!block_text_input) {
                         // Redirect to input focus. We always redraw new characters.
-                        m_cursor_context.wants_redraw = true;
-                        switch (m_cursor_context.focus_target) {
+                        auto &context = m_context_manager.active();
+                        context.wants_redraw = true;
+                        switch (context.focus_target) {
                             case FocusTarget::Editor:
-                                m_editor.onTextInput(m_cursor_context, m_editor_state, event.text.text);
-                                m_cursor_context.search.resetMatches();
+                                m_editor.onTextInput(context, m_editor_state, event.text.text);
+                                context.search.resetMatches();
                                 break;
                             case FocusTarget::Prompt:
-                                m_prompt.onTextInput(m_cursor_context, m_prompt_state, event.text.text);
+                                m_prompt.onTextInput(context, m_prompt_state, event.text.text);
                                 break;
                         }
                     }
@@ -301,12 +309,13 @@ void ApplicationWindow::mainLoop() {
                 break;
                 case SDL_MOUSEWHEEL: {
                     // We must have an updated value for the line_height, so request the size from the theme now
+                    auto &context = m_context_manager.active();
                     const auto line_height = m_theme.getLineHeight();
                     const auto scroll_amount = event.wheel.y * -line_height;
-                    m_cursor_context.scroll.y = m_cursor_context.scroll.y + scroll_amount;
+                    context.scroll.y = context.scroll.y + scroll_amount;
                     // Horizontal wheel: positive wheel.x means scrolling right, matching a scroll.x increase
-                    m_cursor_context.scroll.x = m_cursor_context.scroll.x + event.wheel.x * m_theme.getFontAdvance();
-                    m_cursor_context.wants_redraw = true;
+                    context.scroll.x = context.scroll.x + event.wheel.x * m_theme.getFontAdvance();
+                    context.wants_redraw = true;
                 }
                 break;
                 default:
@@ -318,7 +327,9 @@ void ApplicationWindow::mainLoop() {
         const auto currentTime = SDL_GetPerformanceCounter();
         const auto dt = static_cast<float>(currentTime - lastTime) / performanceQuery;
         lastTime = currentTime;
-        if (m_cursor_context.wants_redraw) {
+        // The views always render the active context; fetch it after the events, which may have switched it.
+        auto &context = m_context_manager.active();
+        if (context.wants_redraw) {
             // Need to redraw the whole views
             const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
             const auto line_height = m_theme.getLineHeight();
@@ -340,15 +351,15 @@ void ApplicationWindow::mainLoop() {
             glClear(GL_COLOR_BUFFER_BIT);
 
             // Render everything on screen.
-            m_cursor_context.highlighter.parse();
+            context.highlighter.parse();
             m_quad_buffer.resetFrame();
-            m_info_bar.render(m_cursor_context, m_info_bar_state, m_quad_buffer, dt);
-            m_editor.render(m_cursor_context, m_editor_state, m_quad_buffer, dt);
-            m_prompt.render(m_cursor_context, m_prompt_state, m_quad_buffer, dt);
+            m_info_bar.render(context, m_info_bar_state, m_quad_buffer, dt);
+            m_editor.render(context, m_editor_state, m_quad_buffer, dt);
+            m_prompt.render(context, m_prompt_state, m_quad_buffer, dt);
 
             // todo: Uncomment for debug purpose.
             // std::cout << "view updated " << std::endl;
-            m_cursor_context.wants_redraw = false;
+            context.wants_redraw = false;
             if (m_prompt_state.getRunningState() == PromptState::RunningState::Message) {
                 // If the prompt show a message, reset the state now to
                 // clear it and display the PROMPT_READY message when the next frame refreshes.
@@ -366,7 +377,7 @@ void ApplicationWindow::mainLoop() {
         }
 
         // Reset follow_indicator if it was not held by the editor render already
-        m_cursor_context.scroll.follow_indicator = false;
+        context.scroll.follow_indicator = false;
     }
 }
 
@@ -400,18 +411,20 @@ void ApplicationWindow::resetPrompt(const std::u16string_view promptText) {
     m_prompt_state.clearCompletions();
     m_prompt_state.clearHistoryIndex();
     m_prompt_cursor.clear();
-    m_cursor_context.wants_redraw = true;
+    m_context_manager.active().wants_redraw = true;
 }
 
 bool ApplicationWindow::runCommand(const std::u16string_view command, const bool fromPrompt) {
     std::optional<std::u16string> result;
-    const auto feedback_was_pending = m_cursor_context.command_feedback.has_value();
+    // The context active when the command starts; the command itself may switch the active one.
+    auto &context = m_context_manager.active();
+    const auto feedback_was_pending = context.command_feedback.has_value();
     if (fromPrompt && feedback_was_pending) {
         // The prompt input answers the pending feedback instead of being a command.
         // Copy the feedback object so the string is still valid after reset is called.
-        const auto feedback = m_cursor_context.command_feedback.value();
+        const auto feedback = context.command_feedback.value();
         const auto feedback_answer = m_prompt_cursor.getString();
-        m_cursor_context.command_feedback.reset();
+        context.command_feedback.reset();
 
         // Forward the raw answer so terms containing spaces survive (e.g. search feedback).
         // An empty answer flows to the command too, so it can report its usage.
@@ -431,35 +444,38 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
 
             // Move focus to the editor if we run this command from the prompt,
             // because we don't want the next command to apply in the prompt in this case (e.g: "move up").
-            m_cursor_context.focus_target = FocusTarget::Editor;
+            context.focus_target = FocusTarget::Editor;
         }
 
-        m_cursor_context.from_prompt = fromPrompt;
-        result = m_command_manager.run(m_cursor_context, tokens);
+        context.from_prompt = fromPrompt;
+        result = m_command_manager.run(context, tokens);
 
         // The command is done with its args span: give the capacity back for the next call.
         m_token_scratch = std::move(tokens);
     }
 
+    // The command may have switched the active context (e.g. "buffer next"):
+    // the prompt and focus updates below must apply to the new active one.
+    auto &active_context = m_context_manager.active();
     if (result) {
         // Show the error message in the prompt, if any. The message replaces a pending
         // feedback, so drop it to not consume the next prompt input as its answer.
-        m_cursor_context.command_feedback.reset();
+        active_context.command_feedback.reset();
         m_prompt_state.setRunningState(PromptState::RunningState::Message);
         resetPrompt(*result);
 
         // Focus go to the editor
-        m_cursor_context.focus_target = FocusTarget::Editor;
-    } else if (m_cursor_context.command_feedback) {
+        active_context.focus_target = FocusTarget::Editor;
+    } else if (active_context.command_feedback) {
         // A feedback pending before this call survives a bound command untouched:
         // the prompt already shows it. Only a newly requested feedback updates the prompt.
         if (!feedback_was_pending) {
             m_prompt_state.setRunningState(PromptState::RunningState::Running);
-            resetPrompt(m_cursor_context.command_feedback->prompt_message);
+            resetPrompt(active_context.command_feedback->prompt_message);
 
             // Focus go to the prompt
-            m_cursor_context.focus_target = FocusTarget::Prompt;
-            m_cursor_context.search.resetMatches();
+            active_context.focus_target = FocusTarget::Prompt;
+            active_context.search.resetMatches();
         }
     } else {
         // The prompt state can change while command execution (e.g: activate_prompt, cancel), check it again.
@@ -467,7 +483,7 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
             case PromptState::RunningState::Idle:
                 resetPrompt(PromptState::PROMPT_READY);
 
-                m_cursor_context.focus_target = FocusTarget::Editor;
+                active_context.focus_target = FocusTarget::Editor;
             break;
             default:
                 // Don't change anything

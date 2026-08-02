@@ -28,6 +28,9 @@
 #include "../core/CommandManager.h"
 
 
+OpenFileCommand::OpenFileCommand(CursorContextManager &contextManager)
+    : m_context_manager(contextManager) {}
+
 void OpenFileCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) previousArgs;
     if (argumentIndex != 0) {
@@ -71,14 +74,42 @@ std::optional<std::u16string> OpenFileCommand::run(CursorContext &payload, const
         return u"Usage: open <filename>";
     }
 
-    // Get the path of the file and tries to open the file at this location
+    // Get the path of the file and read it fully before touching any buffer,
+    // so a failed load leaves no half-open buffer behind.
     const auto path = utf8::utf16to8(args[0]);
+    auto content = std::u16string();
+    if (auto error = readFile(path, content)) {
+        return error;
+    }
+
+    // Load in place when the active context is pristine (no name, empty buffer);
+    // otherwise the file opens in its own new context.
+    auto &active = m_context_manager.active();
+    const auto is_pristine = active.cursor.getName().empty()
+        && active.cursor.getLineCount() == 1
+        && active.cursor.getString(0).empty();
+
+    if (is_pristine) {
+        loadInto(active, path, content);
+    } else {
+        loadInto(m_context_manager.createContext(), path, content);
+
+        // The new context was appended last: make it the active one.
+        m_context_manager.activate(m_context_manager.getCount() - 1);
+    }
+
+    // In case the command is bound to a key, it will eventually needs a redraw the views.
+    payload.wants_redraw = true;
+    return std::nullopt;
+}
+
+std::optional<std::u16string> OpenFileCommand::readFile(const std::string &path, std::u16string &outContent) {
     auto error_code = std::error_code();
     const auto is_regular_file = std::filesystem::is_regular_file(path, error_code);
     auto ifs = std::ifstream(path, std::ios::in);
     if (!ifs || !is_regular_file) {
         // That file cannot be opened
-        return std::u16string(u"Could not open ").append(args[0]).append(u".");
+        return std::u16string(u"Could not open ").append(utf8::utf8to16(path)).append(u".");
     }
 
     // Start to count the lines from 1
@@ -115,26 +146,28 @@ std::optional<std::u16string> OpenFileCommand::run(CursorContext &payload, const
     }
     ifs.close();
 
+    outContent = std::move(all_line);
+    return std::nullopt;
+}
+
+void OpenFileCommand::loadInto(CursorContext &target, const std::string &path, const std::u16string_view content) {
     // The whole content is validated: it is now safe to replace the buffer and switch the highlight mode.
-    const auto &edit_clear = payload.cursor.clear();
-    payload.highlighter.edit(edit_clear);
+    const auto &edit_clear = target.cursor.clear();
+    target.highlighter.edit(edit_clear);
 
     const auto file_extension = std::filesystem::path(path).extension().string();
-    payload.highlighter.setMode(file_extension);
+    target.highlighter.setMode(file_extension);
 
     // Insert all text at once.
-    const auto &edit_insert = payload.cursor.insert(all_line);
-    payload.highlighter.edit(edit_insert);
+    const auto &edit_insert = target.cursor.insert(content);
+    target.highlighter.edit(edit_insert);
 
     // Set cursor name, reset position and discard the undo history of the previous buffer.
-    payload.cursor.setName(path);
-    payload.cursor.setPosition(0, 0);
-    payload.cursor.clearHistory();
-    payload.scroll.follow_indicator = true;
-    payload.stick.active = false;
-    payload.stick.index = 0;
-
-    // In case the command is bound to a key, it will eventually needs a redraw the views.
-    payload.wants_redraw = true;
-    return std::nullopt;
+    target.cursor.setName(path);
+    target.cursor.setPosition(0, 0);
+    target.cursor.clearHistory();
+    target.scroll.follow_indicator = true;
+    target.stick.active = false;
+    target.stick.index = 0;
+    target.wants_redraw = true;
 }

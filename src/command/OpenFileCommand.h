@@ -24,6 +24,7 @@
 
 #include "../core/base/AutoCompleteCallback.h"
 #include "../core/CursorContext.h"
+#include "../core/CursorContextManager.h"
 #include "../core/base/Command.h"
 
 
@@ -34,11 +35,45 @@
  * allowing users to load file content into the editor.
  * It handles file paths, with auto-completion support
  * for existing files in the filesystem.
+ * A file loads into the active context when it is pristine (no name, empty buffer);
+ * otherwise it opens in its own new context, which becomes the active one.
  */
 class OpenFileCommand final : public Command<CursorContext> {
+private:
+    /** Reference to the manager owning the open cursor contexts. */
+    CursorContextManager &m_context_manager;
+
+    /**
+     * @brief Reads the file at the given path and validates its encoding.
+     *
+     * The content is only written to outContent when the whole file is valid,
+     * so a failed read never touches any buffer.
+     *
+     * @param path UTF-8 encoded path of the file to read.
+     * @param outContent Receives the UTF-16 converted file content on success.
+     * @return An error message on failure, std::nullopt on success.
+     */
+    [[nodiscard]] static std::optional<std::u16string> readFile(const std::string &path, std::u16string &outContent);
+
+    /**
+     * @brief Replaces the target context's buffer with the given content.
+     *
+     * Switches the highlight mode from the file extension, names the cursor after
+     * the path, resets its position and scroll state, and discards the undo history.
+     *
+     * @param target The context receiving the file content.
+     * @param path UTF-8 encoded path of the loaded file.
+     * @param content UTF-16 converted file content.
+     */
+    static void loadInto(CursorContext &target, const std::string &path, std::u16string_view content);
+
 public:
-    /** @brief Constructs an OpenFileCommand with default initialization. */
-    explicit OpenFileCommand() = default;
+    /**
+     * @brief Constructs an OpenFileCommand with a reference to the cursor context manager.
+     *
+     * @param contextManager Reference to the manager owning the open cursor contexts.
+     */
+    explicit OpenFileCommand(CursorContextManager &contextManager);
 
     /**
      * @brief Provides auto-completion suggestions for file paths.

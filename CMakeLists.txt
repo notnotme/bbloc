@@ -28,6 +28,7 @@ add_executable(bbloc
         src/core/renderer/QuadTexture.cpp
         src/core/renderer/Shader.cpp
         src/core/CommandManager.cpp
+        src/core/CursorContextManager.cpp
         src/core/CVarCommand.cpp
         src/core/ViewState.cpp
         src/core/theme/Theme.cpp
@@ -39,6 +40,7 @@ add_executable(bbloc
         src/command/FontSizeCommand.cpp
         src/command/SetHighLightCommand.cpp
         src/command/BindCommand.cpp
+        src/command/BufferCommand.cpp
         src/command/ActivatePromptCommand.cpp
         src/command/CopyTextCommand.cpp
         src/command/PasteTextCommand.cpp

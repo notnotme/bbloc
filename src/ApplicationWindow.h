@@ -34,7 +34,7 @@
 #include "core/renderer/QuadBuffer.h"
 #include "core/renderer/QuadProgram.h"
 #include "core/theme/Theme.h"
-#include "core/CursorContext.h"
+#include "core/CursorContextManager.h"
 #include "command/BindCommand.h"
 #include "editor/Editor.h"
 #include "infobar/InfoBar.h"
@@ -84,8 +84,11 @@ private:
     /** The prompt cursor. */
     PromptCursor m_prompt_cursor;
 
-    /** The only cursor for now */
-    CursorContext m_cursor_context;
+    /** CVar tracking the maximum undo/redo history depth; declared before the context manager, which shares it with every cursor. */
+    std::shared_ptr<CVarInt> m_max_undo;
+
+    /** Open cursor contexts, one per file; the views always render the active one. */
+    CursorContextManager m_context_manager;
 
     /** Top info bar view. */
     InfoBar m_info_bar;
@@ -110,9 +113,6 @@ private:
 
     /** CVar tracking the maximum frame time (to render, before swapping). */
     std::shared_ptr<CVarFloat> m_draw_time;
-
-    /** CVar tracking the maximum undo/redo history depth. */
-    std::shared_ptr<CVarInt> m_max_undo;
 
     /** CVar tracking whether searches match case. */
     std::shared_ptr<CVarBool> m_search_case_sensitive;

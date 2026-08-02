@@ -100,7 +100,11 @@ void InfoBar::drawText(QuadBuffer &quadBuffer, const CursorContext &context, con
     const auto highlight_mode = context.highlighter.getModeString();
 
     // Build the informative strings, and calculate their x offset
-    const auto string_cursor_name = utf8::utf8to16(context.cursor.getName().empty() ? "Untitled" : context.cursor.getName());
+    auto string_cursor_name = utf8::utf8to16(context.cursor.getName().empty() ? "Untitled" : context.cursor.getName());
+    if (context.buffer_count > 1) {
+        // Several buffers are open: show the position of this one among them
+        string_cursor_name.append(utf8::utf8to16(std::format(" [{}/{}]", context.buffer_index, context.buffer_count)));
+    }
     const auto string_info = utf8::utf8to16(std::format("{} • {} • {}:{} / {}", font_size, highlight_mode, cursor_line + 1, cursor_column + 1, cursor_line_count));
     const auto string_info_size = m_theme.measure(string_info, true);
     const auto left_text_offset = static_cast<int16_t>(padding_width);
