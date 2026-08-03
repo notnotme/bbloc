@@ -75,7 +75,12 @@ private:
      */
     [[nodiscard]] BufferEdit erase(uint32_t lineStart, uint32_t columnStart, uint32_t lineEnd, uint32_t columnEnd) const;
 
-    /** @brief Pushes a snapshot of the current state when the history is at a boundary. */
+    /**
+     * @brief Pushes a snapshot of the current state when the history is at a boundary.
+     *
+     * The history drops the snapshot when it repeats the text it already holds on top, so a
+     * boundary crossed without any text change costs a comparison instead of a retained copy.
+     */
     void recordBeforeEdit();
 
     /**
@@ -95,14 +100,30 @@ private:
     [[nodiscard]] uint32_t charLengthAfter(uint32_t column) const;
 
     /**
+     * @brief Pulls a column off the trailing half of a surrogate pair.
+     *
+     * Moves clamping on a line length alone can land between the two code units of a non-BMP
+     * character; editing from there would split the pair and leave the buffer unencodable.
+     *
+     * @param line The line the column belongs to.
+     * @param column The column to snap.
+     * @return The column moved one code unit back when it splits a surrogate pair, unchanged otherwise.
+     */
+    [[nodiscard]] uint32_t snapToCharBoundary(uint32_t line, uint32_t column) const;
+
+    /**
      * @brief Replaces the buffer content and cursor position with a snapshot.
      *
-     * Deactivates the selection and marks a history boundary.
+     * Only the region where the two texts differ is rewritten: the common prefix and the common
+     * suffix stay in place, so the returned edit is no wider than the change itself and the
+     * incremental re-parse keeps its work proportional to it. Deactivates the selection and marks
+     * a history boundary.
      *
      * @param snapshot The snapshot to restore.
-     * @return A single whole-buffer BufferEdit describing the change.
+     * @param currentText The buffer content before the restore, with its lines joined as getText() joins them.
+     * @return A BufferEdit covering the differing region only, degenerate when both texts are equal.
      */
-    [[nodiscard]] BufferEdit restore(const UndoHistory::Snapshot &snapshot);
+    [[nodiscard]] BufferEdit restore(const UndoHistory::Snapshot &snapshot, std::u16string_view currentText);
 
 public:
     /** @brief Deleted copy constructor. */
@@ -198,6 +219,8 @@ public:
 
     /**
      * @brief Sets the new position of the cursor.
+     *
+     * A column landing inside a surrogate pair is snapped back to the start of that character.
      *
      * @param line New line index.
      * @param column New column index.

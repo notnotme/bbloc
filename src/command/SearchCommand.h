@@ -60,6 +60,69 @@ private:
         int32_t total; ///< Total number of occurrences in the buffer.
     };
 
+    /**
+     * @brief Scans buffer lines for one term, folding case once per term and once per line.
+     *
+     * The case-insensitive comparison is the ASCII-only fold of toLowerAscii, applied to both sides
+     * exactly as the per-position comparison it replaces did; matching then runs on the folded copies,
+     * so a single find/rfind replaces the hand-rolled quadratic scan.
+     */
+    class LineScanner final {
+    private:
+        /** The term to look for, ASCII-folded when the comparison is case-insensitive. */
+        std::u16string m_term;
+
+        /** Scratch holding the folded copy of the current line; unused when the comparison is case-sensitive. */
+        std::u16string m_folded_line;
+
+        /** The line being scanned: the caller's view, or a view over m_folded_line. */
+        std::u16string_view m_line;
+
+        /** true when the comparison is case-sensitive and no folding happens. */
+        const bool m_case_sensitive;
+
+    public:
+        /**
+         * @brief Builds a scanner for one term under one case-sensitivity mode.
+         * @param term The term to look for.
+         * @param caseSensitive Whether the comparison is case-sensitive.
+         */
+        explicit LineScanner(std::u16string_view term, bool caseSensitive);
+
+        /**
+         * @brief Sets the line the next lookups run on, folding it once when needed.
+         * @param line The line content to scan.
+         */
+        void setLine(std::u16string_view line);
+
+        /**
+         * @brief Finds the first occurrence of the term at or after an offset on the current line.
+         * @param from The column offset to start scanning from.
+         * @return The starting column, or std::u16string_view::npos when absent.
+         */
+        [[nodiscard]] size_t indexOf(size_t from) const;
+
+        /**
+         * @brief Finds the last occurrence of the term starting before a bound on the current line.
+         * @param limit The exclusive upper bound for the match start column.
+         * @return The starting column, or std::u16string_view::npos when absent.
+         */
+        [[nodiscard]] size_t lastIndexOf(size_t limit) const;
+
+        /** @return The term length in code units. */
+        [[nodiscard]] size_t termLength() const;
+
+        /**
+         * @brief Tells whether the term can overlap itself, i.e. a proper prefix of it is also a suffix.
+         *
+         * scanMatches enumerates non-overlapping occurrences, so a term that cannot overlap itself has
+         * every one of its occurrences in that enumeration. Backward stepping relies on it.
+         *
+         * @return true when two occurrences of the term can overlap.
+         */
+        [[nodiscard]] bool isSelfOverlapping() const;
+    };
+
     /** The action performed by this instance. */
     const Action m_action;
 
@@ -84,26 +147,6 @@ private:
     [[nodiscard]] static std::u16string toU16(uint32_t value);
 
     /**
-     * @brief Finds the first occurrence of a term on a line, at or after an offset.
-     * @param line The line content to scan.
-     * @param term The term to look for.
-     * @param from The column offset to start scanning from.
-     * @param caseSensitive Whether the comparison is case-sensitive.
-     * @return The starting column, or std::u16string_view::npos when absent.
-     */
-    [[nodiscard]] static size_t indexOf(std::u16string_view line, std::u16string_view term, size_t from, bool caseSensitive);
-
-    /**
-     * @brief Finds the last occurrence of a term on a line that starts before a bound.
-     * @param line The line content to scan.
-     * @param term The term to look for.
-     * @param limit The exclusive upper bound for the match start column.
-     * @param caseSensitive Whether the comparison is case-sensitive.
-     * @return The starting column, or std::u16string_view::npos when absent.
-     */
-    [[nodiscard]] static size_t lastIndexOf(std::u16string_view line, std::u16string_view term, size_t limit, bool caseSensitive);
-
-    /**
      * @brief Scans forward for the first match at or after a position, without wrapping.
      * @param cursor The cursor whose buffer is scanned.
      * @param term The term to look for.
@@ -112,7 +155,7 @@ private:
      * @param caseSensitive Whether the comparison is case-sensitive.
      * @return The match location, or std::nullopt when none is found.
      */
-    [[nodiscard]] static std::optional<MatchLocation> searchForward(const Cursor &cursor, std::u16string_view term, uint32_t startLine, uint32_t startColumn, bool caseSensitive);
+    [[nodiscard]] static std::optional<MatchLocation> searchForward(const Cursor &cursor, LineScanner &scanner, uint32_t startLine, uint32_t startColumn);
 
     /**
      * @brief Scans backward for the last match starting before a position, without wrapping.
@@ -123,7 +166,7 @@ private:
      * @param caseSensitive Whether the comparison is case-sensitive.
      * @return The match location, or std::nullopt when none is found.
      */
-    [[nodiscard]] static std::optional<MatchLocation> searchBackward(const Cursor &cursor, std::u16string_view term, uint32_t beforeLine, uint32_t beforeColumn, bool caseSensitive);
+    [[nodiscard]] static std::optional<MatchLocation> searchBackward(const Cursor &cursor, LineScanner &scanner, uint32_t beforeLine, uint32_t beforeColumn);
 
     /**
      * @brief Scans every non-overlapping occurrence of a term in a single pass.
@@ -136,7 +179,33 @@ private:
      * @param caseSensitive Whether the comparison is case-sensitive.
      * @return The ordinal of @p current (or -1 when absent) and the total occurrence count.
      */
-    [[nodiscard]] static MatchStats scanMatches(const Cursor &cursor, std::u16string_view term, const MatchLocation &current, bool caseSensitive);
+    [[nodiscard]] static MatchStats scanMatches(const Cursor &cursor, LineScanner &scanner, const MatchLocation &current);
+
+    /**
+     * @brief Stores the match statistics along with the match they describe.
+     *
+     * @param payload The cursor context to update.
+     * @param stats The ordinal and total to publish.
+     * @param match The match the ordinal describes.
+     * @param caseSensitive The case-sensitivity mode the statistics were computed under.
+     * @param scanned true when the ordinal is the exact one a full scan gives for @p match.
+     */
+    static void storeMatchStats(CursorContext &payload, const MatchStats &stats, const MatchLocation &match, bool caseSensitive, bool scanned);
+
+    /**
+     * @brief Tells whether the stored total can be stepped instead of recounted.
+     *
+     * The total survives as long as nothing invalidated it (every edit and every cursor move call
+     * SearchState::resetMatches) and the selection is still exactly the match the stored ordinal
+     * describes, so the neighbouring match is the neighbouring ordinal.
+     *
+     * @param payload The cursor context holding the stored statistics.
+     * @param scanner The scanner built for the current term and case-sensitivity mode.
+     * @param caseSensitive The case-sensitivity mode the lookup runs under.
+     * @param backward true when stepping to the previous match.
+     * @return true when the stored total and ordinal can be reused.
+     */
+    [[nodiscard]] static bool canStepMatchStats(const CursorContext &payload, const LineScanner &scanner, bool caseSensitive, bool backward);
 
     /**
      * @brief Selects a match and requests the view to follow the cursor.

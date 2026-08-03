@@ -56,14 +56,16 @@ private:
      * @brief Computes the effective scrollbar sizes for the current frame.
      *
      * A bar size is 0 when the scrollbars are disabled or when the content fits on that axis.
+     * Called once per frame; every consumer of the frame reuses the resolved sizes.
      *
      * @param context A reference to the cursor context.
      * @param viewState A reference to the Editor view state.
      * @param marginWidth The width of the margin, without the border size.
+     * @param longestLineLength The weighted length of the longest line, in characters.
      * @param vBarWidth Receives the width of the vertical scrollbar, 0 when hidden.
      * @param hBarHeight Receives the height of the horizontal scrollbar, 0 when hidden.
      */
-    void computeScrollbarSizes(const CursorContext &context, const ViewState &viewState, int32_t marginWidth, int32_t &vBarWidth, int32_t &hBarHeight) const;
+    void computeScrollbarSizes(const CursorContext &context, const ViewState &viewState, int32_t marginWidth, uint32_t longestLineLength, int32_t &vBarWidth, int32_t &hBarHeight) const;
 
     /**
      * @brief Draw the visual-only scrollbars (tracks and thumbs) of the editor.
@@ -72,8 +74,11 @@ private:
      * @param context A reference to the cursor context.
      * @param viewState A reference to the Editor view state.
      * @param marginWidth The width of the margin, without the border size.
+     * @param vBarWidth The width of the vertical scrollbar, 0 when hidden.
+     * @param hBarHeight The height of the horizontal scrollbar, 0 when hidden.
+     * @param longestLineLength The weighted length of the longest line, in characters.
      */
-    void drawScrollbars(QuadBuffer &quadBuffer, const CursorContext &context, const ViewState &viewState, int32_t marginWidth) const;
+    void drawScrollbars(QuadBuffer &quadBuffer, const CursorContext &context, const ViewState &viewState, int32_t marginWidth, int32_t vBarWidth, int32_t hBarHeight, uint32_t longestLineLength) const;
 
     /**
      * @brief: Compute scroll position and max scroll for the horizontal and vertical axis.
@@ -81,8 +86,11 @@ private:
      * @param context A reference to the cursor context.
      * @param viewState A reference to the Editor view state.
      * @param marginWidth The width of the margin, without the border size.
+     * @param vBarWidth The width of the vertical scrollbar, 0 when hidden.
+     * @param hBarHeight The height of the horizontal scrollbar, 0 when hidden.
+     * @param longestLineLength The weighted length of the longest line, in characters.
      */
-    void updateScroll(CursorContext &context, const ViewState &viewState, int32_t marginWidth) const;
+    void updateScroll(CursorContext &context, const ViewState &viewState, int32_t marginWidth, int32_t vBarWidth, int32_t hBarHeight, uint32_t longestLineLength) const;
 
     /**
      * @brief: Draw the background layer of the editor.

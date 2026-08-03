@@ -92,8 +92,13 @@ public:
      *
      * Regrows the GPU buffer (never shrinking) when the batch does not fit. A regrow orphans
      * the previous storage, so batches already uploaded this frame must be drawn beforehand.
+     *
+     * The staging keeps its content afterwards; only beginBatch() clears it. Sizing the draw of a
+     * finished batch must therefore go through the returned count, never through getCount().
+     *
+     * @return The number of quads this batch uploaded, to be used as draw count.
      */
-    void endBatch();
+    uint32_t endBatch();
 
 /**
      * @brief Inserts a plain tinted quad into the buffer.
@@ -146,7 +151,12 @@ public:
     /** @brief Returns the OpenGL buffer ID. */
     [[nodiscard]] GLuint getBuffer() const;
 
-    /** @brief Returns the number of quads currently inserted into the current batch. */
+    /**
+     * @brief Returns the number of quads staged so far in the batch being built.
+     *
+     * Only meaningful while the batch is still open, to split it into several draws. A batch
+     * already closed by endBatch() must be sized with the count endBatch() returned.
+     */
     [[nodiscard]] uint32_t getCount() const;
 };
 

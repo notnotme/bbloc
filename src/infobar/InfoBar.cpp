@@ -35,7 +35,7 @@ void InfoBar::render(CursorContext &context, ViewState &viewState, QuadBuffer &q
     const auto batch_start = quadBuffer.beginBatch(ApplicationWindow::INFO_BAR_DEFAULT_QUAD_COUNT);
     drawBackground(quadBuffer, viewState);
     drawText(quadBuffer, context, viewState);
-    quadBuffer.endBatch();
+    const auto batch_count = quadBuffer.endBatch();
 
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
@@ -45,7 +45,7 @@ void InfoBar::render(CursorContext &context, ViewState &viewState, QuadBuffer &q
 
     // Set the scissor area and draw the buffer
     glScissor(position_x, m_window_height - position_y - height, width, height);
-    m_quad_program.draw(batch_start, quadBuffer.getCount());
+    m_quad_program.draw(batch_start, batch_count);
 }
 
 bool InfoBar::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {

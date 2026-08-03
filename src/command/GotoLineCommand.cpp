@@ -38,14 +38,7 @@ std::optional<std::u16string> GotoLineCommand::run(CursorContext &payload, const
             return u"Expected 1 argument.";
         }
 
-        payload.command_feedback = CommandFeedback {
-            .prompt_message = u"goto_line ",
-            .command_string = u"goto_line",
-            .on_validate_callback = [&](const std::u16string_view input, const std::u16string_view command) -> std::optional<std::u16string> {
-                payload.command_runner.runCommand(std::u16string(command).append(u" ").append(input), true);
-                return std::nullopt;
-            }
-        };
+        payload.command_feedback = requestArgument(u"goto_line ", u"goto_line", payload.command_runner);
 
         return std::nullopt;
     }
@@ -59,6 +52,12 @@ std::optional<std::u16string> GotoLineCommand::run(CursorContext &payload, const
         requested_line = std::stoi(utf8::utf16to8(args[0]));
     } catch (...) {
         return u"Expected a line number.";
+    }
+
+    // Rejected before the clamp below: converting a negative value to unsigned would wrap it into
+    // a huge line number and silently jump to the end of the file.
+    if (requested_line < 1) {
+        return u"Expected a positive line number.";
     }
 
     // User lines are 1-based; clamp into range before shifting to the 0-based buffer index.

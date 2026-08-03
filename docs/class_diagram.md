@@ -71,21 +71,13 @@ classDiagram
     class TextBuffer {
         <<abstract>>
     }
-    class VectorBuffer {
-        note: "one u16string per line"
-    }
-    class StringBuffer {
-        note: "single contiguous u16string"
-    }
     class LineBuffer {
-        note: "current line extracted for fast edits"
+        note: "single contiguous u16string, current line extracted for fast edits"
     }
     class BufferEdit {
         <<struct>>
     }
 
-    TextBuffer <|-- VectorBuffer
-    TextBuffer <|-- StringBuffer
     TextBuffer <|-- LineBuffer
     TextBuffer ..> BufferEdit : produces
 ```

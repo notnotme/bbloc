@@ -52,8 +52,16 @@ void Editor::render(CursorContext &context, ViewState &viewState, QuadBuffer &qu
     const auto cursor_line_count_width = line_count_digits * m_theme.getFontAdvance();
     const auto margin_width = padding_width + cursor_line_count_width + padding_width;
 
+    // The longest line and the scrollbar sizes are invariant for the whole frame, and measuring the
+    // longest line rescans every line metric when it is dirty: resolve both once and pass them down.
+    const auto tab_to_space = static_cast<uint32_t>(m_theme.getDimension(DimensionId::TabToSpace));
+    const auto longest_line_length = context.cursor.getLongestLineLength(tab_to_space);
+    auto v_bar_width = 0;
+    auto h_bar_height = 0;
+    computeScrollbarSizes(context, viewState, margin_width, longest_line_length, v_bar_width, h_bar_height);
+
     // Follow or scroll to the said position. scrollX and scrollY and followIndicator are eventually updated outside (by reference)
-    updateScroll(context, viewState, margin_width);
+    updateScroll(context, viewState, margin_width, v_bar_width, h_bar_height, longest_line_length);
 
     // Get updated scroll values
     const auto scroll_x = context.scroll.x;
@@ -63,11 +71,12 @@ void Editor::render(CursorContext &context, ViewState &viewState, QuadBuffer &qu
     const auto batch_start = quadBuffer.beginBatch(ApplicationWindow::EDITOR_DEFAULT_QUAD_COUNT);
     drawBackground(quadBuffer, viewState, margin_width);
     drawMarginText(quadBuffer, context, viewState, cursor_line_count_width, scroll_y);
-    drawScrollbars(quadBuffer, context, viewState, margin_width);
+    drawScrollbars(quadBuffer, context, viewState, margin_width, v_bar_width, h_bar_height, longest_line_length);
 
+    // Read mid-batch on purpose: this is the split point between the two draws below.
     const auto quads_count_before_text = quadBuffer.getCount();
     drawText(quadBuffer, context, viewState, scroll_x, scroll_y, margin_width);
-    quadBuffer.endBatch();
+    const auto batch_count = quadBuffer.endBatch();
 
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
@@ -79,26 +88,26 @@ void Editor::render(CursorContext &context, ViewState &viewState, QuadBuffer &qu
     glScissor(position_x, m_window_height - position_y - height, width, height);
     m_quad_program.draw(batch_start, quads_count_before_text);
 
-    // Draw cursor text, keeping glyphs from drawing under the scrollbars
-    auto v_bar_width = 0;
-    auto h_bar_height = 0;
-    computeScrollbarSizes(context, viewState, margin_width, v_bar_width, h_bar_height);
-    glScissor(position_x + margin_width + border_size, m_window_height - position_y - height + h_bar_height, width - margin_width - border_size - v_bar_width, height - h_bar_height);
+    // Draw cursor text, keeping glyphs from drawing under the scrollbars.
+    // A collapsed text area (huge font, or a wide margin in a narrow window) would make these
+    // negative. GL rejects a negative scissor size and keeps the previous box, which would let the
+    // text paint over the margin and the scrollbars, so clamp and skip the draw when nothing fits.
+    const auto text_scissor_width = std::max(0, width - margin_width - border_size - v_bar_width);
+    const auto text_scissor_height = std::max(0, height - h_bar_height);
+    if (text_scissor_width > 0 && text_scissor_height > 0) {
+        glScissor(position_x + margin_width + border_size, m_window_height - position_y - height + h_bar_height, text_scissor_width, text_scissor_height);
 
-    const auto draw_offset = batch_start + quads_count_before_text;
-    m_quad_program.draw(draw_offset, quadBuffer.getCount() - quads_count_before_text);
+        const auto draw_offset = batch_start + quads_count_before_text;
+        m_quad_program.draw(draw_offset, batch_count - quads_count_before_text);
+    }
 }
 
 bool Editor::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
     switch (keyCode) {
         case SDLK_RETURN: {
             context.scroll.follow_indicator = true;
-            if (const auto &edit = context.cursor.eraseSelection()) {
-                // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
-                context.highlighter.edit(edit.value());
-                context.cursor.setPosition(edit->new_end.line, edit->new_end.column);
-                context.cursor.activateSelection(false);
-            }
+            // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
+            context.eraseSelectionIfAny();
 
             const auto &edit = context.cursor.newLine();
             context.highlighter.edit(edit);
@@ -108,26 +117,22 @@ bool Editor::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_K
         return true;
         case SDLK_BACKSPACE: {
             context.scroll.follow_indicator = true;
-            if (const auto &selection = context.cursor.eraseSelection()) {
-                // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
-                context.highlighter.edit(selection.value());
-                context.cursor.setPosition(selection->new_end.line, selection->new_end.column);
-                context.cursor.activateSelection(false);
-            } else if (const auto &edit = context.cursor.eraseLeft()) {
-                context.highlighter.edit(edit.value());
+            // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
+            if (!context.eraseSelectionIfAny()) {
+                if (const auto &edit = context.cursor.eraseLeft()) {
+                    context.highlighter.edit(edit.value());
+                }
             }
             // Do not update stick to column index if we remove
         }
         return true;
         case SDLK_DELETE: {
             context.scroll.follow_indicator = true;
-            if (const auto &selection = context.cursor.eraseSelection()) {
-                // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
-                context.highlighter.edit(selection.value());
-                context.cursor.setPosition(selection->new_end.line, selection->new_end.column);
-                context.cursor.activateSelection(false);
-            } else if (const auto &edit = context.cursor.eraseRight()) {
-                context.highlighter.edit(edit.value());
+            // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
+            if (!context.eraseSelectionIfAny()) {
+                if (const auto &edit = context.cursor.eraseRight()) {
+                    context.highlighter.edit(edit.value());
+                }
             }
             // Update stick to column index
             context.stick.index = context.cursor.getColumn();
@@ -135,12 +140,8 @@ bool Editor::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_K
         return true;
         case SDLK_TAB: {
             context.scroll.follow_indicator = true;
-            if (const auto &selection = context.cursor.eraseSelection()) {
-                // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
-                context.highlighter.edit(selection.value());
-                context.cursor.setPosition(selection->new_end.line, selection->new_end.column);
-                context.cursor.activateSelection(false);
-            }
+            // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
+            context.eraseSelectionIfAny();
 
             if (m_is_tab_to_space->m_value) {
                 // We have to replace the tab character by x amount of space character
@@ -170,12 +171,8 @@ void Editor::onTextInput(CursorContext &context, ViewState &viewState, const cha
         utf8_text = utf8::replace_invalid(utf8_text);
     }
 
-    if (const auto &selection = context.cursor.eraseSelection()) {
-        // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
-        context.highlighter.edit(selection.value());
-        context.cursor.setPosition(selection->new_end.line, selection->new_end.column);
-        context.cursor.activateSelection(false);
-    }
+    // Any new inputs deactivate the selection and cut the previously selected text before inserting the new input
+    context.eraseSelectionIfAny();
 
     const auto utf16_text = utf8::utf8to16(utf8_text);
     const auto &edit = context.cursor.insert(utf16_text);
@@ -184,7 +181,7 @@ void Editor::onTextInput(CursorContext &context, ViewState &viewState, const cha
     context.highlighter.edit(edit);
 }
 
-void Editor::updateScroll(CursorContext &context, const ViewState &viewState, const int32_t marginWidth) const {
+void Editor::updateScroll(CursorContext &context, const ViewState &viewState, const int32_t marginWidth, const int32_t vBarWidth, const int32_t hBarHeight, const uint32_t longestLineLength) const {
     const auto line_height = m_theme.getLineHeight();
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
     const auto indicator_width = m_theme.getDimension(DimensionId::IndicatorWidth);
@@ -195,11 +192,6 @@ void Editor::updateScroll(CursorContext &context, const ViewState &viewState, co
 
     const auto width = viewState.getWidth();
     const auto height = viewState.getHeight();
-
-    // The scrollbars reserve screen space; the usable text area shrinks accordingly
-    auto v_bar_width = 0;
-    auto h_bar_height = 0;
-    computeScrollbarSizes(context, viewState, marginWidth, v_bar_width, h_bar_height);
 
     if (context.scroll.follow_indicator) {
         const auto scroll_x = context.scroll.x;
@@ -212,24 +204,23 @@ void Editor::updateScroll(CursorContext &context, const ViewState &viewState, co
         // Vertical scroll
         if (indicator_y < scroll_y) {
             context.scroll.y = indicator_y;
-        } else if (indicator_y > height - h_bar_height + scroll_y - line_height) {
-            context.scroll.y = indicator_y - (height - h_bar_height - line_height);
+        } else if (indicator_y > height - hBarHeight + scroll_y - line_height) {
+            context.scroll.y = indicator_y - (height - hBarHeight - line_height);
         }
 
         // Horizontal scroll
         if (indicator_x < scroll_x) {
             context.scroll.x = indicator_x;
-        } else if (indicator_x > width - marginWidth - border_size - v_bar_width + scroll_x) {
-            context.scroll.x = indicator_x - width + marginWidth + border_size + v_bar_width + indicator_width;
+        } else if (indicator_x > width - marginWidth - border_size - vBarWidth + scroll_x) {
+            context.scroll.x = indicator_x - width + marginWidth + border_size + vBarWidth + indicator_width;
         }
     } else {
         // Update max-scroll values
         const auto scroll_x = context.scroll.x;
         const auto scroll_y = context.scroll.y;
-        const auto tab_to_space = static_cast<uint32_t>(m_theme.getDimension(DimensionId::TabToSpace));
-        const auto longest_line_width = static_cast<int32_t>(context.cursor.getLongestLineLength(tab_to_space)) * m_theme.getFontAdvance();
-        const auto max_scroll_y = cursor_line_count * line_height - (height - h_bar_height);
-        const auto max_scroll_x = longest_line_width - (width - marginWidth - border_size - indicator_width - v_bar_width);
+        const auto longest_line_width = static_cast<int32_t>(longestLineLength) * m_theme.getFontAdvance();
+        const auto max_scroll_y = cursor_line_count * line_height - (height - hBarHeight);
+        const auto max_scroll_x = longest_line_width - (width - marginWidth - border_size - indicator_width - vBarWidth);
         context.scroll.x = std::clamp(scroll_x, 0, max_scroll_x < 0 ? 0 : max_scroll_x);
         context.scroll.y = std::clamp(scroll_y, 0, max_scroll_y < 0 ? 0 : max_scroll_y);
     }
@@ -337,8 +328,10 @@ void Editor::drawText(QuadBuffer &quadBuffer, const CursorContext &context, cons
 
     while (line_index < cursor_line_count) {
         if (line_index >= 0) {
-            // Get the string at line_index
+            // Get the string at line_index, and its highlight row: the row is invariant for the
+            // whole line, fetching it per glyph would redo every guard of the highlighter cache
             const auto string = context.cursor.getString(line_index);
+            const auto high_light_line = context.highlighter.getHighLightLine(line_index);
             const auto string_length = string.length();
             const auto is_cursor_line = cursor_line == line_index;
 
@@ -391,8 +384,9 @@ void Editor::drawText(QuadBuffer &quadBuffer, const CursorContext &context, cons
                     break;
                     default:
                         if (pen_position_x + font_advance >= position_x) {
-                            // Only fetch characters and insert if it could be visible
-                            const auto token_id = context.highlighter.getHighLightAtPosition(line_index, character_column);
+                            // Only fetch characters and insert if it could be visible. The row can be
+                            // shorter than the line, columns past its end are unpainted.
+                            const auto token_id = character_column < high_light_line.size() ? high_light_line[character_column] : TokenId::None;
                             const auto &character = m_theme.getCharacter(c);
                             const auto &character_color = m_theme.getColor(token_id);
                             drawCharacter(quadBuffer, pen_position_x, pen_position_y, character, character_color);
@@ -423,7 +417,7 @@ void Editor::drawText(QuadBuffer &quadBuffer, const CursorContext &context, cons
     }
 }
 
-void Editor::computeScrollbarSizes(const CursorContext &context, const ViewState &viewState, const int32_t marginWidth, int32_t &vBarWidth, int32_t &hBarHeight) const {
+void Editor::computeScrollbarSizes(const CursorContext &context, const ViewState &viewState, const int32_t marginWidth, const uint32_t longestLineLength, int32_t &vBarWidth, int32_t &hBarHeight) const {
     vBarWidth = 0;
     hBarHeight = 0;
     if (!m_show_scrollbar->m_value) {
@@ -433,42 +427,38 @@ void Editor::computeScrollbarSizes(const CursorContext &context, const ViewState
     // Need some variables
     const auto bar_size = m_theme.getDimension(DimensionId::ScrollbarWidth);
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
-    const auto tab_to_space = static_cast<uint32_t>(m_theme.getDimension(DimensionId::TabToSpace));
     const auto line_height = m_theme.getLineHeight();
 
     const auto height = viewState.getHeight();
     const auto text_width = viewState.getWidth() - marginWidth - border_size;
 
     const auto content_height = static_cast<int32_t>(context.cursor.getLineCount()) * line_height;
-    const auto content_width = static_cast<int32_t>(context.cursor.getLongestLineLength(tab_to_space)) * m_theme.getFontAdvance();
+    const auto content_width = static_cast<int32_t>(longestLineLength) * m_theme.getFontAdvance();
+
+    // A bar thicker than what is left on the axis it reserves space on cannot be shown at all:
+    // it would eat the whole text area and push what remains of it negative.
+    const auto v_fits = bar_size <= text_width;
+    const auto h_fits = bar_size <= height;
 
     // Each bar consumes space on the other axis, so a bar becoming visible can make the other one
     // necessary. Two rounds are enough: first decide with the full sizes, then with the reduced ones.
-    auto v_visible = content_height > height;
-    auto h_visible = content_width > text_width;
-    v_visible = content_height > height - (h_visible ? bar_size : 0);
-    h_visible = content_width > text_width - (v_visible ? bar_size : 0);
+    auto v_visible = v_fits && content_height > height;
+    auto h_visible = h_fits && content_width > text_width;
+    v_visible = v_fits && content_height > height - (h_visible ? bar_size : 0);
+    h_visible = h_fits && content_width > text_width - (v_visible ? bar_size : 0);
 
     vBarWidth = v_visible ? bar_size : 0;
     hBarHeight = h_visible ? bar_size : 0;
 }
 
-void Editor::drawScrollbars(QuadBuffer &quadBuffer, const CursorContext &context, const ViewState &viewState, const int32_t marginWidth) const {
-    if (!m_show_scrollbar->m_value) {
-        return;
-    }
-
-    auto v_bar_width = 0;
-    auto h_bar_height = 0;
-    computeScrollbarSizes(context, viewState, marginWidth, v_bar_width, h_bar_height);
-    if (v_bar_width == 0 && h_bar_height == 0) {
-        // The content fits entirely in the view, both bars are auto-hidden
+void Editor::drawScrollbars(QuadBuffer &quadBuffer, const CursorContext &context, const ViewState &viewState, const int32_t marginWidth, const int32_t vBarWidth, const int32_t hBarHeight, const uint32_t longestLineLength) const {
+    if (vBarWidth == 0 && hBarHeight == 0) {
+        // The scrollbars are disabled, or the content fits entirely in the view and both bars are auto-hidden
         return;
     }
 
     // Need some variables
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
-    const auto tab_to_space = static_cast<uint32_t>(m_theme.getDimension(DimensionId::TabToSpace));
     const auto line_height = m_theme.getLineHeight();
     const auto font_advance = m_theme.getFontAdvance();
 
@@ -484,34 +474,34 @@ void Editor::drawScrollbars(QuadBuffer &quadBuffer, const CursorContext &context
     // Minimum thumb size in pixels, so it stays visible on huge contents
     constexpr auto MIN_THUMB_SIZE = int64_t{16};
 
-    if (v_bar_width > 0) {
+    if (vBarWidth > 0) {
         // The track is drawn full-height on purpose: it also covers the corner square when both bars are visible
-        drawQuad(quadBuffer, position_x + width - v_bar_width, position_y, v_bar_width, height, track_color);
+        drawQuad(quadBuffer, position_x + width - vBarWidth, position_y, vBarWidth, height, track_color);
 
         // Thumb size and position are proportional to the visible / content heights (64-bit intermediates)
-        const auto view_h = static_cast<int64_t>(height - h_bar_height);
+        const auto view_h = static_cast<int64_t>(height - hBarHeight);
         if (view_h > 0) {
             const auto content_h = std::max(int64_t{1}, static_cast<int64_t>(context.cursor.getLineCount()) * line_height);
             const auto thumb_h = std::min(view_h, std::max(MIN_THUMB_SIZE, view_h * view_h / content_h));
             const auto thumb_y = position_y + static_cast<int64_t>(context.scroll.y) * (view_h - thumb_h) / std::max(int64_t{1}, content_h - view_h);
             const auto clamped_thumb_y = std::clamp(thumb_y, static_cast<int64_t>(position_y), position_y + view_h - thumb_h);
-            drawQuad(quadBuffer, position_x + width - v_bar_width, static_cast<int32_t>(clamped_thumb_y), v_bar_width, static_cast<int32_t>(thumb_h), thumb_color);
+            drawQuad(quadBuffer, position_x + width - vBarWidth, static_cast<int32_t>(clamped_thumb_y), vBarWidth, static_cast<int32_t>(thumb_h), thumb_color);
         }
     }
 
-    if (h_bar_height > 0) {
+    if (hBarHeight > 0) {
         // The horizontal bar spans the text area only, and stops before the vertical bar
         const auto text_x = position_x + marginWidth + border_size;
-        const auto view_w = static_cast<int64_t>(width - marginWidth - border_size - v_bar_width);
+        const auto view_w = static_cast<int64_t>(width - marginWidth - border_size - vBarWidth);
         if (view_w > 0) {
-            drawQuad(quadBuffer, text_x, position_y + height - h_bar_height, static_cast<int32_t>(view_w), h_bar_height, track_color);
+            drawQuad(quadBuffer, text_x, position_y + height - hBarHeight, static_cast<int32_t>(view_w), hBarHeight, track_color);
 
             // Thumb size and position are proportional to the visible / content widths (64-bit intermediates)
-            const auto content_w = std::max(int64_t{1}, static_cast<int64_t>(context.cursor.getLongestLineLength(tab_to_space)) * font_advance);
+            const auto content_w = std::max(int64_t{1}, static_cast<int64_t>(longestLineLength) * font_advance);
             const auto thumb_w = std::min(view_w, std::max(MIN_THUMB_SIZE, view_w * view_w / content_w));
             const auto thumb_x = text_x + static_cast<int64_t>(context.scroll.x) * (view_w - thumb_w) / std::max(int64_t{1}, content_w - view_w);
             const auto clamped_thumb_x = std::clamp(thumb_x, static_cast<int64_t>(text_x), text_x + view_w - thumb_w);
-            drawQuad(quadBuffer, static_cast<int32_t>(clamped_thumb_x), position_y + height - h_bar_height, static_cast<int32_t>(thumb_w), h_bar_height, thumb_color);
+            drawQuad(quadBuffer, static_cast<int32_t>(clamped_thumb_x), position_y + height - hBarHeight, static_cast<int32_t>(thumb_w), hBarHeight, thumb_color);
         }
     }
 }

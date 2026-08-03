@@ -85,6 +85,9 @@ private:
     /** Font size CVar. */
     std::shared_ptr<CVarInt> m_font_size;
 
+    /** Effective font size ceiling, derived from the loaded face and never above MAX_FONT_SIZE. */
+    int32_t m_max_font_size;
+
     /** Height of a line in pixels. */
     int32_t m_line_height;
 
@@ -95,6 +98,14 @@ private:
     int32_t m_font_descender;
 
 private:
+    /**
+     * @brief Derives the largest font size whose glyphs still fit the atlas texture.
+     *
+     * Uses the design bbox of the loaded face, so it must be called once the face is loaded and
+     * before the first size request. Falls back to MAX_FONT_SIZE when the face gives nothing usable.
+     */
+    void computeMaxFontSize();
+
     /** @brief Registers all UI color CVars with the command manager. */
     template <typename TPayload>
     void registerThemeColorCVar(GlobalRegistry<TPayload> &commandController);
@@ -224,6 +235,9 @@ void Theme::create(GlobalRegistry<TPayload> &commandController, const std::strin
         // We need a fixed width font
         throw std::runtime_error("Theme::create: Font is not fixed width.");
     }
+
+    // The size ceiling depends on the face, derive it before requesting any size.
+    computeMaxFontSize();
 
     setFontSize(DEFAULT_FONT_SIZE);
     registerThemeColorCVar(commandController);

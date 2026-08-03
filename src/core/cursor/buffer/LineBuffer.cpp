@@ -107,7 +107,10 @@ uint32_t LineBuffer::getByteCount(uint32_t lineStart, uint32_t columnStart, uint
 
 BufferEdit LineBuffer::insert(uint32_t line, uint32_t column, const std::u16string_view characters) {
     [[unlikely]] if (characters.empty()) {
-        return {0,0,0, {line,column}, {line,column}, {line,column}};
+        // Nothing inserted, describe the untouched position: byte offsets left at 0 would disagree
+        // with the points and make the incremental re-parse dirty the whole start of the tree.
+        const auto byte_offset = getByteOffset(line, column);
+        return {byte_offset, byte_offset, byte_offset, {line,column}, {line,column}, {line,column}};
     }
 
     // Fast path: single-line insert (no "\n") into the current line only touches m_current_line.
@@ -128,6 +131,42 @@ BufferEdit LineBuffer::insert(uint32_t line, uint32_t column, const std::u16stri
         return edit;
     }
 
+    // Fast path: a bare newline on the current line is only a split of m_current_line. The slow
+    // path would commit the whole line back and pull the very same tail out again, paying two
+    // buffer moves and three sweeps of m_line_data for a split that costs one of each.
+    if (line == m_current_line_index && characters == u"\n") {
+        auto edit = BufferEdit();
+        edit.start_byte = getByteOffset(line, column);
+        edit.old_end_byte = edit.start_byte;
+        edit.new_end_byte = static_cast<uint32_t>(edit.start_byte + sizeof(char16_t));
+        edit.start.line = line;
+        edit.start.column = column;
+        edit.old_end.line = line;
+        edit.old_end.column = column;
+        edit.new_end.line = line + 1;
+        edit.new_end.column = 0;
+
+        // Commit the head only: it stays on this line, at the slot the current line already owns.
+        const auto line_start = m_line_data[line].start;
+        m_buffer.insert(line_start, m_current_line, 0, column);
+        m_line_data[line].count = column;
+
+        // Open the slot of the line the split creates, right where the head ends.
+        m_line_data.insert(m_line_data.begin() + line + 1, LineData{line_start + column, 0});
+
+        // Only the head reached the buffer, so the lines below move by exactly its length.
+        for (auto it = m_line_data.begin() + line + 2; it != m_line_data.end(); ++it) {
+            it->start += column;
+        }
+
+        // The tail is already detached: dropping the head in place makes it the new current line.
+        m_current_line.erase(0, column);
+        m_current_line_index = line + 1;
+
+        m_longest_line.onEdit(*this, edit);
+        return edit;
+    }
+
     // Slow path: the big buffer is involved. Fold everything back so the buffer is consistent.
     commitCurrentLine();
 
@@ -140,75 +179,75 @@ BufferEdit LineBuffer::insert(uint32_t line, uint32_t column, const std::u16stri
     edit.old_end.line = line;
     edit.old_end.column = column;
 
-    // Start at the said line
-    auto line_data = m_line_data.begin() + line;
+    // The segments land back to back at the same buffer offset, so the whole insertion is one splice:
+    // count the newlines up front, then move the buffer and the line metadata exactly once each.
+    const auto newline_count = static_cast<uint32_t>(std::count(characters.begin(), characters.end(), u'\n'));
+    const auto end_line = line + newline_count;
 
-    // Calculate the remainder length then resize current line_data
-    const auto remainder_length = line_data->count - column;
-    line_data->count = column;
+    // Read the touched line's geometry before the metadata is reshaped below.
+    const auto remainder_length = m_line_data[line].count - column;
+    const auto insert_offset = m_line_data[line].start + column;
 
-    auto inserted_total = 0u;
-    auto segment_start = 0;
-    auto insert_offset = line_data->start + column;
+    // Make room for all the new lines in one shift of the metadata.
+    if (newline_count > 0) {
+        m_line_data.insert(m_line_data.begin() + line + 1, newline_count, LineData{});
+    }
 
-    const auto characters_count = characters.length();
-    for (auto i = 0; i < characters_count; ++i) {
-        if (characters[i] == U'\n') {
-            // found delimiter
-            const auto segment_length = static_cast<uint32_t>(i - segment_start);
-            if (segment_length > 0) {
-                // Extract the string sequence and appends to the buffer
-                const auto segment_view = characters.substr(segment_start, segment_length);
-                m_buffer.insert(insert_offset, segment_view);
+    // The buffer holds the text without its line ends; a newline-free insert needs no flattening copy.
+    auto flattened = std::u16string();
+    auto flattened_view = characters;
+    auto segment_start = size_t{0};
 
-                // Increments the counters
-                line_data->count += segment_length;
-                insert_offset += segment_length;
-                inserted_total += segment_length;
+    if (newline_count > 0) {
+        flattened.reserve(characters.length() - newline_count);
+
+        // Single pass over the segments: each newline closes the line it ends and opens the next one,
+        // whose start is the offset the already flattened characters push it to.
+        auto current_line = line;
+        for (auto i = size_t{0}; i < characters.length(); ++i) {
+            if (characters[i] != u'\n') {
+                continue;
             }
 
-            // Move to the next line
-            ++line;
-            line_data = m_line_data.insert(m_line_data.begin() + line, { .start = insert_offset, .count = 0 });
+            flattened.append(characters, segment_start, i - segment_start);
+            m_line_data[current_line].count = (current_line == line ? column : 0) + static_cast<uint32_t>(i - segment_start);
+
+            ++current_line;
+            m_line_data[current_line].start = insert_offset + static_cast<uint32_t>(flattened.length());
             segment_start = i + 1;
         }
+
+        flattened.append(characters, segment_start, characters.length() - segment_start);
+        flattened_view = flattened;
     }
 
-    const auto final_segment_len = static_cast<uint32_t>(characters.length() - segment_start);
-    if (final_segment_len > 0) {
-        // Insert the final segment (after last \n or whole string if no \n)
-        const auto segment_view = characters.substr(segment_start, final_segment_len);
-        m_buffer.insert(insert_offset, segment_view);
+    // The trailing segment lands on the line where the edit ends, which also takes back the remainder.
+    auto &end_data = m_line_data[end_line];
+    end_data.count = (end_line == line ? column : 0) + static_cast<uint32_t>(characters.length() - segment_start);
 
-        // Increments the counters
-        line_data->count += final_segment_len;
-        inserted_total += final_segment_len;
-    }
-
-    // Place the cursor at the right column position, then re-append the remainder count the final line
-    column = line_data->count;
-    if (remainder_length > 0) {
-        line_data->count += remainder_length;
-    }
-
-    // Insert operations can increment the line and column variable.
+    // The insertion ends one line further down per newline, at the length of the trailing segment.
     // We know the last position now, we can fill the last bit of the edit struct.
-    edit.new_end.line = line;
-    edit.new_end.column = column;
+    edit.new_end.line = end_line;
+    edit.new_end.column = end_data.count;
+
+    end_data.count += remainder_length;
+
+    // Splice the flattened characters into the buffer in a single move.
+    m_buffer.insert(insert_offset, flattened_view);
 
     // The line where the edit ended as the new current line.
-    m_current_line_index = line;
+    m_current_line_index = end_line;
 
-    auto &data = m_line_data[line];
-    const auto offset = data.start;
-    const auto length = data.count;
+    const auto offset = end_data.start;
+    const auto length = end_data.count;
 
     m_current_line.assign(m_buffer, offset, length);
     m_buffer.erase(offset, length);
-    data.count = 0;
+    end_data.count = 0;
 
     // Shift all the following line offsets
-    for (auto it = m_line_data.begin() + line + 1; it != m_line_data.end(); ++it) {
+    const auto inserted_total = static_cast<uint32_t>(flattened_view.length());
+    for (auto it = m_line_data.begin() + end_line + 1; it != m_line_data.end(); ++it) {
         it->start += inserted_total - length;
     }
 
@@ -251,6 +290,59 @@ BufferEdit LineBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd, u
         edit.new_end.column = column;
 
         m_current_line.erase(column, columnEnd - column);
+        m_longest_line.onEdit(*this, edit);
+        return edit;
+    }
+
+    // Fast path: the mirror of the bare-newline insert. Joining a line with the one right below it
+    // only merges m_current_line with a single neighbouring slot, as long as the current line is one
+    // of the two: backspace at column 0 detaches the lower line, delete at the end the upper one.
+    if (lineEnd == line + 1 && columnEnd == 0 && (m_current_line_index == line || m_current_line_index == line + 1)) {
+        // Both offsets are read before anything moves, where the slow path reads them after folding
+        // the current line back. The two agree: committing does not move the current line's own
+        // start, and detachedLengthBefore already accounts for it on the line below.
+        auto edit = BufferEdit();
+        edit.start_byte = getByteOffset(line, column);
+        edit.old_end_byte = getByteOffset(lineEnd, columnEnd);
+        edit.new_end_byte = edit.start_byte;
+        edit.start.line = line;
+        edit.start.column = column;
+        edit.old_end.line = lineEnd;
+        edit.old_end.column = columnEnd;
+        edit.new_end.line = line;
+        edit.new_end.column = column;
+
+        if (m_current_line_index == line + 1) {
+            // The lower line is detached: pull the upper line's head in front of it, then drop the
+            // upper line whole (head and erased tail alike) out of the buffer.
+            const auto upper_start = m_line_data[line].start;
+            const auto upper_length = m_line_data[line].count;
+            m_current_line.insert(0, m_buffer, upper_start, column);
+            m_buffer.erase(upper_start, upper_length);
+            m_line_data[line].count = 0;
+            m_line_data.erase(m_line_data.begin() + line + 1);
+
+            for (auto it = m_line_data.begin() + line + 1; it != m_line_data.end(); ++it) {
+                it->start -= upper_length;
+            }
+        } else {
+            // The upper line is detached: cut its tail off and append the lower line to it, then
+            // drop the lower line out of the buffer.
+            const auto lower_start = m_line_data[line + 1].start;
+            const auto lower_length = m_line_data[line + 1].count;
+            m_current_line.erase(column);
+            m_current_line.append(m_buffer, lower_start, lower_length);
+            m_buffer.erase(lower_start, lower_length);
+            m_line_data.erase(m_line_data.begin() + line + 1);
+
+            for (auto it = m_line_data.begin() + line + 1; it != m_line_data.end(); ++it) {
+                it->start -= lower_length;
+            }
+        }
+
+        // The joined line is the one the edit ends on, and it is the detached one either way.
+        m_current_line_index = line;
+
         m_longest_line.onEdit(*this, edit);
         return edit;
     }

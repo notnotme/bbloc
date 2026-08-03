@@ -18,6 +18,41 @@
  */
 #include "Cursor.h"
 
+#include <algorithm>
+
+
+/** @brief Tells whether a boundary at the given index falls between the two units of a surrogate pair. */
+static bool splitsSurrogatePair(const std::u16string_view text, const size_t index) {
+    return index > 0 && index < text.length()
+        && (text[index] & 0xFC00) == 0xDC00
+        && (text[index - 1] & 0xFC00) == 0xD800;
+}
+
+/**
+ * @brief Walks a flat text from a known point up to an index, counting the line ends it crosses.
+ *
+ * The buffer is line-structured, so a flat character offset only becomes a BufferEdit position by
+ * walking the text; walking from an already known point keeps that to one pass per boundary.
+ *
+ * @param text The text to walk, with its lines joined by line ends.
+ * @param from The index the walk starts at.
+ * @param fromPoint The position the index `from` designates.
+ * @param to The index to walk up to, never before `from`.
+ * @return The position the index `to` designates.
+ */
+static BufferEdit::Position advanceToIndex(const std::u16string_view text, const size_t from, const BufferEdit::Position &fromPoint, const size_t to) {
+    auto point = fromPoint;
+    for (auto index = from; index < to; ++index) {
+        if (text[index] == u'\n') {
+            ++point.line;
+            point.column = 0;
+        } else {
+            ++point.column;
+        }
+    }
+
+    return point;
+}
 
 Cursor::Cursor(std::unique_ptr<TextBuffer> buffer)
     : m_buffer(std::move(buffer)),
@@ -41,6 +76,7 @@ void Cursor::pageUp(const uint32_t lineCount) {
     if (m_column > cursor_string_length) {
         m_column = cursor_string_length;
     }
+    m_column = snapToCharBoundary(m_line, m_column);
 }
 
 void Cursor::pageDown(const uint32_t lineCount) {
@@ -59,6 +95,7 @@ void Cursor::pageDown(const uint32_t lineCount) {
     if (m_column > cursor_string_length) {
         m_column = cursor_string_length;
     }
+    m_column = snapToCharBoundary(m_line, m_column);
 }
 
 void Cursor::setName(const std::string_view name) {
@@ -184,6 +221,7 @@ void Cursor::moveUp() {
         if (m_column > string_above_length) {
             m_column = string_above_length;
         }
+        m_column = snapToCharBoundary(m_line - 1, m_column);
         --m_line;
     } else {
         m_column = 0;
@@ -199,6 +237,7 @@ void Cursor::moveDown() {
             // The cursor can't stay at the same X position, put it at the end of the next line
             m_column = string_below_length;
         }
+        m_column = snapToCharBoundary(m_line + 1, m_column);
         ++m_line;
     } else {
         m_column = m_buffer->getString(m_line).length();
@@ -250,7 +289,7 @@ void Cursor::setPosition(const uint32_t line, const uint32_t column) {
         throw std::runtime_error("Cursor::setPosition out of range.");
     }
 
-    m_column = column;
+    m_column = snapToCharBoundary(line, column);
     m_line = line;
 }
 
@@ -323,7 +362,10 @@ std::optional<BufferEdit> Cursor::eraseRight() {
 std::optional<BufferEdit> Cursor::eraseSelection() {
     const auto &range = getSelectedRange();
     if (!range) {
-        // No selection, or a degenerate one: nothing to erase, nothing to record
+        // No selection, or a degenerate one: nothing to erase, nothing to record.
+        // A degenerate selection (anchor == cursor) is still armed, so disarm it here:
+        // left armed, its stale anchor line would outlive the edits the caller performs next.
+        activateSelection(false);
         return std::nullopt;
     }
 
@@ -358,6 +400,13 @@ BufferEdit Cursor::clear() {
 std::u16string Cursor::getText() const {
     auto text = std::u16string();
     const auto line_count = m_buffer->getStringCount();
+
+    // The offset of the very last column already accounts for the line separators, so it is the
+    // exact size of the joined text: reserve it and grow the string only once.
+    const auto last_line = line_count - 1;
+    const auto last_column = static_cast<uint32_t>(m_buffer->getString(last_line).length());
+    text.reserve(m_buffer->getByteOffset(last_line, last_column) / sizeof(char16_t));
+
     for (auto line = 0u; line < line_count; ++line) {
         text.append(m_buffer->getString(line));
         if (line < line_count - 1) {
@@ -391,16 +440,51 @@ uint32_t Cursor::charLengthAfter(const uint32_t column) const {
     return 1;
 }
 
-BufferEdit Cursor::restore(const UndoHistory::Snapshot &snapshot) {
-    const auto &clear_edit = m_buffer->clear();
-
-    auto new_end_byte = 0u;
-    auto new_end = BufferEdit::Position {0, 0};
-    if (!snapshot.text.empty()) {
-        const auto &insert_edit = m_buffer->insert(0, 0, snapshot.text);
-        new_end_byte = insert_edit.new_end_byte;
-        new_end = insert_edit.new_end;
+uint32_t Cursor::snapToCharBoundary(const uint32_t line, const uint32_t column) const {
+    const auto &string = m_buffer->getString(line);
+    // The length bound is mandatory: the view must never be indexed at its own size.
+    if (column > 0 && column < string.length() && (string[column] & 0xFC00) == 0xDC00 && (string[column - 1] & 0xFC00) == 0xD800) {
+        // The column sits inside a surrogate pair, step back to its lead unit
+        return column - 1;
     }
+    return column;
+}
+
+BufferEdit Cursor::restore(const UndoHistory::Snapshot &snapshot, const std::u16string_view currentText) {
+    const auto &new_text = snapshot.text;
+
+    // Only the differing middle is rewritten. Replacing the whole buffer would hand the highlighter
+    // an edit spanning the entire document, so a one-character undo would cost a from-scratch
+    // re-parse and a full longest-line re-measure.
+    const auto &prefix_mismatch = std::mismatch(currentText.begin(), currentText.end(), new_text.begin(), new_text.end());
+    auto prefix_length = static_cast<size_t>(prefix_mismatch.first - currentText.begin());
+
+    // The two ends must never meet: over a repeating region ("aaaa" -> "aaa") the common suffix
+    // reaches back into the common prefix, and the range between them would then run backwards.
+    const auto suffix_limit = std::min(currentText.length(), new_text.length()) - prefix_length;
+    const auto &suffix_mismatch = std::mismatch(currentText.rbegin(), currentText.rbegin() + static_cast<ptrdiff_t>(suffix_limit), new_text.rbegin());
+    auto suffix_length = static_cast<size_t>(suffix_mismatch.first - currentText.rbegin());
+
+    // Neither boundary may land inside a surrogate pair. Widening the range by one code unit is
+    // always safe; splitting the pair would leave both sides of the edit unencodable.
+    if (splitsSurrogatePair(currentText, prefix_length) || splitsSurrogatePair(new_text, prefix_length)) {
+        --prefix_length;
+    }
+    if (splitsSurrogatePair(currentText, currentText.length() - suffix_length)
+        || splitsSurrogatePair(new_text, new_text.length() - suffix_length)) {
+        --suffix_length;
+    }
+
+    // Both points describe the buffer as it stands, which is exactly what currentText holds.
+    const auto start = advanceToIndex(currentText, 0, {0, 0}, prefix_length);
+    const auto old_end = advanceToIndex(currentText, prefix_length, start, currentText.length() - suffix_length);
+    const auto middle = std::u16string_view(new_text).substr(prefix_length, new_text.length() - suffix_length - prefix_length);
+
+    // The two halves carry the offsets and the points of the combined edit: the erase leaves the
+    // start of the range where it was, so the insert that follows starts at the very same offset.
+    // Each half degenerates to a no-op edit at start when its side is empty, identical texts included.
+    const auto &erase_edit = m_buffer->erase(start.line, start.column, old_end.line, old_end.column);
+    const auto &insert_edit = m_buffer->insert(start.line, start.column, middle);
 
     m_line = snapshot.line;
     m_column = snapshot.column;
@@ -408,31 +492,46 @@ BufferEdit Cursor::restore(const UndoHistory::Snapshot &snapshot) {
     m_history.markBoundary();
 
     return BufferEdit {
-        .start_byte = 0,
-        .old_end_byte = clear_edit.old_end_byte,
-        .new_end_byte = new_end_byte,
-        .start = {0, 0},
-        .old_end = clear_edit.old_end,
-        .new_end = new_end
+        .start_byte = erase_edit.start_byte,
+        .old_end_byte = erase_edit.old_end_byte,
+        .new_end_byte = insert_edit.new_end_byte,
+        .start = erase_edit.start,
+        .old_end = erase_edit.old_end,
+        .new_end = insert_edit.new_end
     };
 }
 
 std::optional<BufferEdit> Cursor::undo() {
-    const auto &snapshot = m_history.undo({getText(), m_line, m_column});
+    if (!m_history.canUndo()) {
+        // Ask before building the current state: an empty stack would only discard it, and under
+        // key repeat that is a full-buffer copy per event
+        return std::nullopt;
+    }
+
+    // The current text is needed twice, as the state handed to the history and as the left side of
+    // the diff below: joining the lines once and copying it is cheaper than building it twice.
+    const auto current_text = getText();
+    const auto &snapshot = m_history.undo({current_text, m_line, m_column});
     if (!snapshot) {
         return std::nullopt;
     }
 
-    return restore(snapshot.value());
+    return restore(snapshot.value(), current_text);
 }
 
 std::optional<BufferEdit> Cursor::redo() {
-    const auto &snapshot = m_history.redo({getText(), m_line, m_column});
+    if (!m_history.canRedo()) {
+        // Same as undo: nothing to restore means nothing to capture
+        return std::nullopt;
+    }
+
+    const auto current_text = getText();
+    const auto &snapshot = m_history.redo({current_text, m_line, m_column});
     if (!snapshot) {
         return std::nullopt;
     }
 
-    return restore(snapshot.value());
+    return restore(snapshot.value(), current_text);
 }
 
 void Cursor::clearHistory() {

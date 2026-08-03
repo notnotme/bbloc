@@ -40,24 +40,31 @@ std::optional<std::u16string> PasteTextCommand::run(CursorContext &payload, cons
     const auto clipboard_text = std::string(sdl_clipboard_text);
     SDL_free(sdl_clipboard_text);
 
-    const auto utf16_clipboard_text = utf8::utf8to16(clipboard_text);
+    // The clipboard is not guaranteed to hold UTF-8: on X11, SDL falls back to XA_STRING (Latin-1).
+    // Catch the base exception, a truncated trailing sequence raises not_enough_room, not invalid_utf8.
+    // Never substitute U+FFFD here: this text goes into the document, silent corruption is worse than a refusal.
+    auto utf16_clipboard_text = std::u16string();
+    try {
+        utf16_clipboard_text = utf8::utf8to16(clipboard_text);
+    } catch (const utf8::exception &) {
+        return u"Clipboard is not valid UTF-8.";
+    }
+
     if (utf16_clipboard_text.empty()) {
         // If there is no text in the clipboard show a message.
         return u"Clipboard is empty.";
     }
 
-    if (payload.cursor.getSelectedRange()) {
-        // If there is a selection, then we need to erase it.
-        const auto &edit = payload.cursor.eraseSelection();
-        payload.highlighter.edit(edit.value());
-    }
+    // Pasting over a selection replaces it, and deactivates it either way.
+    payload.eraseSelectionIfAny();
 
     // Append the text at the cursor position
     const auto &edit = payload.cursor.insert(utf16_clipboard_text);
     payload.highlighter.edit(edit);
 
-    // Pasting text automatically deactivates any selection.
-    payload.cursor.activateSelection(false);
+    // The pasted text moved the cursor: the next vertical move must aim at the column it landed
+    // on, not at the one the last up/down move armed on a previous line.
+    payload.stick.index = payload.cursor.getColumn();
     payload.search.resetMatches();
 
     // Redraw and follow the cursor.

@@ -82,13 +82,17 @@ const std::unordered_map<HighLightId, ParserDescriptor> &ParserCatalog::getDescr
     return DESCRIPTORS;
 }
 
-std::unordered_map<HighLightId, Parser> ParserCatalog::createParsers() {
-    std::unordered_map<HighLightId, Parser> parsers;
-    for (const auto &[id, descriptor] : getDescriptors()) {
-        parsers.try_emplace(id, descriptor);
-    }
+const std::unordered_map<HighLightId, Parser> &ParserCatalog::getParsers() {
+    static const std::unordered_map<HighLightId, Parser> PARSERS = [] {
+        std::unordered_map<HighLightId, Parser> parsers;
+        for (const auto &[id, descriptor] : getDescriptors()) {
+            parsers.try_emplace(id, descriptor);
+        }
 
-    return parsers;
+        return parsers;
+    }();
+
+    return PARSERS;
 }
 
 HighLightId ParserCatalog::findModeByExtension(const std::string_view extension) {

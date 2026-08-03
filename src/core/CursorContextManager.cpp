@@ -49,12 +49,17 @@ size_t CursorContextManager::getCount() const {
     return m_contexts.size();
 }
 
-CursorContext &CursorContextManager::createContext() {
-    auto &context = m_contexts.emplace_back(std::make_unique<CursorContext>(m_command_runner, m_theme, m_prompt_cursor, std::make_unique<LineBuffer>()));
+std::unique_ptr<CursorContext> CursorContextManager::makeContext() const {
+    auto context = std::make_unique<CursorContext>(m_command_runner, m_theme, m_prompt_cursor, std::make_unique<LineBuffer>());
 
     // Every cursor shares the same history depth CVar, so dim_max_undo applies globally.
     context->cursor.shareMaxHistoryDepth(m_max_undo);
     context->cursor.setMaxHistoryDepth();
+    return context;
+}
+
+CursorContext &CursorContextManager::createContext() {
+    auto &context = m_contexts.emplace_back(makeContext());
 
     // The count changed: the active view must redraw its buffer position indicator.
     refreshIndices();
@@ -88,9 +93,7 @@ bool CursorContextManager::close() {
     const auto had_others = !m_contexts.empty();
     if (!had_others) {
         // The last context was closed: replace it with a fresh scratch so one always exists.
-        m_contexts.emplace_back(std::make_unique<CursorContext>(m_command_runner, m_theme, m_prompt_cursor, std::make_unique<LineBuffer>()));
-        m_contexts.back()->cursor.shareMaxHistoryDepth(m_max_undo);
-        m_contexts.back()->cursor.setMaxHistoryDepth();
+        m_contexts.emplace_back(makeContext());
     }
 
     // The next buffer takes the closed one's place, or the new last one when the end was closed.

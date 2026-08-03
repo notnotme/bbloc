@@ -39,11 +39,13 @@ std::optional<std::u16string> CutTextCommand::run(CursorContext &payload, const 
         return error;
     }
 
-    if (const auto &edit = payload.cursor.eraseSelection()) {
-        // If we had some text selected, then erase it.
-        payload.highlighter.edit(edit.value());
-        payload.cursor.activateSelection(false);
+    // If we had some text selected, then erase it.
+    if (payload.eraseSelectionIfAny()) {
         payload.search.resetMatches();
+
+        // The cursor collapsed onto the start of the cut range: the next vertical move must aim
+        // at that column, not at the one the last up/down move armed on a previous line.
+        payload.stick.index = payload.cursor.getColumn();
 
         // If we cut some text, a redrawing is needed.
         payload.wants_redraw = true;

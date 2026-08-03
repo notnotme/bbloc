@@ -27,6 +27,19 @@
 #include "../core/CommandManager.h"
 
 
+/** @brief Writes a UTF-8 payload to a path, truncating it; returns false when anything went wrong. */
+static bool writeFile(const std::filesystem::path &path, const std::string &content) {
+    auto ofs = std::ofstream(path, std::ios::out);
+    if (!ofs) {
+        return false;
+    }
+
+    // Write everything, then close explicitly so a failure flushing the last block is reported here.
+    ofs << content;
+    ofs.close();
+    return !ofs.fail();
+}
+
 void SaveFileCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) previousArgs;
     if (argumentIndex == 0) {
@@ -46,24 +59,10 @@ std::optional<std::u16string> SaveFileCommand::run(CursorContext &payload, const
     const auto cursor_name = std::filesystem::path(payload.cursor.getName());
     if (cursor_name.empty() && args.empty() && !payload.from_prompt) {
         // From the prompt the filename is mandatory; from the editor, ask for it interactively.
-        payload.command_feedback = CommandFeedback {
-            .prompt_message = u"save ",
-            .command_string = u"save",
-            .on_complete_callback = [](const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
+        payload.command_feedback = requestPathArgument(u"save ", u"save", payload.command_runner,
+            [](const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
                 CommandManager::getPathCompletions(input, false, itemCallback);
-            },
-            .on_validate_callback = [&](const std::u16string_view input, const std::u16string_view command) -> std::optional<std::u16string> {
-                // Re-quote a path containing spaces so the rerun tokenizes it back to one argument.
-                // An answer already holding a quote is passed verbatim: the tokenizer handles it.
-                auto quoted_filename = std::u16string(input);
-                if (quoted_filename.find(u' ') != std::u16string::npos && quoted_filename.find(u'"') == std::u16string::npos) {
-                    quoted_filename = std::u16string(u"\"").append(quoted_filename).append(u"\"");
-                }
-
-                payload.command_runner.runCommand(std::u16string(command).append(u" ").append(quoted_filename), true);
-                return std::nullopt;
-            }
-        };
+            });
 
         return std::nullopt;
     }
@@ -71,6 +70,9 @@ std::optional<std::u16string> SaveFileCommand::run(CursorContext &payload, const
     if (cursor_name.empty() && (args.empty() || (args.size() >= 2 && args[1] != u"-f"))) {
         return u"Usage: save <filename> [-f]";
     }
+
+    // Read the overwrite flag once: the checks below must not index an argument list that may be empty.
+    const auto force_overwrite = args.size() >= 2 && args[1] == u"-f";
 
     // Check if the file can be saved.
     const auto arg_filename = std::filesystem::path(args.empty() ? "" : utf8::utf16to8(args[0]));
@@ -94,12 +96,9 @@ std::optional<std::u16string> SaveFileCommand::run(CursorContext &payload, const
     // Check if the file is overwritten by the operation
     if (!is_same_file
         && file_exists
-        && (args.size() == 1 || args[1] != u"-f")) {
-        // Re-quote a path containing spaces so the rerun tokenizes it back to one argument.
-        auto quoted_filename = file_to_save_utf16;
-        if (quoted_filename.find(u' ') != std::u16string::npos) {
-            quoted_filename = std::u16string(u"\"").append(quoted_filename).append(u"\"");
-        }
+        && !force_overwrite) {
+        // Re-quote the path so the rerun tokenizes it back to one argument.
+        const auto quoted_filename = quoteArgument(file_to_save_utf16);
 
         // Needs user feedback to be able to overwrite it
         payload.command_feedback = CommandFeedback {
@@ -123,24 +122,51 @@ std::optional<std::u16string> SaveFileCommand::run(CursorContext &payload, const
         return std::nullopt;
     }
 
-    // Prepare to output all the text.
-    auto ofs = std::ofstream(file_to_save, std::ios::out);
-    if (!ofs) {
-        return std::u16string(u"Could not save ").append(file_to_save_utf16).append(u".");
-    }
-
-    // Write all the text into the file.
+    // Encode the whole document before touching the filesystem: an encoding failure must not
+    // have destroyed the previous content already.
+    auto utf8_text = std::string();
     try {
-        ofs << utf8::utf16to8(payload.cursor.getText());
+        utf8_text = utf8::utf16to8(payload.cursor.getText());
     } catch (const utf8::exception &) {
         return std::u16string(u"Could not encode ").append(file_to_save_utf16).append(u" as UTF-8.");
     }
 
-    // Close file, report a failed write, and set cursor name.
-    ofs.close();
-    if (ofs.fail()) {
-        return std::u16string(u"Could not save ").append(file_to_save_utf16).append(u".");
+    // Preferred path: write a sibling temporary file, then rename it over the destination. Opening
+    // the destination directly truncates it, so a failed write would leave nothing behind.
+    auto temporary_file = file_to_save;
+    temporary_file += ".tmp";
+
+    auto saved_atomically = false;
+    if (writeFile(temporary_file, utf8_text)) {
+        // The temporary file was created with the default mode: carry the destination's own
+        // permissions over, so overwriting does not widen them. A failure here is not fatal.
+        if (file_exists) {
+            auto permission_error = std::error_code();
+            if (const auto status = std::filesystem::status(file_to_save, permission_error); !permission_error) {
+                std::filesystem::permissions(temporary_file, status.permissions(), permission_error);
+            }
+        }
+
+        // Move the temporary file into place; on the same filesystem this replaces the destination
+        // in one step, so it is never observed half-written.
+        auto rename_error = std::error_code();
+        std::filesystem::rename(temporary_file, file_to_save, rename_error);
+        saved_atomically = !rename_error;
     }
+
+    if (!saved_atomically) {
+        // Atomicity is not always available: a writable file inside a read-only directory rejects
+        // the sibling temporary file, and some filesystems (the Switch SD card) refuse to rename
+        // onto an existing path. Drop whatever the attempt left behind and write in place instead.
+        auto remove_error = std::error_code();
+        std::filesystem::remove(temporary_file, remove_error);
+
+        if (!writeFile(file_to_save, utf8_text)) {
+            return std::u16string(u"Could not save ").append(file_to_save_utf16).append(u".");
+        }
+    }
+
+    // The file is written: set the cursor name.
     payload.cursor.setName(file_to_save.string());
 
     // We always want to redraw, in case we run from a prompt confirmation.

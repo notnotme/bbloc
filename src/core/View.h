@@ -19,6 +19,9 @@
 #ifndef VIEW_H
 #define VIEW_H
 
+#include <algorithm>
+#include <limits>
+
 #include <SDL.h>
 
 #include "renderer/QuadProgram.h"
@@ -153,11 +156,18 @@ void View<TState>::resizeWindow(const int32_t width, const int32_t height) {
 
 template <typename TState>
 void View<TState>::drawQuad(QuadBuffer &quadBuffer, const int32_t x, const int32_t y, const int32_t width, const int32_t height, const Color &color) const {
+    // Plain quads are not culled against the viewport before being staged, unlike glyphs: a far
+    // horizontal scroll pushes them past what the vertex format holds. Clamping saturates them at
+    // the edge instead of letting the narrowing wrap them around to the opposite side.
+    constexpr auto MIN_POSITION = static_cast<int32_t>(std::numeric_limits<int16_t>::min());
+    constexpr auto MAX_POSITION = static_cast<int32_t>(std::numeric_limits<int16_t>::max());
+    constexpr auto MAX_SIZE = static_cast<int32_t>(std::numeric_limits<uint16_t>::max());
+
     quadBuffer.insert(
-        static_cast<int16_t>(x),
-        static_cast<int16_t>(y),
-        static_cast<uint16_t>(width),
-        static_cast<uint16_t>(height),
+        static_cast<int16_t>(std::clamp(x, MIN_POSITION, MAX_POSITION)),
+        static_cast<int16_t>(std::clamp(y, MIN_POSITION, MAX_POSITION)),
+        static_cast<uint16_t>(std::clamp(width, 0, MAX_SIZE)),
+        static_cast<uint16_t>(std::clamp(height, 0, MAX_SIZE)),
         color.red, color.green, color.blue, color.alpha);
 }
 

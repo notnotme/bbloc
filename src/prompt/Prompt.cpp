@@ -34,7 +34,7 @@ void Prompt::render(CursorContext &context, PromptState &viewState, QuadBuffer &
     const auto batch_start = quadBuffer.beginBatch(ApplicationWindow::PROMPT_DEFAULT_QUAD_COUNT);
     drawBackground(quadBuffer, viewState);
     drawText(quadBuffer, context, viewState);
-    quadBuffer.endBatch();
+    const auto batch_count = quadBuffer.endBatch();
 
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
@@ -44,7 +44,7 @@ void Prompt::render(CursorContext &context, PromptState &viewState, QuadBuffer &
 
     // Set the scissor area and draw the buffer
     glScissor(position_x, m_window_height - position_y - height, width, height);
-    m_quad_program.draw(batch_start, quadBuffer.getCount());
+    m_quad_program.draw(batch_start, batch_count);
 }
 
 bool Prompt::onKeyDown(CursorContext &context, PromptState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
@@ -56,10 +56,18 @@ bool Prompt::onKeyDown(CursorContext &context, PromptState &viewState, const SDL
             viewState.clearCompletions();
             viewState.clearHistoryIndex();
 
+            // The command may close the active buffer ("buffer close"), destroying `context`.
+            // The runner and the prompt cursor are owned by ApplicationWindow, not by the context,
+            // so binding them here keeps them usable after the dispatch.
+            auto &command_runner = context.command_runner;
+            auto &prompt_cursor = context.prompt_cursor;
+
             // The return value of runCommand can be ignored in this use case.
-            const auto prompt_command = context.prompt_cursor.getString();
-            context.command_runner.runCommand(prompt_command, true);
-            context.prompt_cursor.clear();
+            // Clearing stays after the call: ApplicationWindow::runCommand reads the pending
+            // feedback answer out of the prompt cursor.
+            const auto prompt_command = prompt_cursor.getString();
+            command_runner.runCommand(prompt_command, true);
+            prompt_cursor.clear();
         }
         return true;
         case SDLK_ESCAPE:

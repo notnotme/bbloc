@@ -29,12 +29,12 @@
 
 
 /**
- * @brief A text buffer implementation based on StringBuffer, but with a separate, smaller buffer for the current line.
+ * @brief A text buffer keeping the whole text in one contiguous string, with a separate, smaller buffer for the current line.
  *
- * Like StringBuffer, all the text lives in a single contiguous UTF-16 buffer and
- * lines are tracked via indices (start offset and character count).
+ * All the text lives in a single contiguous UTF-16 buffer and lines are tracked via indices
+ * (start offset and character count).
  *
- * The difference is the current line: the characters of the line currently being edited are extracted out of the full
+ * The current line is special: the characters of the line currently being edited are extracted out of the full
  * text buffer.
  *
  * The current line is NOT a gap buffer, just a flat string. Because we would need to move the gap at the end of the

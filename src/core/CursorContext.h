@@ -65,10 +65,20 @@ private:
         int32_t match_index = -1;            ///< Zero-based ordinal of current match, -1 when none.
         int32_t match_count = 0;             ///< Total matches for the current term, 0 when none.
 
+        /**
+         * The match match_index designates, and whether it came from a full scan. Only a scanned
+         * ordinal can be stepped without rescanning; anything else must count the buffer again.
+         */
+        uint32_t match_line = 0;             ///< Line of the match match_index designates.
+        uint32_t match_column = 0;           ///< Column of the match match_index designates.
+        bool match_case_sensitive = false;   ///< Case-sensitivity mode the statistics were computed under.
+        bool match_scanned = false;          ///< true when match_index is the exact ordinal of that match.
+
         /** @brief Forgets the match statistics while keeping the term, so find_next/find_prev still work. */
         void resetMatches() {
             match_index = -1;
             match_count = 0;
+            match_scanned = false;
         }
     };
 
@@ -113,6 +123,29 @@ public:
           prompt_cursor(promptCursor),
           cursor(std::move(buffer)),
           highlighter(cursor) {}
+
+    /**
+     * @brief Erases the active selection, if any, and leaves the context consistent with it.
+     *
+     * Every editing path starts by dropping whatever is selected, and each one has to feed the
+     * resulting edit to the highlighter, put the cursor where the removed range collapsed, and
+     * disarm the selection. This context owns both the Cursor and the HighLighter, so it is the
+     * one place that whole sequence can live. A selection that is merely armed but empty erases
+     * nothing and is disarmed by the Cursor itself.
+     *
+     * @return true when a selection was erased, false when there was nothing to erase.
+     */
+    bool eraseSelectionIfAny() {
+        const auto &edit = cursor.eraseSelection();
+        if (!edit) {
+            return false;
+        }
+
+        highlighter.edit(edit.value());
+        cursor.setPosition(edit->new_end.line, edit->new_end.column);
+        cursor.activateSelection(false);
+        return true;
+    }
 };
 
 

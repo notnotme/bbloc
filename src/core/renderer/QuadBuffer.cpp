@@ -56,7 +56,7 @@ uint32_t QuadBuffer::beginBatch(const uint32_t reserveHint) {
     return m_batch_start;
 }
 
-void QuadBuffer::endBatch() {
+uint32_t QuadBuffer::endBatch() {
     const auto batch_count = static_cast<uint32_t>(m_staging.size());
     const auto needed_capacity = m_batch_start + batch_count;
     if (needed_capacity > m_capacity) {
@@ -74,6 +74,7 @@ void QuadBuffer::endBatch() {
     }
 
     m_frame_count = needed_capacity;
+    return batch_count;
 }
 
 void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, const uint16_t height, const uint8_t tint_r, const uint8_t tint_g, const uint8_t tint_b, const uint8_t tint_a) {

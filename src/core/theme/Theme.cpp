@@ -19,6 +19,7 @@
 #include "Theme.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <stdexcept>
 
 #include <SDL.h>
@@ -28,6 +29,7 @@ Theme::Theme()
     : m_ft_library(nullptr),
       m_font(nullptr),
       m_font_size(std::make_shared<CVarInt>(0)),
+      m_max_font_size(MAX_FONT_SIZE),
       m_line_height(0),
       m_font_advance(0),
       m_font_descender(0) {}
@@ -49,15 +51,48 @@ void Theme::destroy() {
     // Default states
     m_ft_library = nullptr;
     m_font = nullptr;
+    m_max_font_size = MAX_FONT_SIZE;
     m_line_height = 0;
     m_font_advance = 0;
     m_font_descender = 0;
 }
 
+void Theme::computeMaxFontSize() {
+    // The glyph bitmaps are stored in a UINT8_MAX tall texture, so a font size producing taller
+    // bitmaps would make glyphs unrenderable. The design bbox bounds the tallest glyph of the
+    // face, and it is known before any size request.
+    m_max_font_size = MAX_FONT_SIZE;
+    if (!FT_IS_SCALABLE(m_font)) {
+        // units_per_EM and bbox are expressed in font units only for scalable faces
+        return;
+    }
+
+    const auto bbox_height = static_cast<int64_t>(m_font->bbox.yMax) - static_cast<int64_t>(m_font->bbox.yMin);
+    if (bbox_height <= 0 || m_font->units_per_EM == 0) {
+        // Nothing usable to derive from, keep the static ceiling
+        return;
+    }
+
+    // The size is requested as a nominal size at 96 DPI (see setFontSize), so convert the
+    // pixel-per-EM bound back into the size unit the request takes.
+    const auto max_ppem = UINT8_MAX * static_cast<int64_t>(m_font->units_per_EM) / bbox_height;
+    const auto max_size = static_cast<int32_t>(std::min<int64_t>(max_ppem * 72 / 96, MAX_FONT_SIZE));
+
+    // A font shipping an oversized bbox must not push the cap below the minimum size,
+    // std::clamp requires a valid interval. The per-glyph fallback covers what is left.
+    m_max_font_size = std::max(max_size, MIN_FONT_SIZE);
+}
+
 void Theme::setFontSize(int32_t size) {
-    size = std::clamp(size, MIN_FONT_SIZE, MAX_FONT_SIZE);
+    size = std::clamp(size, MIN_FONT_SIZE, m_max_font_size);
     FT_Size_RequestRec font_size_req = {FT_SIZE_REQUEST_TYPE_NOMINAL, 0, size * 64, 96, 96};
     if (FT_Request_Size(m_font, &font_size_req) != FT_Err_Ok) {
+        if (m_line_height == 0) {
+            // Nothing was ever sized successfully: there are no previous metrics to keep, and a
+            // zero line height divides by zero as soon as a view renders.
+            throw std::runtime_error("Theme::setFontSize: FT_Request_Size failed.");
+        }
+
         // Keep the previous size and metrics rather than deriving them from a failed request
         return;
     }
@@ -86,6 +121,9 @@ const Color &Theme::getColor(const TokenId id) const {
 }
 
 const AtlasEntry &Theme::getCharacter(const char16_t character) {
+    // Stands in for a glyph the atlas cannot store: it draws nothing instead of aborting the frame.
+    static constexpr auto BLANK_ENTRY = AtlasEntry {};
+
     // If we already generated the character, we return it
     if (const auto &entry = m_atlas_array.get(character); entry != nullptr) {
         return *entry;
@@ -97,22 +135,29 @@ const AtlasEntry &Theme::getCharacter(const char16_t character) {
     }
 
     // Insert the character into the atlas
-    const auto &atlas_entry = m_atlas_array.insert(
+    const auto atlas_entry = m_atlas_array.insert(
         character,
         m_font->glyph->bitmap.width,
         m_font->glyph->bitmap.rows,
         m_font->glyph->bitmap_left,
         m_font->glyph->bitmap_top);
 
+    if (atlas_entry == nullptr) {
+        // The glyph is bigger than the texture, or the atlas ran out of layers. Remember the
+        // failure, otherwise every frame reloads the glyph for each of its occurrences on screen.
+        m_atlas_array.insertBlank(character);
+        return BLANK_ENTRY;
+    }
+
     m_quad_texture.blit(
-        atlas_entry.texture_s,
-        atlas_entry.texture_t,
-        atlas_entry.width,
-        atlas_entry.height,
-        atlas_entry.layer,
+        atlas_entry->texture_s,
+        atlas_entry->texture_t,
+        atlas_entry->width,
+        atlas_entry->height,
+        atlas_entry->layer,
         m_font->glyph->bitmap.buffer);
 
-    return atlas_entry;
+    return *atlas_entry;
 }
 
 int32_t Theme::getDimension(const DimensionId id) const {

@@ -29,7 +29,7 @@
 
 HighLighter::HighLighter(Cursor &cursor)
     : m_cursor(cursor),
-      m_parsers(ParserCatalog::createParsers()),
+      m_parsers(ParserCatalog::getParsers()),
       p_current_parser(nullptr),
       p_ts_parser(ts_parser_new()),
       p_ts_tree(nullptr),
@@ -217,6 +217,64 @@ void HighLighter::repaintChangedLines(TSTree *newTree) {
     paintCacheLines(ts_tree_root_node(newTree), repaint_first, repaint_last);
 }
 
+bool HighLighter::shiftLineCache(const BufferEdit &edit) {
+    const auto delta = static_cast<int64_t>(edit.new_end.line) - static_cast<int64_t>(edit.old_end.line);
+    if (m_line_cache.empty() || delta >= CACHE_LINE_COUNT || delta <= -static_cast<int64_t>(CACHE_LINE_COUNT)) {
+        // Nothing cached, or the edit displaces more rows than the window holds: rebuilding is cheaper.
+        return false;
+    }
+
+    const auto cache_first = m_cache_start_line;
+    const auto cache_last = cache_first + static_cast<uint32_t>(m_line_cache.size()) - 1;
+
+    if (edit.start.line > cache_last) {
+        // Entirely below the window: every cached row keeps both its content and its line number.
+        return true;
+    }
+
+    if (edit.old_end.line < cache_first) {
+        // Entirely above the window: the rows are untouched, only the line they describe moves.
+        const auto shifted = static_cast<int64_t>(cache_first) + delta;
+        m_cache_start_line = shifted > 0 ? static_cast<uint32_t>(shifted) : 0;
+        return true;
+    }
+
+    if (delta > 0) {
+        // Lines old_end.line + 1 .. new_end.line are new: open a blank row for each of them. They all
+        // fall inside the dirty span, so paintCacheLines resizes and fills them on the next parse.
+        const auto position = std::min(static_cast<size_t>(edit.old_end.line + 1 - cache_first), m_line_cache.size());
+        m_line_cache.insert(m_line_cache.begin() + static_cast<ptrdiff_t>(position), static_cast<size_t>(delta), std::vector<TokenId>{});
+
+        if (m_line_cache.size() > CACHE_LINE_COUNT) {
+            // Keep the window at its nominal size; the rows past it are rebuilt on demand.
+            m_line_cache.resize(CACHE_LINE_COUNT);
+        }
+
+        return true;
+    }
+
+    // Lines new_end.line + 1 .. old_end.line are gone: drop their rows, clipped to the cached window.
+    const auto removed_first = std::max(edit.new_end.line + 1, cache_first);
+    const auto removed_last = std::min(edit.old_end.line, cache_last);
+    const auto erase_first = std::min(static_cast<size_t>(removed_first - cache_first), m_line_cache.size());
+    const auto erase_last = std::min(static_cast<size_t>(removed_last - cache_first) + 1, m_line_cache.size());
+    if (erase_first >= erase_last) {
+        // Every removed line sits past the window: the cached rows are untouched.
+        return true;
+    }
+
+    m_line_cache.erase(m_line_cache.begin() + static_cast<ptrdiff_t>(erase_first), m_line_cache.begin() + static_cast<ptrdiff_t>(erase_last));
+
+    if (m_line_cache.empty()) {
+        m_cache_start_line = 0;
+    } else if (erase_first == 0) {
+        // The window lost its first rows: the line following the erased span now opens it.
+        m_cache_start_line = edit.new_end.line + 1;
+    }
+
+    return true;
+}
+
 void HighLighter::edit(const BufferEdit &edit) {
     if (p_ts_tree != nullptr) {
         // This just converts and relays the object coming from the cursor
@@ -232,9 +290,23 @@ void HighLighter::edit(const BufferEdit &edit) {
         ts_tree_edit(p_ts_tree, &ts_edit);
 
         // Accumulate the dirty line span until the next parse consumes it
-        if (edit.old_end.line != edit.new_end.line) {
-            m_edit_lines_shifted = true;
+        const auto delta = static_cast<int64_t>(edit.new_end.line) - static_cast<int64_t>(edit.old_end.line);
+        if (delta != 0) {
+            // The cached rows survive a line-count change as long as they can be realigned with it.
+            if (! shiftLineCache(edit)) {
+                m_edit_lines_shifted = true;
+            }
+
+            // The span the previous edits accumulated is expressed in the line numbering this edit
+            // just changed: move the ends sitting below the edit so they still point at their lines.
+            if (m_dirty_line_min != std::numeric_limits<uint32_t>::max() && m_dirty_line_min > edit.old_end.line) {
+                m_dirty_line_min = static_cast<uint32_t>(static_cast<int64_t>(m_dirty_line_min) + delta);
+            }
+            if (m_dirty_line_max > edit.old_end.line) {
+                m_dirty_line_max = static_cast<uint32_t>(static_cast<int64_t>(m_dirty_line_max) + delta);
+            }
         }
+
         m_dirty_line_min = std::min(m_dirty_line_min, edit.start.line);
         m_dirty_line_max = std::max({m_dirty_line_max, edit.old_end.line, edit.new_end.line});
         m_is_dirty = true;
@@ -259,17 +331,16 @@ void HighLighter::getParserCompletions(const AutoCompleteCallback &callback) {
     }
 }
 
-TokenId HighLighter::getHighLightAtPosition(const uint32_t line, const uint32_t column) const {
+std::span<const TokenId> HighLighter::getHighLightLine(const uint32_t line) const {
     if (m_high_light == HighLightId::None || p_ts_tree == nullptr || line >= m_cursor.getLineCount()) {
-        return TokenId::None;
+        return {};
     }
 
     if (line < m_cache_start_line || line >= m_cache_start_line + m_line_cache.size()) {
         updateCache(line);
     }
 
-    const auto &cells = m_line_cache[line - m_cache_start_line];
-    return column < cells.size() ? cells[column] : TokenId::None;
+    return m_line_cache[line - m_cache_start_line];
 }
 
 std::optional<std::u16string_view> HighLighter::readCallback(const uint32_t line, const uint32_t column) const {

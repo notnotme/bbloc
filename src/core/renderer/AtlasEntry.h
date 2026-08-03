@@ -19,12 +19,18 @@
 #ifndef ATLAS_ENTRY_H
 #define ATLAS_ENTRY_H
 
+#include <cstdint>
+
 
 /**
  * @brief Represents a single entry in the glyph texture atlas.
  *
  * This structure holds texture coordinates, dimensions, and bearing information
  * used for rendering glyphs.
+ *
+ * Coordinates and dimensions are bounded by the atlas texture, which is 255x255x255.
+ * Bearings only offset the quad on screen and never index the texture, so they are
+ * stored wide enough for the values a large font size produces.
  */
 struct AtlasEntry final {
     uint8_t texture_s;    ///< Horizontal starting UV coordinate (S).
@@ -32,8 +38,8 @@ struct AtlasEntry final {
     uint8_t layer;        ///< Layer index within the atlas texture.
     uint8_t width;        ///< Width of the glyph or sprite in pixels.
     uint8_t height;       ///< Height of the glyph or sprite in pixels.
-    int8_t bearing_x;     ///< Horizontal bearing (offset from origin).
-    int8_t bearing_y;     ///< Vertical bearing (offset from baseline).
+    int16_t bearing_x;    ///< Horizontal bearing (offset from origin).
+    int16_t bearing_y;    ///< Vertical bearing (offset from baseline).
 };
 
 

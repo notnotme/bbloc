@@ -9,8 +9,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_executable(bbloc
         src/core/base/Command.h
         src/core/cursor/buffer/LongestLineTracker.cpp
-        src/core/cursor/buffer/StringBuffer.cpp
-        src/core/cursor/buffer/VectorBuffer.cpp
         src/core/cursor/buffer/LineBuffer.cpp
         src/core/cursor/Cursor.cpp
         src/core/cursor/PromptCursor.cpp

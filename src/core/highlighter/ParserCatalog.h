@@ -30,9 +30,9 @@
 /**
  * @brief Static-only registry of the available language parsers.
  *
- * Houses the immutable descriptor table and builds compiled Parser instances from it.
- * Descriptors live in a function-local static, so no tree-sitter work happens at
- * static-initialization time.
+ * Houses the immutable descriptor table and the Parser instances compiled from it.
+ * Both live in function-local statics, so no tree-sitter work happens at
+ * static-initialization time and the queries are compiled only once per process.
  */
 class ParserCatalog final {
 public:
@@ -43,12 +43,16 @@ public:
     [[nodiscard]] static const std::unordered_map<HighLightId, ParserDescriptor> &getDescriptors();
 
     /**
-     * @brief Compiles a Parser for every registered descriptor.
+     * @brief Returns the compiled parsers, compiling them on the first call.
      *
-     * @return Map of compiled parsers indexed by highlighting mode.
+     * Compiling a highlight query walks the whole parse table of its language, so the parsers
+     * live in a function-local static shared by every HighLighter instead of being rebuilt per
+     * open buffer. Parser is immutable once built, only const accessors are ever called on it.
+     *
+     * @return Immutable map of compiled parsers indexed by highlighting mode.
      * @throws std::runtime_error If a highlight query fails to compile.
      */
-    [[nodiscard]] static std::unordered_map<HighLightId, Parser> createParsers();
+    [[nodiscard]] static const std::unordered_map<HighLightId, Parser> &getParsers();
 
     /**
      * @brief Finds the highlighting mode matching a file extension.

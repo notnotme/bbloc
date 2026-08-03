@@ -62,6 +62,16 @@ private:
     /** @brief Updates the buffer_index / buffer_count fields of every open context. */
     void refreshIndices();
 
+    /**
+     * @brief Builds a context wired to the shared runtime objects, without touching the open ones.
+     *
+     * Kept free of any bookkeeping so close() can use it too: the indices cannot be refreshed
+     * while the vector is momentarily empty, which is exactly when close() needs a fresh context.
+     *
+     * @return The newly built context, owned by the caller.
+     */
+    [[nodiscard]] std::unique_ptr<CursorContext> makeContext() const;
+
 public:
     /** @brief Deleted copy constructor. */
     CursorContextManager(const CursorContextManager &) = delete;

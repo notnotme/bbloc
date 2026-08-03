@@ -79,11 +79,15 @@ std::optional<std::u16string> ExecCommand::run(CursorContext &payload, const std
     }
     ifs.close();
 
+    // A script line may close the active buffer, destroying `payload`. The runner is owned by
+    // ApplicationWindow, so bind it once here instead of re-reading it through the payload per line.
+    auto &command_runner = payload.command_runner;
+
     ++m_recursion_depth;
     for (const auto &command : command_list) {
         // fixme?: At this point, any feedback needed will interrupt the command list execution
         // fixme!: This is not well tested at all.
-        payload.command_runner.runCommand(command, false);
+        command_runner.runCommand(command, false);
     }
     --m_recursion_depth;
 

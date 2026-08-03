@@ -19,6 +19,7 @@
 #ifndef UNDO_HISTORY_H
 #define UNDO_HISTORY_H
 
+#include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <memory>
@@ -33,7 +34,9 @@
  *
  * Snapshots are coalesced through a single boundary flag: a new snapshot is
  * pushed only when the history is at a boundary. Both stacks are capped at
- * the live capacity, dropping the oldest snapshot when full.
+ * the live capacity, dropping the oldest snapshot when full, and the characters
+ * they retain together are capped by MAX_HISTORY_CHARACTERS: a snapshot weighs
+ * the whole buffer, so a count cap alone cannot bound the memory used.
  */
 class UndoHistory final {
 public:
@@ -48,6 +51,9 @@ private:
     /** Default maximum number of snapshots kept in each stack. */
     static constexpr uint32_t DEFAULT_MAX_HISTORY_DEPTH = 64u;
 
+    /** Maximum number of characters retained by both stacks together (64 MiB of char16_t). */
+    static constexpr std::size_t MAX_HISTORY_CHARACTERS = 64u * 1024u * 1024u / sizeof(char16_t);
+
     /** Snapshots available for undo. */
     std::deque<Snapshot> m_undo_stack;
 
@@ -56,6 +62,9 @@ private:
 
     /** Shared CVar holding the maximum number of snapshots kept in each stack. */
     std::shared_ptr<CVarInt> m_max_undo;
+
+    /** Number of characters retained by both stacks together. */
+    std::size_t m_retained_characters;
 
     /** Flag indicating that the next edit must push a new snapshot. */
     bool m_at_boundary;
@@ -69,6 +78,22 @@ private:
      * @return The maximum number of snapshots kept in each stack, at least 1.
      */
     [[nodiscard]] uint32_t capacity() const;
+
+    /**
+     * @brief Drops the oldest snapshot of a stack and discounts the characters it retained.
+     *
+     * @param stack The stack to drop the front of; must not be empty.
+     */
+    void dropOldest(std::deque<Snapshot> &stack);
+
+    /**
+     * @brief Enforces both caps, dropping the oldest snapshots first.
+     *
+     * The count cap trims each stack independently. The character cap then drops the oldest undo
+     * snapshots, then the oldest redo ones, and always leaves one snapshot behind so an undo in
+     * the middle of an edit never silently becomes a no-op.
+     */
+    void trim();
 
 public:
     /** @brief Deleted copy constructor. */
@@ -98,11 +123,21 @@ public:
     /** @brief Returns true when the next edit must push a new snapshot. */
     [[nodiscard]] bool isAtBoundary() const;
 
+    /** @brief Returns true when the undo stack holds at least one snapshot. */
+    [[nodiscard]] bool canUndo() const;
+
+    /** @brief Returns true when the redo stack holds at least one snapshot. */
+    [[nodiscard]] bool canRedo() const;
+
     /**
      * @brief Pushes a snapshot onto the undo stack.
      *
-     * Clears the redo stack, drops the oldest snapshots past the current capacity,
+     * Clears the redo stack, drops the oldest snapshots past the current caps,
      * and clears the boundary flag.
+     *
+     * A snapshot repeating the text already on top of the undo stack is dropped instead of being
+     * retained: the two states are undistinguishable to undo, and keeping the older one keeps the
+     * cursor position undo must restore. The boundary is consumed either way.
      *
      * @param snapshot The snapshot to store.
      */

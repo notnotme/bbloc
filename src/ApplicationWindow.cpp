@@ -250,7 +250,8 @@ void ApplicationWindow::mainLoop() {
                     const auto is_chord = event.key.keysym.mod & (KMOD_CTRL | KMOD_LALT);
 
                     if (!is_chord) {
-                        // The bound command below may switch the active context; this reference is not used past it.
+                        // The prompt dispatches a command on Return, which can switch the active context
+                        // or close (and destroy) this one: re-read active() before touching it afterwards.
                         auto &context = m_context_manager.active();
                         bool consumed = false;
                         switch (context.focus_target) {
@@ -264,8 +265,9 @@ void ApplicationWindow::mainLoop() {
                             break;
                             case FocusTarget::Prompt:
                                 if (m_prompt.onKeyDown(context, m_prompt_state, event.key.keysym.sym, event.key.keysym.mod)) {
-                                    // If the view return true, then redraw the views
-                                    context.wants_redraw = true;
+                                    // If the view return true, then redraw the views.
+                                    // `context` may be gone by now (the prompt ran "buffer close"): flag the new active one.
+                                    m_context_manager.active().wants_redraw = true;
                                     consumed = true;
                                 }
                             break;
@@ -418,7 +420,10 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
     std::optional<std::u16string> result;
     // The context active when the command starts; the command itself may switch the active one.
     auto &context = m_context_manager.active();
-    const auto feedback_was_pending = context.command_feedback.has_value();
+    // Remember which feedback was pending, not merely that one was: a command replacing a pending
+    // feedback with its own must still refresh the prompt, and identity is the only way to see it.
+    const auto pending_feedback_id = context.command_feedback ? context.command_feedback->id : 0;
+    const auto feedback_was_pending = pending_feedback_id != 0;
     if (fromPrompt && feedback_was_pending) {
         // The prompt input answers the pending feedback instead of being a command.
         // Copy the feedback object so the string is still valid after reset is called.
@@ -469,7 +474,7 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
     } else if (active_context.command_feedback) {
         // A feedback pending before this call survives a bound command untouched:
         // the prompt already shows it. Only a newly requested feedback updates the prompt.
-        if (!feedback_was_pending) {
+        if (active_context.command_feedback->id != pending_feedback_id) {
             m_prompt_state.setRunningState(PromptState::RunningState::Running);
             resetPrompt(active_context.command_feedback->prompt_message);
 

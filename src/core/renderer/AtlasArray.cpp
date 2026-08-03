@@ -33,11 +33,11 @@ void AtlasArray::create() {
     // No-op
 }
 
-const AtlasEntry &AtlasArray::insert(const char16_t character, const uint32_t width, const uint32_t height, const int32_t bearingX, const int32_t bearingY) {
-    if (width > UINT8_MAX || height > UINT8_MAX
-        || bearingX < INT8_MIN || bearingX > INT8_MAX
-        || bearingY < INT8_MIN || bearingY > INT8_MAX) {
-        throw std::runtime_error("AtlasArray::insert Glyph does not fit the texture.");
+const AtlasEntry *AtlasArray::insert(const char16_t character, const uint32_t width, const uint32_t height, const int32_t bearingX, const int32_t bearingY) {
+    if (width > UINT8_MAX || height > UINT8_MAX) {
+        // The texture is UINT8_MAX wide and tall, a bigger glyph could never be recorded.
+        // Bearings are not constrained: they only offset the quad, they never index the texture.
+        return nullptr;
     }
 
     const auto glyph_width = static_cast<int32_t>(width);
@@ -53,20 +53,21 @@ const AtlasEntry &AtlasArray::insert(const char16_t character, const uint32_t wi
 
     // Check if fits in vertical axis
     if (m_next_character_y + glyph_height > UINT8_MAX) {
-        // Does not fit the vertical axis, increment Z and return to the top-left
-        m_next_character_x = 0;
-        m_next_character_y = 0;
-        m_max_row_height = 0;
-
-        ++m_character_layer;
-        if (m_character_layer >= UINT8_MAX) {
-            // For now, we just throw an exception.
+        if (m_character_layer + 1 >= UINT8_MAX) {
+            // For now, we just refuse the glyph, and the caller renders nothing for it.
+            // The insertion point is left untouched, so the atlas stays consistent.
             // If not lazy, implement this:
             // - reset the atlas with bigger values
             // - reset the texture and make it match the new atlas size (check if OpenGL support the new size/depth)
             // - discard the current frame and start a new one.
-            throw std::runtime_error("Not enough layers to render character.");
+            return nullptr;
         }
+
+        // Does not fit the vertical axis, increment Z and return to the top-left
+        m_next_character_x = 0;
+        m_next_character_y = 0;
+        m_max_row_height = 0;
+        ++m_character_layer;
     }
 
     // Generate the atlas entry
@@ -76,8 +77,8 @@ const AtlasEntry &AtlasArray::insert(const char16_t character, const uint32_t wi
         .layer = m_character_layer,
         .width = static_cast<uint8_t>(width),
         .height = static_cast<uint8_t>(height),
-        .bearing_x = static_cast<int8_t>(bearingX),
-        .bearing_y = static_cast<int8_t>(bearingY)
+        .bearing_x = static_cast<int16_t>(bearingX),
+        .bearing_y = static_cast<int16_t>(bearingY)
     };
 
     m_next_character_x += glyph_width;
@@ -93,7 +94,7 @@ const AtlasEntry &AtlasArray::insert(const char16_t character, const uint32_t wi
         m_ascii_present[character] = true;
         auto &slot = m_ascii_characters[character];
         slot = entry;
-        return slot;
+        return &slot;
     }
 
     const auto &[new_entry, success] = m_characters.insert({character, entry});
@@ -101,7 +102,19 @@ const AtlasEntry &AtlasArray::insert(const char16_t character, const uint32_t wi
         throw std::runtime_error("AtlasArray::insert: failed.");
     }
 
-    return new_entry->second;
+    return &new_entry->second;
+}
+
+void AtlasArray::insertBlank(const char16_t character) {
+    // A zero-sized entry draws nothing and needs no room in the texture.
+    constexpr auto blank_entry = AtlasEntry {};
+    if (character < ASCII_ENTRY_COUNT) {
+        m_ascii_characters[character] = blank_entry;
+        m_ascii_present[character] = true;
+        return;
+    }
+
+    m_characters[character] = blank_entry;
 }
 
 const AtlasEntry* AtlasArray::get(const char16_t character) const {

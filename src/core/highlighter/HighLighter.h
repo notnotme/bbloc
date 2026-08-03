@@ -21,8 +21,10 @@
 
 #include <functional>
 #include <optional>
+#include <span>
 #include <unordered_map>
 #include <string_view>
+#include <vector>
 
 #include <tree_sitter/api.h>
 
@@ -49,8 +51,8 @@ private:
     /** Reference to the cursor giving the text data to this highlighter */
     const Cursor &m_cursor;
 
-    /** Compiled parsers indexed by highlighting mode; each Parser owns its tree-sitter query. */
-    const std::unordered_map<HighLightId, Parser> m_parsers;
+    /** Process-wide compiled parsers indexed by highlighting mode, owned by ParserCatalog. */
+    const std::unordered_map<HighLightId, Parser> &m_parsers;
 
     /** The current active parser module, or nullptr. Is used only to avoid a map lookup for each character.  */
     const Parser *p_current_parser;
@@ -129,6 +131,19 @@ private:
      */
     void repaintChangedLines(TSTree *newTree);
 
+    /**
+     * @brief Realigns the cached rows with the buffer's new line structure after a line-count change.
+     *
+     * Mirrors the realignment LongestLineTracker::onEdit performs on its per-line metrics: the rows of
+     * the lines the edit removed are dropped, a blank row is opened for each line it added, and the
+     * window start follows an edit landing above it. The spliced rows all fall inside the accumulated
+     * dirty span, so the next parse repaints them through repaintChangedLines.
+     *
+     * @param edit The edit describing the line-count change, with a non-zero line delta.
+     * @return true when the cache was realigned, false when it is cheaper to drop and rebuild it.
+     */
+    [[nodiscard]] bool shiftLineCache(const BufferEdit &edit);
+
 public:
     /** @brief Deleted copy constructor. */
     HighLighter(const HighLighter &) = delete;
@@ -173,13 +188,17 @@ public:
     void edit(const BufferEdit &edit);
 
     /**
-     * @brief Retrieves the TokenId (syntax classification) at a specific position.
+     * @brief Retrieves the painted TokenId of every column of a line at once.
+     *
+     * Callers drawing a whole line should fetch the row once instead of querying each column:
+     * the mode, tree and cache-window checks are then paid once per line. The row may be shorter
+     * than the line (or empty), any column past its end is unpainted. The returned span points
+     * into the highlight cache and is invalidated by the next call touching it.
      *
      * @param line Line number (zero-based).
-     * @param column Column number (zero-based).
-     * @return TokenId describing the syntax element at that position.
+     * @return The painted TokenId per column, empty when the line carries no highlight.
      */
-    [[nodiscard]] TokenId getHighLightAtPosition(uint32_t line, uint32_t column) const;
+    [[nodiscard]] std::span<const TokenId> getHighLightLine(uint32_t line) const;
 
     /** @return The current highlight mode name (e.g., "cpp", "json"). */
     [[nodiscard]] std::string_view getModeString() const;

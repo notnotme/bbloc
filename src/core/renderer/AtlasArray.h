@@ -83,9 +83,20 @@ public:
      * @param height Height of the glyph in pixels.
      * @param bearingX Horizontal bearing (offset from origin).
      * @param bearingY Vertical bearing (offset from baseline).
-     * @return Reference to the inserted AtlasEntry.
+     * @return Pointer to the inserted AtlasEntry, or nullptr when the glyph is larger than the
+     *         texture or the atlas ran out of layers. Rendering an unstorable glyph is not fatal.
      */
-    [[nodiscard]] const AtlasEntry &insert(char16_t character, uint32_t width, uint32_t height, int32_t bearingX, int32_t bearingY);
+    [[nodiscard]] const AtlasEntry *insert(char16_t character, uint32_t width, uint32_t height, int32_t bearingX, int32_t bearingY);
+
+    /**
+     * @brief Records a zero-sized entry for a character the atlas could not store.
+     *
+     * Memoizes the failure, so the caller does not attempt to render the same glyph again
+     * on every frame. The entry is dropped by clearCharacters, like any other one.
+     *
+     * @param character The Unicode codepoint to mark as unrenderable.
+     */
+    void insertBlank(char16_t character);
 
     /**
      * @brief Retrieves a character entry from the atlas.
