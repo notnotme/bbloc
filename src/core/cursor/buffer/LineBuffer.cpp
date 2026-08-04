@@ -74,6 +74,10 @@ uint32_t LineBuffer::getLongestLineLength(const uint32_t tabWeight) const {
     return m_longest_line.getLongestLineLength(tabWeight);
 }
 
+uint32_t LineBuffer::getLineTabCount(const uint32_t line) const {
+    return m_longest_line.getLineTabCount(line);
+}
+
 uint32_t LineBuffer::detachedLengthBefore(const uint32_t line) const {
     return line > m_current_line_index ? static_cast<uint32_t>(m_current_line.length()) : 0;
 }

@@ -164,6 +164,10 @@ uint32_t Cursor::getLongestLineLength(const uint32_t tabWeight) const {
     return m_buffer->getLongestLineLength(tabWeight);
 }
 
+uint32_t Cursor::getLineTabCount(const uint32_t line) const {
+    return m_buffer->getLineTabCount(line);
+}
+
 std::u16string_view Cursor::getString() const {
     return m_buffer->getString(m_line);
 }

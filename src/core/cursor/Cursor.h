@@ -201,6 +201,16 @@ public:
      */
     [[nodiscard]] uint32_t getLongestLineLength(uint32_t tabWeight) const;
 
+    /**
+     * @brief Returns the number of tab characters in the given line.
+     *
+     * Read from the buffer's per-line metrics, without scanning the line.
+     *
+     * @param line The index of the line to query.
+     * @return The tab count of the line.
+     */
+    [[nodiscard]] uint32_t getLineTabCount(uint32_t line) const;
+
     /** @brief Returns the current line at the cursor line position (from column 0). */
     [[nodiscard]] std::u16string_view getString() const;
 

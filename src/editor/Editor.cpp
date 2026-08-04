@@ -198,7 +198,7 @@ void Editor::updateScroll(CursorContext &context, const ViewState &viewState, co
         const auto scroll_y = context.scroll.y;
         const auto cursor_string = context.cursor.getString();
         const auto cursor_string_to_indicator = cursor_string.substr(0, cursor_column);
-        const auto indicator_x = m_theme.measure(cursor_string_to_indicator, false);
+        const auto indicator_x = measureLineText(context, context.cursor.getLine(), cursor_string_to_indicator);
         const auto indicator_y = line_height * cursor_line;
 
         // Vertical scroll
@@ -224,6 +224,24 @@ void Editor::updateScroll(CursorContext &context, const ViewState &viewState, co
         context.scroll.x = std::clamp(scroll_x, 0, max_scroll_x < 0 ? 0 : max_scroll_x);
         context.scroll.y = std::clamp(scroll_y, 0, max_scroll_y < 0 ? 0 : max_scroll_y);
     }
+}
+
+int32_t Editor::measureLineText(const CursorContext &context, const uint32_t line, const std::u16string_view text) const {
+    const auto font_advance = m_theme.getFontAdvance();
+    const auto length = static_cast<int32_t>(text.length());
+
+    // Theme::measure(text, false) only deviates from length * advance on tabs, and the buffer
+    // tracks the tab count of every line: a tab-free line needs no walk at all
+    if (context.cursor.getLineTabCount(line) == 0) {
+        return length * font_advance;
+    }
+
+    // The per-line count covers the whole line, not the measured slice, so a tabby line still
+    // counts its tabs — O(length), but far cheaper than the per-character measure. Per-line
+    // prefix tab sums would make this O(1) too; not worth it while tabby lines stay rare.
+    const auto tab_count = static_cast<int32_t>(std::count(text.begin(), text.end(), u'\t'));
+    const auto tab_to_space = m_theme.getDimension(DimensionId::TabToSpace);
+    return (length + tab_count * (tab_to_space - 1)) * font_advance;
 }
 
 void Editor::drawBackground(QuadBuffer &quadBuffer, const ViewState &viewState, const int32_t marginWidth) const {
@@ -347,17 +365,17 @@ void Editor::drawText(QuadBuffer &quadBuffer, const CursorContext &context, cons
                 if (selected_range->line_start == line_index && selected_range->line_end == line_index) {
                     // The selection start / end on the same line. Select only a range of text.
                     const auto selected_text = string.substr(selected_range->column_start, selected_range->column_end - selected_range->column_start);
-                    const auto selected_text_width = m_theme.measure(selected_text, false);
-                    const auto selection_start_x = m_theme.measure(string.substr(0, selected_range->column_start), false);
+                    const auto selected_text_width = measureLineText(context, line_index, selected_text);
+                    const auto selection_start_x = measureLineText(context, line_index, string.substr(0, selected_range->column_start));
                     drawQuad(quadBuffer, cursor_text_start_x - scrollX + selection_start_x, pen_position_y - line_height - font_descender, selected_text_width, line_height, selected_background_color);
                 } else if (line_index == selected_range->line_start) {
                     // First line of selected text, the selection starts at column until the end of the text area.
-                    const auto selection_start_x = m_theme.measure(string.substr(0, selected_range->column_start), false);
+                    const auto selection_start_x = measureLineText(context, line_index, string.substr(0, selected_range->column_start));
                     drawQuad(quadBuffer, cursor_text_start_x - scrollX + selection_start_x, pen_position_y - line_height - font_descender, width - selection_start_x, line_height, selected_background_color);
                 } else if (line_index == selected_range->line_end) {
                     // Last line of selected text, the selection starts at the margin border, until the end column.
                     const auto selected_text = string.substr(0, selected_range->column_end);
-                    const auto selected_text_width = m_theme.measure(selected_text, false);
+                    const auto selected_text_width = measureLineText(context, line_index, selected_text);
                     drawQuad(quadBuffer, cursor_text_start_x - scrollX, pen_position_y - line_height - font_descender, selected_text_width, line_height, selected_background_color);
                 } else if (line_index > selected_range->line_start && line_index < selected_range->line_end) {
                     // In between two selected lines, the selection takes the whole width
@@ -365,11 +383,28 @@ void Editor::drawText(QuadBuffer &quadBuffer, const CursorContext &context, cons
                 }
             }
 
-            // Start drawing a new line, starting from the first character visible in the viewport, until the end of the string
-            auto cursor_position_x = cursor_text_start_x - scrollX;
-            pen_position_x = cursor_position_x;
+            // Start drawing a new line, starting from the first character visible in the viewport, until the end of the string.
+            // Columns scrolled out on the left cannot produce quads, and every character before the
+            // first tab is exactly one font advance wide: jump the walk straight to the last column
+            // that still ends left of the viewport, capped at the first tab so tab widths keep being
+            // measured by the walk itself. The emitted quads are identical to a walk from column 0.
+            auto start_column = 0;
+            if (const auto scrolled_out_width = scrollX - marginWidth - border_size; scrolled_out_width > font_advance) {
+                start_column = scrolled_out_width / font_advance - 1;
+                if (context.cursor.getLineTabCount(line_index) > 0) {
+                    // The line holds tabs: the search stops at the first one. Tab-free lines skip
+                    // it entirely, keeping the whole jump independent of the line length.
+                    if (const auto first_tab = string.substr(0, start_column).find(u'\t'); first_tab != std::u16string_view::npos) {
+                        start_column = static_cast<int32_t>(first_tab);
+                    }
+                }
+            }
 
-            for (auto character_column = 0; character_column < string_length; ++character_column) {
+            // The skipped prefix is tab-free, so its width (and the cursor offset inside it) is a plain multiply
+            auto cursor_position_x = cursor_text_start_x - scrollX + std::min(cursor_column, start_column) * font_advance;
+            pen_position_x = cursor_text_start_x - scrollX + start_column * font_advance;
+
+            for (auto character_column = start_column; character_column < string_length; ++character_column) {
                 if (pen_position_x > position_x + width) {
                     // Nothing more is visible
                     break;

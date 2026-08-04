@@ -66,6 +66,14 @@ public:
     [[nodiscard]] virtual uint32_t getLongestLineLength(uint32_t tabWeight) const = 0;
 
     /**
+     * @brief Returns the number of tab characters in the given line.
+     *
+     * @param line The line number to query.
+     * @return The tab count of the line.
+     */
+    [[nodiscard]] virtual uint32_t getLineTabCount(uint32_t line) const = 0;
+
+    /**
      * @brief Return the offset of a byte inside the buffer, from a line, column coordinates.
      *
      * @param line The line index of the wanted offset.

@@ -101,6 +101,16 @@ public:
      * @return The weighted length of the longest line, in characters.
      */
     [[nodiscard]] uint32_t getLongestLineLength(uint32_t tabWeight) const;
+
+    /**
+     * @brief Returns the tab count of a single line.
+     *
+     * Read from the per-line metrics kept updated by onEdit, so no character scan happens.
+     *
+     * @param line The line index to query.
+     * @return The number of tab characters in the line.
+     */
+    [[nodiscard]] uint32_t getLineTabCount(uint32_t line) const;
 };
 
 

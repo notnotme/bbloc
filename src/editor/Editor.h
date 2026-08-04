@@ -53,6 +53,21 @@ private:
     void registerShowScrollbarCVar() const;
 
     /**
+     * @brief Measures text belonging to a buffer line, in pixels.
+     *
+     * Returns exactly what Theme::measure(text, false) returns — the callers position the cursor
+     * indicator and the selection quads with it, so the two must never disagree by a pixel — but
+     * uses the per-line tab count the buffer already tracks: a tab-free line (the common case)
+     * resolves in O(1) instead of walking what can be a multi-million character prefix per frame.
+     *
+     * @param context A reference to the cursor context.
+     * @param line The line the text belongs to, to query its tab count.
+     * @param text The slice of the line to measure.
+     * @return The measured width in pixels.
+     */
+    [[nodiscard]] int32_t measureLineText(const CursorContext &context, uint32_t line, std::u16string_view text) const;
+
+    /**
      * @brief Computes the effective scrollbar sizes for the current frame.
      *
      * A bar size is 0 when the scrollbars are disabled or when the content fits on that axis.

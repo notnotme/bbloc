@@ -110,6 +110,10 @@ uint32_t LongestLineTracker::getLongestLineLength(const uint32_t tabWeight) cons
     return m_max_length;
 }
 
+uint32_t LongestLineTracker::getLineTabCount(const uint32_t line) const {
+    return m_metrics[line].tab_count;
+}
+
 void LongestLineTracker::rescan() const {
     m_max_line = 0;
     m_max_length = 0;
