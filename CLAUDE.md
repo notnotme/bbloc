@@ -44,7 +44,7 @@ Single-threaded SDL event loop. `ApplicationWindow` (src/ApplicationWindow.cpp) 
 
 **Text encoding**: UTF-16 (`std::u16string`) internally everywhere; UTF-8 only at file I/O boundaries, converted with utfcpp.
 
-`docs/class_diagram.md` contains mermaid class diagrams of these subsystems.
+`docs/class_diagram.md` contains mermaid class diagrams of these subsystems. It must be updated before each commit so it reflects any classes or relationships the commit adds, removes, or changes.
 
 ## Conventions
 

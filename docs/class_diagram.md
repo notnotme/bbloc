@@ -74,11 +74,15 @@ classDiagram
     class LineBuffer {
         note: "single contiguous u16string, current line extracted for fast edits"
     }
+    class LongestLineTracker {
+        note: "incrementally tracks the longest line of a TextBuffer"
+    }
     class BufferEdit {
         <<struct>>
     }
 
     TextBuffer <|-- LineBuffer
+    LineBuffer *-- LongestLineTracker
     TextBuffer ..> BufferEdit : produces
 ```
 
@@ -173,8 +177,13 @@ classDiagram
     class QuadVertex {
         <<struct>>
     }
+    class Shader {
+        <<free functions>>
+        note: "compileShader / checkProgram helpers"
+    }
 
     QuadProgram ..> QuadBuffer : binds & draws
+    QuadProgram ..> Shader : uses
     QuadBuffer *-- QuadVertex
     AtlasArray *-- AtlasEntry
     AtlasArray ..> QuadTexture : writes via blit
@@ -224,6 +233,9 @@ classDiagram
     class Editor
     class InfoBar
     class Prompt
+    class QuadBuffer {
+        note: "single shared instance, passed to render()"
+    }
 
     ViewState <|-- PromptState
     View~TState~ <|-- Editor
@@ -232,6 +244,7 @@ classDiagram
     Editor ..> ViewState : TState
     InfoBar ..> ViewState : TState
     Prompt ..> PromptState : TState
+    View~TState~ ..> QuadBuffer : stages one batch per render()
 ```
 
 ---
@@ -263,6 +276,9 @@ classDiagram
         note: "search / find_next / find_prev / replace / replace_all"
     }
     class GotoLineCommand
+    class BufferCommand {
+        note: "buffer next / prev / close / name, via CursorContextManager"
+    }
 
     Command~CursorContext~ <|-- BindCommand
     Command~CursorContext~ <|-- MoveCursorCommand
@@ -282,6 +298,7 @@ classDiagram
     Command~CursorContext~ <|-- RedoCommand
     Command~CursorContext~ <|-- SearchCommand
     Command~CursorContext~ <|-- GotoLineCommand
+    Command~CursorContext~ <|-- BufferCommand
 ```
 
 ---
@@ -300,9 +317,15 @@ classDiagram
         <<global registry>>
     }
     class Theme
+    class CursorContextManager {
+        note: "owns all open contexts, one active; never empty"
+    }
     class CursorContext {
         <<runtime struct>>
+        note: "one per open file; buffer_index / buffer_count"
     }
+    class Cursor
+    class PromptCursor
     class ScrollState {
         <<struct>>
         note: "scroll x/y + follow_indicator"
@@ -339,10 +362,15 @@ classDiagram
     ApplicationWindow --|> CommandRunner
     ApplicationWindow *-- CommandManager
     ApplicationWindow *-- Theme
-    ApplicationWindow *-- CursorContext
+    ApplicationWindow *-- PromptCursor
+    ApplicationWindow *-- CursorContextManager
     ApplicationWindow *-- View~TState~
     CommandManager o-- Command~T~
-    CursorContext *-- TextBuffer
+    CursorContextManager *-- CursorContext : one per open file
+    CursorContext *-- Cursor
+    CursorContext o-- PromptCursor : shared ref
+    CursorContext o-- Theme : shared ref
+    Cursor *-- TextBuffer
     CursorContext *-- HighLighter
     CursorContext *-- ScrollState
     CursorContext *-- ColumnStick
