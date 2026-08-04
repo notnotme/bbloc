@@ -55,6 +55,9 @@ private:
     /** Names of commands excluded from prompt auto-completion. */
     std::unordered_set<std::u16string> m_hidden_commands;
 
+    /** Names of commands a key binding may run while the prompt is active. Transparent, queried with tokenized views. */
+    std::unordered_set<std::u16string, U16StringViewHash, std::equal_to<>> m_prompt_allowed_commands;
+
     /** The CVarCommand */
     std::shared_ptr<CVarCommand> m_cvar_command;
 
@@ -77,11 +80,24 @@ public:
      * Hidden commands only make sense when bound to a keystroke: they stay executable and are still
      * suggested when completions include hidden names (e.g. the command argument of bind).
      *
+     * Commands allowed during the prompt are the prompt's own machinery (cursor moves, history,
+     * completion), reached through fall-through key bindings: anything else fired by a binding
+     * while the prompt awaits input would evict a pending question or edit the buffer behind it.
+     *
      * @param name Command name (must be unique).
      * @param command The command to register.
      * @param hidden If true, the command is excluded from prompt auto-completion.
+     * @param allowedDuringPrompt If true, a key binding may run the command while the prompt is active.
      */
-    void registerCommand(std::u16string_view name, std::shared_ptr<Command<CursorContext>> command, bool hidden) override;
+    void registerCommand(std::u16string_view name, std::shared_ptr<Command<CursorContext>> command, bool hidden, bool allowedDuringPrompt) override;
+
+    /**
+     * @brief Tells whether a key binding may run the named command while the prompt is active.
+     *
+     * @param name The command name, as tokenized from the bound command string.
+     * @return true when the command was registered as allowed during the prompt.
+     */
+    [[nodiscard]] bool isAllowedDuringPrompt(std::u16string_view name) const;
 
     /**
      * @brief Registers a new configuration variable (CVar).

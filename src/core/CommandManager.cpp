@@ -30,7 +30,7 @@ CommandManager::CommandManager()
     m_commands.insert({ u"cvar", m_cvar_command });
 }
 
-void CommandManager::registerCommand(const std::u16string_view name, std::shared_ptr<Command<CursorContext>> command, const bool hidden) {
+void CommandManager::registerCommand(const std::u16string_view name, std::shared_ptr<Command<CursorContext>> command, const bool hidden, const bool allowedDuringPrompt) {
     const auto &[new_entry, success] = m_commands.insert({ std::u16string(name), std::move(command) });
     if (!success) {
         throw std::runtime_error(std::string("Command already registered: ").append(utf8::utf16to8(name)));
@@ -39,6 +39,14 @@ void CommandManager::registerCommand(const std::u16string_view name, std::shared
     if (hidden) {
         m_hidden_commands.emplace(name);
     }
+
+    if (allowedDuringPrompt) {
+        m_prompt_allowed_commands.emplace(name);
+    }
+}
+
+bool CommandManager::isAllowedDuringPrompt(const std::u16string_view name) const {
+    return m_prompt_allowed_commands.contains(name);
 }
 
 void CommandManager::registerCvar(const std::u16string_view name, const std::shared_ptr<CVar> cvar, const CVarCallback &callback) {

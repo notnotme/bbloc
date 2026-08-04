@@ -169,30 +169,30 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
         // Re-count matches for the stored term in place so the indicator reflects the new mode immediately.
         SearchCommand::refreshMatchStats(m_context_manager.active(), m_search_case_sensitive->m_value);
     });
-    m_command_manager.registerCommand(u"quit", std::make_shared<QuitCommand>(m_context_manager), false);
-    m_command_manager.registerCommand(u"open", std::make_shared<OpenFileCommand>(m_context_manager), false);
-    m_command_manager.registerCommand(u"buffer", std::make_shared<BufferCommand>(m_context_manager), false);
-    m_command_manager.registerCommand(u"save", std::make_shared<SaveFileCommand>(), false);
-    m_command_manager.registerCommand(u"reset_draw_time", std::make_shared<ResetCVarFloatCommand>(m_draw_time), false);
-    m_command_manager.registerCommand(u"reset_command_time", std::make_shared<ResetCVarFloatCommand>(m_command_time), false);
-    m_command_manager.registerCommand(u"set_font_size", std::make_shared<FontSizeCommand>(), false);
-    m_command_manager.registerCommand(u"set_hl_mode", std::make_shared<SetHighLightCommand>(), false);
-    m_command_manager.registerCommand(u"bind", m_bind_command, false);
-    m_command_manager.registerCommand(u"activate_prompt", std::make_shared<ActivatePromptCommand>(m_prompt_state), true);
-    m_command_manager.registerCommand(u"copy", std::make_shared<CopyTextCommand>(), false);
-    m_command_manager.registerCommand(u"paste", std::make_shared<PasteTextCommand>(), false);
-    m_command_manager.registerCommand(u"cut", std::make_shared<CutTextCommand>(), false);
-    m_command_manager.registerCommand(u"undo", std::make_shared<UndoCommand>(), false);
-    m_command_manager.registerCommand(u"redo", std::make_shared<RedoCommand>(), false);
-    m_command_manager.registerCommand(u"move", std::make_shared<MoveCursorCommand>(m_prompt_state), false);
-    m_command_manager.registerCommand(u"goto_line", std::make_shared<GotoLineCommand>(), false);
-    m_command_manager.registerCommand(u"search", std::make_shared<SearchCommand>(SearchCommand::Action::SEARCH, m_search_case_sensitive), false);
-    m_command_manager.registerCommand(u"find_next", std::make_shared<SearchCommand>(SearchCommand::Action::FIND_NEXT, m_search_case_sensitive), false);
-    m_command_manager.registerCommand(u"find_prev", std::make_shared<SearchCommand>(SearchCommand::Action::FIND_PREV, m_search_case_sensitive), false);
-    m_command_manager.registerCommand(u"replace", std::make_shared<SearchCommand>(SearchCommand::Action::REPLACE, m_search_case_sensitive), false);
-    m_command_manager.registerCommand(u"replace_all", std::make_shared<SearchCommand>(SearchCommand::Action::REPLACE_ALL, m_search_case_sensitive), false);
-    m_command_manager.registerCommand(u"exec", std::make_shared<ExecCommand>(), false);
-    m_command_manager.registerCommand(u"auto_complete", std::make_shared<AutoCompleteCommand>(m_prompt_state), true);
+    m_command_manager.registerCommand(u"quit", std::make_shared<QuitCommand>(m_context_manager), false, false);
+    m_command_manager.registerCommand(u"open", std::make_shared<OpenFileCommand>(m_context_manager), false, false);
+    m_command_manager.registerCommand(u"buffer", std::make_shared<BufferCommand>(m_context_manager), false, false);
+    m_command_manager.registerCommand(u"save", std::make_shared<SaveFileCommand>(), false, false);
+    m_command_manager.registerCommand(u"reset_draw_time", std::make_shared<ResetCVarFloatCommand>(m_draw_time), false, false);
+    m_command_manager.registerCommand(u"reset_command_time", std::make_shared<ResetCVarFloatCommand>(m_command_time), false, false);
+    m_command_manager.registerCommand(u"set_font_size", std::make_shared<FontSizeCommand>(), false, false);
+    m_command_manager.registerCommand(u"set_hl_mode", std::make_shared<SetHighLightCommand>(), false, false);
+    m_command_manager.registerCommand(u"bind", m_bind_command, false, false);
+    m_command_manager.registerCommand(u"activate_prompt", std::make_shared<ActivatePromptCommand>(m_prompt_state), true, false);
+    m_command_manager.registerCommand(u"copy", std::make_shared<CopyTextCommand>(), false, false);
+    m_command_manager.registerCommand(u"paste", std::make_shared<PasteTextCommand>(), false, false);
+    m_command_manager.registerCommand(u"cut", std::make_shared<CutTextCommand>(), false, false);
+    m_command_manager.registerCommand(u"undo", std::make_shared<UndoCommand>(), false, false);
+    m_command_manager.registerCommand(u"redo", std::make_shared<RedoCommand>(), false, false);
+    m_command_manager.registerCommand(u"move", std::make_shared<MoveCursorCommand>(m_prompt_state), false, true);
+    m_command_manager.registerCommand(u"goto_line", std::make_shared<GotoLineCommand>(), false, false);
+    m_command_manager.registerCommand(u"search", std::make_shared<SearchCommand>(SearchCommand::Action::SEARCH, m_search_case_sensitive), false, false);
+    m_command_manager.registerCommand(u"find_next", std::make_shared<SearchCommand>(SearchCommand::Action::FIND_NEXT, m_search_case_sensitive), false, false);
+    m_command_manager.registerCommand(u"find_prev", std::make_shared<SearchCommand>(SearchCommand::Action::FIND_PREV, m_search_case_sensitive), false, false);
+    m_command_manager.registerCommand(u"replace", std::make_shared<SearchCommand>(SearchCommand::Action::REPLACE, m_search_case_sensitive), false, false);
+    m_command_manager.registerCommand(u"replace_all", std::make_shared<SearchCommand>(SearchCommand::Action::REPLACE_ALL, m_search_case_sensitive), false, false);
+    m_command_manager.registerCommand(u"exec", std::make_shared<ExecCommand>(), false, false);
+    m_command_manager.registerCommand(u"auto_complete", std::make_shared<AutoCompleteCommand>(m_prompt_state), true, true);
 
     // Don't run it "from prompt", so its not added to history
     runCommand(std::u16string(u"exec ").append(utf8::utf8to16(path)).append(u"autoexec"), false);
@@ -517,6 +517,18 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
         auto tokens = std::move(m_token_scratch);
         CommandManager::tokenize(command, tokens);
         if (tokens.empty()) {
+            m_token_scratch = std::move(tokens);
+            return false;
+        }
+
+        // An active prompt (the user typing a command, or a pending feedback question) is modal for
+        // key bindings: running a bound command here could evict the question through the message
+        // branch below, edit the buffer behind it, or steal the focus. Drop the command before it
+        // runs, without touching the prompt, the feedback or the focus. Prompt input itself
+        // (fromPrompt) and the commands the prompt machinery relies on stay executable; the mouse
+        // side already preserves the interaction by never moving the keyboard focus.
+        const auto prompt_is_active = context.focus_target == FocusTarget::Prompt || feedback_was_pending;
+        if (!fromPrompt && prompt_is_active && !m_command_manager.isAllowedDuringPrompt(tokens[0])) {
             m_token_scratch = std::move(tokens);
             return false;
         }

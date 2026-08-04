@@ -172,8 +172,13 @@ private:
     /**
      * @brief Run the said command.
      *
+     * While the prompt is active (focused, or holding a pending feedback question), key-bound
+     * commands not registered as allowed during the prompt are silently dropped, so a shortcut
+     * cannot evict the interaction. Prompt input (fromPrompt) is never dropped.
+     *
      * @param command The command string to rexecute by m_command_manager.
      * @param fromPrompt If the command is running from a direct prompt input.
+     * @return true when a command ran, false when the input was empty or dropped by the prompt gate.
      */
     bool runCommand(std::u16string_view command, bool fromPrompt) override;
 
