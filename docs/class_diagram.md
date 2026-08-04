@@ -262,7 +262,9 @@ classDiagram
     class ActivatePromptCommand
     class FontSizeCommand
     class ResetCVarFloatCommand
-    class OpenFileCommand
+    class OpenFileCommand {
+        note: "activates the existing buffer when the file is already open, via CursorContextManager"
+    }
     class SaveFileCommand
     class ExecCommand
     class QuitCommand {

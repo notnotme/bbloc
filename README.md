@@ -19,7 +19,7 @@ bbloc is a minimalist text editor developed in C++ using SDL2, OpenGL, glad, Fre
 
 - **Syntax Highlighting**: Built on tree-sitter for C++, JSON, and INI syntax highlighting (more to come)
 - **Command-Driven Interface**: Execute operations via text commands with auto-completion
-- **Multiple Buffers**: Open several files at once and switch between them with the `buffer` command
+- **Multiple Buffers**: Open several files at once and switch between them with the `buffer` command; opening an already-open file switches to its buffer instead of loading a second copy
 - **Real-Time Configuration**: Change colors, dimensions, and settings at runtime
 - **Customizable Key Bindings**: Rebind any key combination to commands
 
@@ -211,7 +211,7 @@ ApplicationWindow
 ### File Operations
 | Command | Arguments | Description |
 |---------|-----------|-------------|
-| `open <filename>` | filename | Open file in editor, sets highlight mode by extension (prompts for the path when bound to a key); opens a new buffer unless the active one is untouched |
+| `open <filename>` | filename | Open file in editor, sets highlight mode by extension (prompts for the path when bound to a key); opens a new buffer unless the active one is untouched, and switches to the existing buffer when the file is already open |
 | `buffer <next\|prev\|close [-f]\|name>` | action or buffer name | Cycle through the open buffers, close the active one (asks confirmation on unsaved changes, `-f` skips it), or switch to a buffer by name |
 | `save <filename> -f` | filename, -f | Save buffer with optional overwrite flag (prompts for a name when the buffer has none and it is bound to a key) |
 | `quit [-f]` | -f | Exit application (asks confirmation when any buffer has unsaved changes, `-f` skips it) |

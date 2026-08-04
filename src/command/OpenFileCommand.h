@@ -19,6 +19,8 @@
 #ifndef OPEN_FILE_COMMAND_H
 #define OPEN_FILE_COMMAND_H
 
+#include <cstddef>
+#include <optional>
 #include <span>
 #include <string>
 
@@ -37,11 +39,25 @@
  * for existing files in the filesystem.
  * A file loads into the active context when it is pristine (no name, empty buffer);
  * otherwise it opens in its own new context, which becomes the active one.
+ * A file already open in another context is activated instead of loaded again,
+ * so the same file never lives in two diverging buffers.
  */
 class OpenFileCommand final : public Command<CursorContext> {
 private:
     /** Reference to the manager owning the open cursor contexts. */
     CursorContextManager &m_context_manager;
+
+    /**
+     * @brief Finds the open context already holding the file at the given path.
+     *
+     * Names are stored as typed, so an exact string match is tried first; the paths
+     * are then compared in weakly canonical form, so "./a.txt" and "a.txt" name the
+     * same file. When canonicalization fails, only the exact spelling can match.
+     *
+     * @param path UTF-8 encoded path of the file to look up.
+     * @return The index of the matching context, or std::nullopt when none holds it.
+     */
+    [[nodiscard]] std::optional<size_t> findOpenContext(const std::string &path) const;
 
     /**
      * @brief Reads the file at the given path and validates its encoding.

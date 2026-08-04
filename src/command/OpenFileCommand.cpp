@@ -19,6 +19,7 @@
 #include "OpenFileCommand.h"
 
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <iterator>
 #include <system_error>
@@ -60,9 +61,22 @@ std::optional<std::u16string> OpenFileCommand::run(CursorContext &payload, const
         return u"Usage: open <filename>";
     }
 
-    // Get the path of the file and read it fully before touching any buffer,
-    // so a failed load leaves no half-open buffer behind.
     const auto path = utf8::utf16to8(args[0]);
+
+    // A file already open in another context is activated instead of loaded again:
+    // a second live copy of the same file would silently diverge from the first.
+    // The existing buffer keeps its state untouched, and no new context is created.
+    if (const auto existing_index = findOpenContext(path)) {
+        m_context_manager.activate(*existing_index);
+
+        // Report the switch the same way the buffer command does.
+        const auto &context = m_context_manager.active();
+        payload.wants_redraw = true;
+        return utf8::utf8to16(std::format("buffer {}/{}: {}", context.buffer_index, context.buffer_count, context.cursor.getName()));
+    }
+
+    // Read the file fully before touching any buffer,
+    // so a failed load leaves no half-open buffer behind.
     auto content = std::u16string();
     if (auto error = readFile(path, content)) {
         return error;
@@ -86,6 +100,34 @@ std::optional<std::u16string> OpenFileCommand::run(CursorContext &payload, const
 
     // In case the command is bound to a key, it will eventually needs a redraw the views.
     payload.wants_redraw = true;
+    return std::nullopt;
+}
+
+std::optional<size_t> OpenFileCommand::findOpenContext(const std::string &path) const {
+    // Resolve the requested path once; the per-context resolution happens in the loop.
+    auto path_error = std::error_code();
+    const auto canonical_path = std::filesystem::weakly_canonical(path, path_error);
+
+    for (size_t index = 0; index < m_context_manager.getCount(); ++index) {
+        const auto name = m_context_manager.get(index).cursor.getName();
+        if (name.empty()) {
+            // A scratch buffer holds no file
+            continue;
+        }
+
+        if (name == path) {
+            return index;
+        }
+
+        // Compare full canonical paths, so "./a.txt" and "a.txt" name the same file.
+        // On resolution failure, treat the paths as different: the exact match above already ran.
+        auto name_error = std::error_code();
+        const auto canonical_name = std::filesystem::weakly_canonical(name, name_error);
+        if (!path_error && !name_error && canonical_name == canonical_path) {
+            return index;
+        }
+    }
+
     return std::nullopt;
 }
 
