@@ -645,12 +645,9 @@ void Editor::placeCursorAtPixel(CursorContext &context, const ViewState &viewSta
 }
 
 void Editor::onMouseDown(CursorContext &context, ViewState &viewState, const int32_t x, const int32_t y) {
-    // A click always claims the input focus back for the editor (e.g. away from the prompt)
-    if (context.focus_target != FocusTarget::Editor) {
-        context.focus_target = FocusTarget::Editor;
-        context.wants_redraw = true;
-    }
-
+    // The mouse deliberately leaves the keyboard focus untouched: it only manipulates buffer state
+    // (caret, selection, scroll), so a pending prompt interaction survives while the user inspects
+    // the buffer before answering.
     const auto metrics = computeFrameMetrics(context, viewState);
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
     const auto line_height = m_theme.getLineHeight();

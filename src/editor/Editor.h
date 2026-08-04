@@ -301,7 +301,8 @@ public:
      *
      * A press on a scrollbar thumb starts a thumb drag; a press on a scrollbar track jumps the
      * scroll by one page toward the click. Any other press places the caret at the clicked
-     * character, disarms the selection, focuses the editor and starts a text-selection drag.
+     * character, disarms the selection and starts a text-selection drag. The keyboard focus is
+     * left untouched, so a pending prompt interaction survives mouse use.
      *
      * @param context Reference to the cursor context.
      * @param viewState State of the editor view.
