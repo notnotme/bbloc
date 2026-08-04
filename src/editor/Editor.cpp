@@ -32,33 +32,27 @@
 Editor::Editor(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram)
     : View(commandController, theme, quadProgram),
       m_is_tab_to_space(std::make_shared<CVarBool>(true)),
-      m_show_scrollbar(std::make_shared<CVarBool>(true)) {
+      m_show_scrollbar(std::make_shared<CVarBool>(true)),
+      m_mouse_drag(MouseDrag::None),
+      m_drag_grab(0),
+      m_drag_scroll(0),
+      m_drag_line(0),
+      m_drag_column(0) {
     // Register cvars
     registerTabToSpaceCVar();
     registerShowScrollbarCVar();
 }
 
 void Editor::render(CursorContext &context, ViewState &viewState, QuadBuffer &quadBuffer, const float dt) {
-    // Need some variable
-    const auto padding_width = m_theme.getDimension(DimensionId::PaddingWidth);
+    // The margin width, the longest line and the scrollbar sizes are invariant for the whole
+    // frame, and measuring the longest line rescans every line metric when it is dirty: resolve
+    // everything once and pass it down. The mouse handlers resolve the same metrics.
+    const auto metrics = computeFrameMetrics(context, viewState);
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
-    const auto cursor_line_count = static_cast<int32_t>(context.cursor.getLineCount());
-
-    // The greatest line number is as wide as the line count has digits
-    auto line_count_digits = 0;
-    for (auto remainder = cursor_line_count; remainder > 0 || line_count_digits == 0; remainder /= 10) {
-        ++line_count_digits;
-    }
-    const auto cursor_line_count_width = line_count_digits * m_theme.getFontAdvance();
-    const auto margin_width = padding_width + cursor_line_count_width + padding_width;
-
-    // The longest line and the scrollbar sizes are invariant for the whole frame, and measuring the
-    // longest line rescans every line metric when it is dirty: resolve both once and pass them down.
-    const auto tab_to_space = static_cast<uint32_t>(m_theme.getDimension(DimensionId::TabToSpace));
-    const auto longest_line_length = context.cursor.getLongestLineLength(tab_to_space);
-    auto v_bar_width = 0;
-    auto h_bar_height = 0;
-    computeScrollbarSizes(context, viewState, margin_width, longest_line_length, v_bar_width, h_bar_height);
+    const auto margin_width = metrics.margin_width;
+    const auto v_bar_width = metrics.v_bar_width;
+    const auto h_bar_height = metrics.h_bar_height;
+    const auto longest_line_length = metrics.longest_line_length;
 
     // Follow or scroll to the said position. scrollX and scrollY and followIndicator are eventually updated outside (by reference)
     updateScroll(context, viewState, margin_width, v_bar_width, h_bar_height, longest_line_length);
@@ -70,7 +64,7 @@ void Editor::render(CursorContext &context, ViewState &viewState, QuadBuffer &qu
     // Begin the editor batch, keep a variable to know how many quads we have before the cursor text
     const auto batch_start = quadBuffer.beginBatch(ApplicationWindow::EDITOR_DEFAULT_QUAD_COUNT);
     drawBackground(quadBuffer, viewState, margin_width);
-    drawMarginText(quadBuffer, context, viewState, cursor_line_count_width, scroll_y);
+    drawMarginText(quadBuffer, context, viewState, metrics.line_count_width, scroll_y);
     drawScrollbars(quadBuffer, context, viewState, margin_width, v_bar_width, h_bar_height, longest_line_length);
 
     // Read mid-batch on purpose: this is the split point between the two draws below.
@@ -506,9 +500,6 @@ void Editor::drawScrollbars(QuadBuffer &quadBuffer, const CursorContext &context
     const auto width = viewState.getWidth();
     const auto height = viewState.getHeight();
 
-    // Minimum thumb size in pixels, so it stays visible on huge contents
-    constexpr auto MIN_THUMB_SIZE = int64_t{16};
-
     if (vBarWidth > 0) {
         // The track is drawn full-height on purpose: it also covers the corner square when both bars are visible
         drawQuad(quadBuffer, position_x + width - vBarWidth, position_y, vBarWidth, height, track_color);
@@ -516,11 +507,8 @@ void Editor::drawScrollbars(QuadBuffer &quadBuffer, const CursorContext &context
         // Thumb size and position are proportional to the visible / content heights (64-bit intermediates)
         const auto view_h = static_cast<int64_t>(height - hBarHeight);
         if (view_h > 0) {
-            const auto content_h = std::max(int64_t{1}, static_cast<int64_t>(context.cursor.getLineCount()) * line_height);
-            const auto thumb_h = std::min(view_h, std::max(MIN_THUMB_SIZE, view_h * view_h / content_h));
-            const auto thumb_y = position_y + static_cast<int64_t>(context.scroll.y) * (view_h - thumb_h) / std::max(int64_t{1}, content_h - view_h);
-            const auto clamped_thumb_y = std::clamp(thumb_y, static_cast<int64_t>(position_y), position_y + view_h - thumb_h);
-            drawQuad(quadBuffer, position_x + width - vBarWidth, static_cast<int32_t>(clamped_thumb_y), vBarWidth, static_cast<int32_t>(thumb_h), thumb_color);
+            const auto bar = computeScrollbarMetrics(position_y, view_h, static_cast<int64_t>(context.cursor.getLineCount()) * line_height, context.scroll.y);
+            drawQuad(quadBuffer, position_x + width - vBarWidth, static_cast<int32_t>(bar.thumb_origin), vBarWidth, static_cast<int32_t>(bar.thumb_size), thumb_color);
         }
     }
 
@@ -532,13 +520,245 @@ void Editor::drawScrollbars(QuadBuffer &quadBuffer, const CursorContext &context
             drawQuad(quadBuffer, text_x, position_y + height - hBarHeight, static_cast<int32_t>(view_w), hBarHeight, track_color);
 
             // Thumb size and position are proportional to the visible / content widths (64-bit intermediates)
-            const auto content_w = std::max(int64_t{1}, static_cast<int64_t>(longestLineLength) * font_advance);
-            const auto thumb_w = std::min(view_w, std::max(MIN_THUMB_SIZE, view_w * view_w / content_w));
-            const auto thumb_x = text_x + static_cast<int64_t>(context.scroll.x) * (view_w - thumb_w) / std::max(int64_t{1}, content_w - view_w);
-            const auto clamped_thumb_x = std::clamp(thumb_x, static_cast<int64_t>(text_x), text_x + view_w - thumb_w);
-            drawQuad(quadBuffer, static_cast<int32_t>(clamped_thumb_x), position_y + height - hBarHeight, static_cast<int32_t>(thumb_w), hBarHeight, thumb_color);
+            const auto bar = computeScrollbarMetrics(text_x, view_w, static_cast<int64_t>(longestLineLength) * font_advance, context.scroll.x);
+            drawQuad(quadBuffer, static_cast<int32_t>(bar.thumb_origin), position_y + height - hBarHeight, static_cast<int32_t>(bar.thumb_size), hBarHeight, thumb_color);
         }
     }
+}
+
+Editor::FrameMetrics Editor::computeFrameMetrics(const CursorContext &context, const ViewState &viewState) const {
+    const auto padding_width = m_theme.getDimension(DimensionId::PaddingWidth);
+    const auto cursor_line_count = static_cast<int32_t>(context.cursor.getLineCount());
+
+    // The greatest line number is as wide as the line count has digits
+    auto line_count_digits = 0;
+    for (auto remainder = cursor_line_count; remainder > 0 || line_count_digits == 0; remainder /= 10) {
+        ++line_count_digits;
+    }
+
+    FrameMetrics metrics{};
+    metrics.line_count_width = line_count_digits * m_theme.getFontAdvance();
+    metrics.margin_width = padding_width + metrics.line_count_width + padding_width;
+
+    const auto tab_to_space = static_cast<uint32_t>(m_theme.getDimension(DimensionId::TabToSpace));
+    metrics.longest_line_length = context.cursor.getLongestLineLength(tab_to_space);
+    computeScrollbarSizes(context, viewState, metrics.margin_width, metrics.longest_line_length, metrics.v_bar_width, metrics.h_bar_height);
+    return metrics;
+}
+
+Editor::ScrollbarMetrics Editor::computeScrollbarMetrics(const int64_t trackOrigin, const int64_t viewSize, const int64_t contentSize, const int32_t scroll) {
+    ScrollbarMetrics metrics{};
+    metrics.view_size = viewSize;
+    metrics.content_size = std::max(int64_t{1}, contentSize);
+    metrics.thumb_size = std::min(viewSize, std::max(MIN_THUMB_SIZE, viewSize * viewSize / metrics.content_size));
+
+    const auto thumb_origin = trackOrigin + static_cast<int64_t>(scroll) * (viewSize - metrics.thumb_size) / std::max(int64_t{1}, metrics.content_size - viewSize);
+    metrics.thumb_origin = std::clamp(thumb_origin, trackOrigin, trackOrigin + viewSize - metrics.thumb_size);
+    return metrics;
+}
+
+void Editor::applyThumbDrag(int32_t &scroll, const int32_t pointer, const ScrollbarMetrics &bar, CursorContext &context) const {
+    // A thumb filling the whole track has no play and cannot move
+    const auto track_play = bar.view_size - bar.thumb_size;
+    if (track_play <= 0) {
+        return;
+    }
+
+    // Map the pointer travel since the grab back to a scroll offset, the exact inverse of the
+    // thumb positioning in computeScrollbarMetrics
+    const auto max_scroll = std::max(int64_t{0}, bar.content_size - bar.view_size);
+    const auto travel = static_cast<int64_t>(pointer - m_drag_grab);
+    const auto target = std::clamp(m_drag_scroll + travel * max_scroll / track_play, int64_t{0}, max_scroll);
+    if (static_cast<int32_t>(target) != scroll) {
+        scroll = static_cast<int32_t>(target);
+        context.wants_redraw = true;
+    }
+}
+
+uint32_t Editor::columnAtPixel(const CursorContext &context, const uint32_t line, const int32_t targetX) const {
+    if (targetX <= 0) {
+        // In or left of the margin: clamp to the beginning of the line
+        return 0;
+    }
+
+    const auto string = context.cursor.getString(line);
+    const auto string_length = static_cast<int32_t>(string.length());
+    const auto font_advance = m_theme.getFontAdvance();
+    const auto tab_to_space = m_theme.getDimension(DimensionId::TabToSpace);
+
+    // Same fast-skip as drawText: every character before the first tab is exactly one font
+    // advance wide, so the walk can start right at the column holding the pixel, capped at the
+    // first tab so tab widths keep being measured by the walk itself.
+    auto start_column = std::min(targetX / font_advance, string_length);
+    if (context.cursor.getLineTabCount(line) > 0) {
+        if (const auto first_tab = string.substr(0, start_column).find(u'\t'); first_tab != std::u16string_view::npos) {
+            start_column = static_cast<int32_t>(first_tab);
+        }
+    }
+
+    // Walk the remaining columns with the render advances and stop at the first boundary whose
+    // character midpoint lies right of the pixel: a click on the right half of a character
+    // places the caret after it.
+    auto pen_position_x = start_column * font_advance;
+    for (auto character_column = start_column; character_column < string_length; ++character_column) {
+        const auto character_width = string[character_column] == u'\t' ? font_advance * tab_to_space : font_advance;
+        if (targetX < pen_position_x + character_width / 2) {
+            return static_cast<uint32_t>(character_column);
+        }
+        pen_position_x += character_width;
+    }
+
+    // Past the end of the line: clamp to eol
+    return static_cast<uint32_t>(string_length);
+}
+
+void Editor::placeCursorAtPixel(CursorContext &context, const ViewState &viewState, const FrameMetrics &metrics, const int32_t x, const int32_t y, const bool extendSelection) {
+    const auto line_height = m_theme.getLineHeight();
+    const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
+    const auto line_count = static_cast<int32_t>(context.cursor.getLineCount());
+
+    // A line row spans [position_y + line * line_height - scroll_y, +line_height): invert it.
+    // Clicks above the first line clamp to it, clicks past the last line clamp to the last one.
+    const auto picked_line = (y - viewState.getPositionY() + context.scroll.y) / line_height;
+    const auto line = static_cast<uint32_t>(std::clamp(picked_line, 0, line_count - 1));
+
+    // Pixel to column, in the same geometry drawText lays the glyphs out with
+    const auto text_start_x = viewState.getPositionX() + metrics.margin_width + border_size;
+    const auto column = columnAtPixel(context, line, x - text_start_x + context.scroll.x);
+
+    if (extendSelection && line == m_drag_line && column == m_drag_column) {
+        // The pointer stayed in the cell the drag already placed: nothing changed, don't redraw
+        return;
+    }
+    m_drag_line = line;
+    m_drag_column = column;
+
+    // Same bookkeeping as the `move` command: reset the search statistics, arm or disarm the
+    // selection before moving so the anchor stays at the pressed cell, stick to the new column
+    // and scroll the indicator back into view (which auto-scrolls when a drag leaves the view).
+    context.search.resetMatches();
+    context.cursor.activateSelection(extendSelection);
+    context.cursor.setPosition(line, column);
+    context.stick.index = context.cursor.getColumn();
+    context.scroll.follow_indicator = true;
+    context.wants_redraw = true;
+}
+
+void Editor::onMouseDown(CursorContext &context, ViewState &viewState, const int32_t x, const int32_t y) {
+    // A click always claims the input focus back for the editor (e.g. away from the prompt)
+    if (context.focus_target != FocusTarget::Editor) {
+        context.focus_target = FocusTarget::Editor;
+        context.wants_redraw = true;
+    }
+
+    const auto metrics = computeFrameMetrics(context, viewState);
+    const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
+    const auto line_height = m_theme.getLineHeight();
+    const auto font_advance = m_theme.getFontAdvance();
+
+    // Get the vew geometry
+    const auto position_x = viewState.getPositionX();
+    const auto position_y = viewState.getPositionY();
+    const auto width = viewState.getWidth();
+    const auto height = viewState.getHeight();
+
+    // The vertical track is drawn full-height and covers the corner square: test it first
+    if (metrics.v_bar_width > 0 && x >= position_x + width - metrics.v_bar_width) {
+        const auto view_h = static_cast<int64_t>(height - metrics.h_bar_height);
+        if (view_h <= 0) {
+            return;
+        }
+
+        const auto bar = computeScrollbarMetrics(position_y, view_h, static_cast<int64_t>(context.cursor.getLineCount()) * line_height, context.scroll.y);
+        if (y >= bar.thumb_origin && y < bar.thumb_origin + bar.thumb_size) {
+            // Grab the thumb: motion maps back to the vertical scroll offset
+            m_mouse_drag = MouseDrag::VerticalThumb;
+            m_drag_grab = y;
+            m_drag_scroll = context.scroll.y;
+        } else {
+            // Track press: jump the scroll by one page toward the click
+            const auto max_scroll = static_cast<int32_t>(std::max(int64_t{0}, bar.content_size - view_h));
+            const auto page = static_cast<int32_t>(view_h);
+            context.scroll.y = std::clamp(context.scroll.y + (y < bar.thumb_origin ? -page : page), 0, max_scroll);
+            context.wants_redraw = true;
+        }
+        return;
+    }
+
+    const auto text_start_x = position_x + metrics.margin_width + border_size;
+    if (metrics.h_bar_height > 0 && y >= position_y + height - metrics.h_bar_height && x >= text_start_x) {
+        const auto view_w = static_cast<int64_t>(width - metrics.margin_width - border_size - metrics.v_bar_width);
+        if (view_w <= 0) {
+            return;
+        }
+
+        const auto bar = computeScrollbarMetrics(text_start_x, view_w, static_cast<int64_t>(metrics.longest_line_length) * font_advance, context.scroll.x);
+        if (x >= bar.thumb_origin && x < bar.thumb_origin + bar.thumb_size) {
+            // Grab the thumb: motion maps back to the horizontal scroll offset
+            m_mouse_drag = MouseDrag::HorizontalThumb;
+            m_drag_grab = x;
+            m_drag_scroll = context.scroll.x;
+        } else {
+            // Track press: jump the scroll by one page toward the click
+            const auto max_scroll = static_cast<int32_t>(std::max(int64_t{0}, bar.content_size - view_w));
+            const auto page = static_cast<int32_t>(view_w);
+            context.scroll.x = std::clamp(context.scroll.x + (x < bar.thumb_origin ? -page : page), 0, max_scroll);
+            context.wants_redraw = true;
+        }
+        return;
+    }
+
+    // Text (or margin) press: place the caret at the clicked character with the selection
+    // disarmed, and arm a text drag so motion extends a selection anchored at this cell
+    m_mouse_drag = MouseDrag::Text;
+    placeCursorAtPixel(context, viewState, metrics, x, y, false);
+}
+
+void Editor::onMouseMotion(CursorContext &context, ViewState &viewState, const int32_t x, const int32_t y) {
+    switch (m_mouse_drag) {
+        case MouseDrag::Text: {
+            // Extend the selection from the pressed cell to the cell under the pointer
+            const auto metrics = computeFrameMetrics(context, viewState);
+            placeCursorAtPixel(context, viewState, metrics, x, y, true);
+        }
+        break;
+        case MouseDrag::VerticalThumb: {
+            const auto metrics = computeFrameMetrics(context, viewState);
+            const auto view_h = static_cast<int64_t>(viewState.getHeight() - metrics.h_bar_height);
+            if (view_h <= 0) {
+                break;
+            }
+
+            const auto bar = computeScrollbarMetrics(viewState.getPositionY(), view_h, static_cast<int64_t>(context.cursor.getLineCount()) * m_theme.getLineHeight(), context.scroll.y);
+            applyThumbDrag(context.scroll.y, y, bar, context);
+        }
+        break;
+        case MouseDrag::HorizontalThumb: {
+            const auto metrics = computeFrameMetrics(context, viewState);
+            const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
+            const auto view_w = static_cast<int64_t>(viewState.getWidth() - metrics.margin_width - border_size - metrics.v_bar_width);
+            if (view_w <= 0) {
+                break;
+            }
+
+            const auto text_start_x = viewState.getPositionX() + metrics.margin_width + border_size;
+            const auto bar = computeScrollbarMetrics(text_start_x, view_w, static_cast<int64_t>(metrics.longest_line_length) * m_theme.getFontAdvance(), context.scroll.x);
+            applyThumbDrag(context.scroll.x, x, bar, context);
+        }
+        break;
+        case MouseDrag::None:
+        break;
+    }
+}
+
+void Editor::onMouseUp(CursorContext &context, ViewState &viewState, const int32_t x, const int32_t y) {
+    // Releasing the button ends whatever drag was in progress; a plain click without motion
+    // leaves no selection armed since the press already disarmed it
+    (void) context;
+    (void) viewState;
+    (void) x;
+    (void) y;
+    m_mouse_drag = MouseDrag::None;
 }
 
 void Editor::registerTabToSpaceCVar() const {

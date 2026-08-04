@@ -132,6 +132,43 @@ public:
     virtual void onTextInput(CursorContext &context, TState &viewState, const char* text) const = 0;
 
     /**
+     * @brief Handles a left mouse button press inside the view.
+     *
+     * The default implementation ignores the event; views without mouse interactions keep it.
+     *
+     * @param context Reference to the cursor context to handle the press for.
+     * @param viewState Reference to the view state.
+     * @param x Window-relative x coordinate of the press, in pixels.
+     * @param y Window-relative y coordinate of the press, in pixels.
+     */
+    virtual void onMouseDown(CursorContext &context, TState &viewState, int32_t x, int32_t y);
+
+    /**
+     * @brief Handles mouse motion while the left button is held after a press in this view.
+     *
+     * Motion events keep flowing to the view that received the press, even when the pointer
+     * leaves its rectangle. The default implementation ignores the event.
+     *
+     * @param context Reference to the cursor context to handle the motion for.
+     * @param viewState Reference to the view state.
+     * @param x Window-relative x coordinate of the pointer, in pixels.
+     * @param y Window-relative y coordinate of the pointer, in pixels.
+     */
+    virtual void onMouseMotion(CursorContext &context, TState &viewState, int32_t x, int32_t y);
+
+    /**
+     * @brief Handles the left mouse button release ending a press started in this view.
+     *
+     * The default implementation ignores the event.
+     *
+     * @param context Reference to the cursor context to handle the release for.
+     * @param viewState Reference to the view state.
+     * @param x Window-relative x coordinate of the release, in pixels.
+     * @param y Window-relative y coordinate of the release, in pixels.
+     */
+    virtual void onMouseUp(CursorContext &context, TState &viewState, int32_t x, int32_t y);
+
+    /**
      * @brief Updates the internal window size for the view (e.g., after a resize event).
      *
      * @param width New window width in pixels.
@@ -147,6 +184,33 @@ View<TState>::View(GlobalRegistry<CursorContext> &commandController, Theme &them
       m_quad_program(quadProgram),
       m_window_width(0),
       m_window_height(0) {}
+
+template <typename TState>
+void View<TState>::onMouseDown(CursorContext &context, TState &viewState, const int32_t x, const int32_t y) {
+    // No-op by default
+    (void) context;
+    (void) viewState;
+    (void) x;
+    (void) y;
+}
+
+template <typename TState>
+void View<TState>::onMouseMotion(CursorContext &context, TState &viewState, const int32_t x, const int32_t y) {
+    // No-op by default
+    (void) context;
+    (void) viewState;
+    (void) x;
+    (void) y;
+}
+
+template <typename TState>
+void View<TState>::onMouseUp(CursorContext &context, TState &viewState, const int32_t x, const int32_t y) {
+    // No-op by default
+    (void) context;
+    (void) viewState;
+    (void) x;
+    (void) y;
+}
 
 template <typename TState>
 void View<TState>::resizeWindow(const int32_t width, const int32_t height) {

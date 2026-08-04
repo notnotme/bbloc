@@ -63,6 +63,19 @@ public:
     static constexpr auto EDITOR_DEFAULT_QUAD_COUNT = DEFAULT_QUAD_CAPACITY - INFO_BAR_DEFAULT_QUAD_COUNT - PROMPT_DEFAULT_QUAD_COUNT;
 
 private:
+    /**
+     * @brief Views a mouse press can be routed to.
+     *
+     * The view under a left-button press captures the pointer: motion and release events keep
+     * being routed to it until the button is released, even when the pointer leaves the view.
+     */
+    enum class MouseTarget : uint8_t {
+        None,     ///< No press in progress.
+        InfoBar,  ///< The info bar received the press.
+        Editor,   ///< The editor received the press.
+        Prompt    ///< The prompt received the press.
+    };
+
     /** SDL window handle. */
     SDL_Window *p_sdl_window;
 
@@ -123,6 +136,9 @@ private:
     /** 4x4 orthogonal projection matrix for 2D rendering. */
     std::array<float, 16> m_orthogonal;
 
+    /** View that received the current left-button press, None outside a press. */
+    MouseTarget m_mouse_target;
+
     /** Scratch vector whose capacity is reused by runCommand to tokenize command strings. */
     std::vector<std::u16string_view> m_token_scratch;
 
@@ -133,6 +149,16 @@ private:
      * @param height New window height.
      */
     void updateOrthogonal(int32_t width, int32_t height);
+
+    /**
+     * @brief Tells whether a window point lies inside a view rectangle.
+     *
+     * @param viewState The view state holding the rectangle to test.
+     * @param x Window-relative x coordinate of the point, in pixels.
+     * @param y Window-relative y coordinate of the point, in pixels.
+     * @return true when the point is inside the rectangle, false otherwise.
+     */
+    [[nodiscard]] static bool viewContains(const ViewState &viewState, int32_t x, int32_t y);
 
     /**
      * @brief Resets the prompt line to display the given text.

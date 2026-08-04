@@ -22,6 +22,7 @@ bbloc is a minimalist text editor developed in C++ using SDL2, OpenGL, glad, Fre
 - **Multiple Buffers**: Open several files at once and switch between them with the `buffer` command; opening an already-open file switches to its buffer instead of loading a second copy
 - **Real-Time Configuration**: Change colors, dimensions, and settings at runtime
 - **Customizable Key Bindings**: Rebind any key combination to commands
+- **Mouse Support**: Click to place the caret, drag to select text, wheel scrolling, and draggable scrollbar thumbs
 
 ## Concept
 
@@ -43,7 +44,7 @@ The main text editing area featuring:
 - Cursor tracking and movement
 - Selection support
 - Scrollable content
-- Optional scrollbars (`cvar show_scrollbar true|false`), shown only when content overflows
+- Optional scrollbars (`cvar show_scrollbar true|false`), shown only when content overflows, with draggable thumbs
 
 ### Bottom Bar (Prompt)
 An interactive command-line interface serving as both:
@@ -205,6 +206,15 @@ ApplicationWindow
 | Ctrl+Shift+Q | quit | Quit application (asks confirmation when any buffer has unsaved changes) |
 | Ctrl+Shift+L | exec romfs/light_theme | Load the light theme (temporary binding) |
 | Ctrl+Shift+D | exec romfs/dark_theme | Load the dark theme (temporary binding) |
+
+### Mouse
+| Input | Action |
+|-------|--------|
+| Left click (text area) | Place the caret at the clicked character and focus the editor |
+| Left drag (text area) | Select from the pressed position to the pointer |
+| Left drag (scrollbar thumb) | Scroll the view, vertically or horizontally |
+| Left click (scrollbar track) | Jump the scroll by one page toward the click |
+| Wheel | Scroll vertically (horizontal wheel scrolls horizontally) |
 
 ## Commands
 
@@ -429,6 +439,7 @@ make
 - Undo/redo (linear, snapshot-based, 64 entries deep)
 - Multiple open buffers with per-buffer scroll, search, undo, and highlight state
 - Dirty-flag tracking with close/quit confirmation on unsaved changes
+- Mouse support: caret placement, drag selection, wheel scrolling, and scrollbar interactions
 
 ### Known Limitations
 - Tab alignment may not be perfect with mixed spaces

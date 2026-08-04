@@ -229,8 +229,16 @@ classDiagram
     class PromptState
     class View~TState~ {
         <<abstract>>
+        +render(context, viewState, quadBuffer, dt)*
+        +onKeyDown(context, viewState, keyCode, keyModifier)*
+        +onTextInput(context, viewState, text)*
+        +onMouseDown(context, viewState, x, y)
+        +onMouseMotion(context, viewState, x, y)
+        +onMouseUp(context, viewState, x, y)
     }
-    class Editor
+    class Editor {
+        note: "overrides the mouse handlers: caret placement, drag selection, scrollbar thumb drags and track page jumps"
+    }
     class InfoBar
     class Prompt
     class QuadBuffer {
@@ -246,6 +254,11 @@ classDiagram
     Prompt ..> PromptState : TState
     View~TState~ ..> QuadBuffer : stages one batch per render()
 ```
+
+The mouse handlers have empty default implementations; `InfoBar` and `Prompt` keep them.
+`ApplicationWindow::mainLoop` routes a left `SDL_MOUSEBUTTONDOWN` to the view whose rectangle
+contains the point, then captures that view: `SDL_MOUSEMOTION` and `SDL_MOUSEBUTTONUP` keep
+going to it until the button is released, even when the pointer leaves the view.
 
 ---
 

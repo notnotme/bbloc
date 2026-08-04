@@ -64,7 +64,15 @@ ApplicationWindow::ApplicationWindow()
       m_draw_time(std::make_shared<CVarFloat>(0.0f, true)),
       m_search_case_sensitive(std::make_shared<CVarBool>(false)),
       m_bind_command(std::make_shared<BindCommand>(m_command_manager)),
-      m_orthogonal() {}
+      m_orthogonal(),
+      m_mouse_target(MouseTarget::None) {}
+
+bool ApplicationWindow::viewContains(const ViewState &viewState, const int32_t x, const int32_t y) {
+    const auto position_x = static_cast<int32_t>(viewState.getPositionX());
+    const auto position_y = static_cast<int32_t>(viewState.getPositionY());
+    return x >= position_x && x < position_x + viewState.getWidth()
+        && y >= position_y && y < position_y + viewState.getHeight();
+}
 
 void ApplicationWindow::updateOrthogonal(const int32_t width, const int32_t height) {
     const auto right = static_cast<float>(width);
@@ -307,6 +315,75 @@ void ApplicationWindow::mainLoop() {
                                 break;
                         }
                     }
+                }
+                break;
+                case SDL_MOUSEBUTTONDOWN: {
+                    // Left button only; other buttons are ignored for now
+                    if (event.button.button != SDL_BUTTON_LEFT) {
+                        break;
+                    }
+
+                    // Route the press to the view whose rectangle contains it, and capture that
+                    // view: motion and release keep going to it until the button is released
+                    auto &context = m_context_manager.active();
+                    const auto x = event.button.x;
+                    const auto y = event.button.y;
+                    if (viewContains(m_editor_state, x, y)) {
+                        m_mouse_target = MouseTarget::Editor;
+                        m_editor.onMouseDown(context, m_editor_state, x, y);
+                    } else if (viewContains(m_prompt_state, x, y)) {
+                        m_mouse_target = MouseTarget::Prompt;
+                        m_prompt.onMouseDown(context, m_prompt_state, x, y);
+                    } else if (viewContains(m_info_bar_state, x, y)) {
+                        m_mouse_target = MouseTarget::InfoBar;
+                        m_info_bar.onMouseDown(context, m_info_bar_state, x, y);
+                    }
+                }
+                break;
+                case SDL_MOUSEMOTION: {
+                    // Motion only matters during a left-button drag: keep routing it to the view
+                    // that received the press, even when the pointer leaves its rectangle
+                    if (m_mouse_target == MouseTarget::None || !(event.motion.state & SDL_BUTTON_LMASK)) {
+                        break;
+                    }
+
+                    auto &context = m_context_manager.active();
+                    switch (m_mouse_target) {
+                        case MouseTarget::Editor:
+                            m_editor.onMouseMotion(context, m_editor_state, event.motion.x, event.motion.y);
+                        break;
+                        case MouseTarget::Prompt:
+                            m_prompt.onMouseMotion(context, m_prompt_state, event.motion.x, event.motion.y);
+                        break;
+                        case MouseTarget::InfoBar:
+                            m_info_bar.onMouseMotion(context, m_info_bar_state, event.motion.x, event.motion.y);
+                        break;
+                        default:
+                        break;
+                    }
+                }
+                break;
+                case SDL_MOUSEBUTTONUP: {
+                    if (event.button.button != SDL_BUTTON_LEFT || m_mouse_target == MouseTarget::None) {
+                        break;
+                    }
+
+                    // Release the capture after letting the pressed view end its drag
+                    auto &context = m_context_manager.active();
+                    switch (m_mouse_target) {
+                        case MouseTarget::Editor:
+                            m_editor.onMouseUp(context, m_editor_state, event.button.x, event.button.y);
+                        break;
+                        case MouseTarget::Prompt:
+                            m_prompt.onMouseUp(context, m_prompt_state, event.button.x, event.button.y);
+                        break;
+                        case MouseTarget::InfoBar:
+                            m_info_bar.onMouseUp(context, m_info_bar_state, event.button.x, event.button.y);
+                        break;
+                        default:
+                        break;
+                    }
+                    m_mouse_target = MouseTarget::None;
                 }
                 break;
                 case SDL_MOUSEWHEEL: {
