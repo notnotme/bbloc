@@ -63,6 +63,9 @@ private:
     /** Undo/redo history of full-buffer snapshots. */
     UndoHistory m_history;
 
+    /** True when the buffer text changed since it was last saved or loaded. */
+    bool m_is_modified;
+
 private:
     /**
      * @brief Erase a range of text inside the internal buffer. This does not move the cursor coordinates.
@@ -152,6 +155,24 @@ public:
 
     /** @brief Gets the name of the buffer. */
     [[nodiscard]] std::string_view getName() const;
+
+    /**
+     * @brief Tells whether the buffer text changed since it was last saved or loaded.
+     *
+     * Undoing back to the exact saved state still reads as modified: the flag is a
+     * plain boolean, not a comparison against the saved content.
+     */
+    [[nodiscard]] bool isModified() const;
+
+    /**
+     * @brief Sets the modified flag.
+     *
+     * Every text mutation raises the flag itself; callers only lower it, after a
+     * successful save or right after loading a file into the buffer.
+     *
+     * @param modified The new value of the flag.
+     */
+    void setModified(bool modified);
 
     /** @brief Returns the current column index. */
     [[nodiscard]] uint32_t getColumn() const;

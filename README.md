@@ -34,6 +34,7 @@ Displays information about the active text buffer:
 - Font size settings
 - File information
 - Buffer position (e.g. `[2/3]`) when several buffers are open
+- Unsaved-changes marker (`*` after the file name) when the buffer is modified
 
 ### Center Area (Editor)
 The main text editing area featuring:
@@ -198,10 +199,10 @@ ApplicationWindow
 | Ctrl+O | open | Prompt for a path and open the file |
 | Ctrl+Tab | buffer next | Switch to the next open buffer |
 | Ctrl+Shift+Tab | buffer prev | Switch to the previous open buffer |
-| Ctrl+W | buffer close | Close the current buffer (no save) |
+| Ctrl+W | buffer close | Close the current buffer (asks confirmation on unsaved changes) |
 | Ctrl+Shift+S | save | Save current buffer to file (prompts for a name when the buffer has none) |
 | Ctrl+Shift+Space | activate_prompt | Open command prompt |
-| Ctrl+Shift+Q | quit | Quit application (no save) |
+| Ctrl+Shift+Q | quit | Quit application (asks confirmation when any buffer has unsaved changes) |
 | Ctrl+Shift+L | exec romfs/light_theme | Load the light theme (temporary binding) |
 | Ctrl+Shift+D | exec romfs/dark_theme | Load the dark theme (temporary binding) |
 
@@ -211,9 +212,9 @@ ApplicationWindow
 | Command | Arguments | Description |
 |---------|-----------|-------------|
 | `open <filename>` | filename | Open file in editor, sets highlight mode by extension (prompts for the path when bound to a key); opens a new buffer unless the active one is untouched |
-| `buffer <next\|prev\|close\|name>` | action or buffer name | Cycle through the open buffers, close the active one (no save), or switch to a buffer by name |
+| `buffer <next\|prev\|close [-f]\|name>` | action or buffer name | Cycle through the open buffers, close the active one (asks confirmation on unsaved changes, `-f` skips it), or switch to a buffer by name |
 | `save <filename> -f` | filename, -f | Save buffer with optional overwrite flag (prompts for a name when the buffer has none and it is bound to a key) |
-| `quit` | - | Exit application without saving |
+| `quit [-f]` | -f | Exit application (asks confirmation when any buffer has unsaved changes, `-f` skips it) |
 | `exec <filename>` | filename | Execute commands from file line by line |
 
 ### Configuration
@@ -427,11 +428,12 @@ make
 - Selection and clipboard operations
 - Undo/redo (linear, snapshot-based, 64 entries deep)
 - Multiple open buffers with per-buffer scroll, search, undo, and highlight state
+- Dirty-flag tracking with close/quit confirmation on unsaved changes
 
 ### Known Limitations
 - Tab alignment may not be perfect with mixed spaces
 - Basic error handling
-- No dirty-flag tracking: `buffer close` closes without warning about unsaved changes
+- Undoing back to the last saved state still shows the buffer as modified
 
 ### Future Enhancements (no ordering)
 - Inline documentation needs improvement, to be re-done

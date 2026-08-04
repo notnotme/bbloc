@@ -93,7 +93,7 @@ classDiagram
 ```mermaid
 classDiagram
     class Cursor {
-        note: "multi-line, selection support, undo/redo"
+        note: "multi-line, selection support, undo/redo, modified flag"
     }
     class PromptCursor {
         note: "single-line command input"
@@ -265,7 +265,9 @@ classDiagram
     class OpenFileCommand
     class SaveFileCommand
     class ExecCommand
-    class QuitCommand
+    class QuitCommand {
+        note: "confirms when any open buffer is modified, via CursorContextManager"
+    }
     class SetHighLightCommand
     class CopyTextCommand
     class CutTextCommand

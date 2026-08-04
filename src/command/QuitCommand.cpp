@@ -21,6 +21,9 @@
 #include <SDL_events.h>
 
 
+QuitCommand::QuitCommand(CursorContextManager &contextManager)
+    : m_context_manager(contextManager) {}
+
 void QuitCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) previousArgs;
     (void) argumentIndex;
@@ -30,9 +33,43 @@ void QuitCommand::provideAutoComplete(const std::span<const std::u16string_view>
 }
 
 std::optional<std::u16string> QuitCommand::run(CursorContext &payload, const std::span<const std::u16string_view> args) {
-    (void) payload;
-    if (!args.empty()) {
-        return u"Expected 0 argument.";
+    // The only accepted argument is the "-f" flag skipping the unsaved-changes prompt.
+    const auto is_forced = args.size() == 1 && args[0] == u"-f";
+    if (!args.empty() && !is_forced) {
+        return u"Usage: quit [-f]";
+    }
+
+    // A single confirmation covers every open buffer holding unsaved changes.
+    if (!is_forced) {
+        auto any_modified = false;
+        for (size_t index = 0; index < m_context_manager.getCount(); ++index) {
+            if (m_context_manager.get(index).cursor.isModified()) {
+                any_modified = true;
+                break;
+            }
+        }
+
+        if (any_modified) {
+            payload.command_feedback = CommandFeedback {
+                .prompt_message = u"Unsaved changes, quit anyway ? [y/N]: ",
+                // This reuses the same command, but with "-f" argument to skip this prompt.
+                .command_string = u"quit -f",
+                .on_complete_callback = [](const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
+                    (void) input;
+                    itemCallback(u"n");
+                    itemCallback(u"y");
+                },
+                .on_validate_callback = [&](const std::u16string_view input, const std::u16string_view command) -> std::optional<std::u16string> {
+                    if (input == u"y" || input == u"Y") {
+                        payload.command_runner.runCommand(command, true);
+                        return std::nullopt;
+                    }
+                    return std::nullopt;
+                }
+            };
+
+            return std::nullopt;
+        }
     }
 
     // Push an SDL_QUIT event, and the event loop will catch it.

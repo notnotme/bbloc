@@ -56,6 +56,7 @@ public:
      *
      * This command auto-completes the first argument with the actions
      * "next", "prev" and "close", plus the names of the open buffers.
+     * After "close", the second argument completes to the "-f" flag.
      *
      * @param previousArgs The arguments typed before the one being completed, excluding the command name.
      * @param argumentIndex The index of the argument currently being completed.
@@ -68,8 +69,9 @@ public:
      * @brief Executes the buffer operation.
      *
      * Expects 1 argument: "next" / "prev" cycle through the open buffers (wrapping around),
-     * "close" closes the active buffer (without saving), and any other value switches
-     * directly to the open buffer with that name.
+     * "close" closes the active buffer (asking confirmation first when it holds unsaved
+     * changes, unless the "-f" flag follows), and any other value switches directly to
+     * the open buffer with that name.
      *
      * @param payload The cursor context that was active when the command was invoked.
      * @param args Command arguments specifying the buffer operation.

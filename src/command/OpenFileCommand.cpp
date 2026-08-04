@@ -149,9 +149,11 @@ void OpenFileCommand::loadInto(CursorContext &target, const std::string &path, c
     target.highlighter.edit(edit_insert);
 
     // Set cursor name, reset position and discard the undo history of the previous buffer.
+    // A freshly loaded buffer matches the disk, so it starts clean.
     target.cursor.setName(path);
     target.cursor.setPosition(0, 0);
     target.cursor.clearHistory();
+    target.cursor.setModified(false);
     target.scroll.follow_indicator = true;
     target.stick.active = false;
     target.stick.index = 0;

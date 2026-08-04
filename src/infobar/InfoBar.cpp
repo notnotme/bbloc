@@ -101,6 +101,10 @@ void InfoBar::drawText(QuadBuffer &quadBuffer, const CursorContext &context, con
 
     // Build the informative strings, and calculate their x offset
     auto string_cursor_name = utf8::utf8to16(context.cursor.getName().empty() ? "Untitled" : context.cursor.getName());
+    if (context.cursor.isModified()) {
+        // Mark the buffer as holding unsaved changes
+        string_cursor_name.append(u"*");
+    }
     if (context.buffer_count > 1) {
         // Several buffers are open: show the position of this one among them
         string_cursor_name.append(utf8::utf8to16(std::format(" [{}/{}]", context.buffer_index, context.buffer_count)));

@@ -24,6 +24,7 @@
 
 #include "../core/base/AutoCompleteCallback.h"
 #include "../core/CursorContext.h"
+#include "../core/CursorContextManager.h"
 #include "../core/base/Command.h"
 
 
@@ -33,12 +34,20 @@
  * This class implements the Command interface for quitting/exiting the application.
  * It handles the graceful shutdown of the editor, performing cleanup operations before termination.
  *
- * This does not check if modified files are saved to disk.
+ * When any open buffer holds unsaved changes, a single confirmation is asked before quitting.
  */
 class QuitCommand final : public Command<CursorContext> {
+private:
+    /** Reference to the manager owning the open cursor contexts, scanned for unsaved changes. */
+    CursorContextManager &m_context_manager;
+
 public:
-    /** @brief Constructs a QuitCommand with default initialization. */
-    explicit QuitCommand() = default;
+    /**
+     * @brief Constructs a QuitCommand with a reference to the cursor context manager.
+     *
+     * @param contextManager Reference to the manager owning the open cursor contexts.
+     */
+    explicit QuitCommand(CursorContextManager &contextManager);
 
     /**
      * @brief Provides auto-completion suggestions for command arguments.
@@ -55,11 +64,12 @@ public:
     /**
      * @brief Executes the quit operation.
      *
-     * Initiates the application shutdown process.
-     * This command expects no arguments (empty Vector).
+     * Initiates the application shutdown process. When any open buffer holds unsaved
+     * changes, a confirmation is requested first; answering "y" re-runs the command
+     * with the "-f" argument, which skips the check.
      *
-     * @param payload The cursor context that may be checked for unsaved changes.
-     * @param args Command arguments that may modify the quit behavior (e.g., "force" to skip confirmation).
+     * @param payload The cursor context that carries the confirmation feedback, if needed.
+     * @param args Command arguments; empty, or the single "-f" flag skipping the confirmation.
      * @return An optional message indicating the result of the operation.
      */
     [[nodiscard]] std::optional<std::u16string> run(CursorContext &payload, std::span<const std::u16string_view> args) override;

@@ -28,7 +28,15 @@ BufferCommand::BufferCommand(CursorContextManager &contextManager)
     : m_context_manager(contextManager) {}
 
 void BufferCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
-    (void) previousArgs;
+    if (argumentIndex == 1 && previousArgs.size() == 1 && previousArgs[0] == u"close") {
+        // The second argument of "close" can only be the flag skipping the confirmation
+        constexpr auto FORCE_FLAG = std::u16string_view(u"-f");
+        if (FORCE_FLAG.starts_with(input)) {
+            itemCallback(FORCE_FLAG);
+        }
+        return;
+    }
+
     if (argumentIndex != 0) {
         // Only auto-complete the first argument (action or buffer name)
         return;
@@ -57,9 +65,10 @@ void BufferCommand::provideAutoComplete(const std::span<const std::u16string_vie
 
 std::optional<std::u16string> BufferCommand::run(CursorContext &payload, const std::span<const std::u16string_view> args) {
     // The switch happens through the manager; the payload stays the invoking context.
-    (void) payload;
-    if (args.size() != 1) {
-        return u"Usage: buffer <next|prev|close|name>";
+    // Only "close" takes a second argument, the "-f" flag skipping the unsaved-changes prompt.
+    const auto is_forced_close = args.size() == 2 && args[0] == u"close" && args[1] == u"-f";
+    if (args.size() != 1 && !is_forced_close) {
+        return u"Usage: buffer <next|prev|close [-f]|name>";
     }
 
     if (args[0] == u"next") {
@@ -73,7 +82,29 @@ std::optional<std::u16string> BufferCommand::run(CursorContext &payload, const s
     }
 
     if (args[0] == u"close") {
-        // Closes without warning: no dirty-flag tracking exists yet.
+        // A buffer holding unsaved changes only closes after an explicit confirmation.
+        if (m_context_manager.active().cursor.isModified() && !is_forced_close) {
+            payload.command_feedback = CommandFeedback {
+                .prompt_message = u"Buffer has unsaved changes, close ? [y/N]: ",
+                // This reuses the same command, but with "-f" argument to skip this prompt.
+                .command_string = u"buffer close -f",
+                .on_complete_callback = [](const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
+                    (void) input;
+                    itemCallback(u"n");
+                    itemCallback(u"y");
+                },
+                .on_validate_callback = [&](const std::u16string_view input, const std::u16string_view command) -> std::optional<std::u16string> {
+                    if (input == u"y" || input == u"Y") {
+                        payload.command_runner.runCommand(command, true);
+                        return std::nullopt;
+                    }
+                    return std::nullopt;
+                }
+            };
+
+            return std::nullopt;
+        }
+
         m_context_manager.close();
         return statusMessage();
     }

@@ -161,7 +161,7 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
         // Re-count matches for the stored term in place so the indicator reflects the new mode immediately.
         SearchCommand::refreshMatchStats(m_context_manager.active(), m_search_case_sensitive->m_value);
     });
-    m_command_manager.registerCommand(u"quit", std::make_shared<QuitCommand>(), false);
+    m_command_manager.registerCommand(u"quit", std::make_shared<QuitCommand>(m_context_manager), false);
     m_command_manager.registerCommand(u"open", std::make_shared<OpenFileCommand>(m_context_manager), false);
     m_command_manager.registerCommand(u"buffer", std::make_shared<BufferCommand>(m_context_manager), false);
     m_command_manager.registerCommand(u"save", std::make_shared<SaveFileCommand>(), false);

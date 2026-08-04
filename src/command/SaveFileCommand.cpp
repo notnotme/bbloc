@@ -166,8 +166,9 @@ std::optional<std::u16string> SaveFileCommand::run(CursorContext &payload, const
         }
     }
 
-    // The file is written: set the cursor name.
+    // The file is written: set the cursor name, and the buffer content now matches the disk.
     payload.cursor.setName(file_to_save.string());
+    payload.cursor.setModified(false);
 
     // We always want to redraw, in case we run from a prompt confirmation.
     payload.wants_redraw = true;
