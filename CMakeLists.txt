@@ -117,6 +117,11 @@ pkg_check_modules(TREE_SITTER_YAML REQUIRED tree-sitter-yaml)
 target_include_directories(bbloc PRIVATE ${TREE_SITTER_YAML_INCLUDE_DIRS})
 target_link_libraries(bbloc PRIVATE ${TREE_SITTER_YAML_LIBRARIES})
 
+# tree-sitter toml languages
+pkg_check_modules(TREE_SITTER_TOML REQUIRED tree-sitter-toml)
+target_include_directories(bbloc PRIVATE ${TREE_SITTER_TOML_INCLUDE_DIRS})
+target_link_libraries(bbloc PRIVATE ${TREE_SITTER_TOML_LIBRARIES})
+
 # get_cmake_property(_variableNames VARIABLES)
 # list (SORT _variableNames)
 # foreach (_variableName ${_variableNames})

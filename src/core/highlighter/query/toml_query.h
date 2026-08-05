@@ -16,22 +16,23 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef HIGH_LIGHT_ID_H
-#define HIGH_LIGHT_ID_H
+#ifndef TOML_QUERY_H
+#define TOML_QUERY_H
+
+#include <string>
 
 
-/**
- * @brief Identifies the syntax highlighting mode.
- *
- * This enum is used to describe the highlight for a given mode.
- */
-enum class HighLightId {
-    None, ///< No highlighting applied.
-    Cpp,  ///< C++ syntax highlighting.
-    Json, ///< JSON syntax highlighting.
-    Ini,  ///< INI syntax highlighting.
-    Yaml, ///< YAML syntax highlighting.
-    Toml  ///< TOML syntax highlighting.
-};
+static const std::string toml_query =
+R""""(
+    (table [(bare_key) (dotted_key) (quoted_key)] @type)
+    (table_array_element [(bare_key) (dotted_key) (quoted_key)] @type)
+    (pair [(bare_key) (dotted_key) (quoted_key)] @keyword)
+    (string) @string
+    [(integer) (float)] @number
+    [(offset_date_time) (local_date_time) (local_date) (local_time)] @number
+    (boolean) @constant
+    (comment) @comment
+)"""";
 
-#endif //HIGH_LIGHT_ID_H
+
+#endif // TOML_QUERY_H

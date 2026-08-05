@@ -23,11 +23,13 @@
 #include <tree_sitter/tree-sitter-cpp.h>
 #include <tree_sitter/tree-sitter-ini.h>
 #include <tree_sitter/tree-sitter-json.h>
+#include <tree_sitter/tree-sitter-toml.h>
 #include <tree_sitter/tree-sitter-yaml.h>
 
 #include "query/cpp_query.h"
 #include "query/ini_query.h"
 #include "query/json_query.h"
+#include "query/toml_query.h"
 #include "query/yaml_query.h"
 
 
@@ -93,6 +95,21 @@ const std::unordered_map<HighLightId, ParserDescriptor> &ParserCatalog::getDescr
                 {"comment",      TokenId::Comment},
                 {"type",         TokenId::Type},
                 {"preprocessor", TokenId::Preprocessor}
+            }
+        }},
+        { HighLightId::Toml, {
+            .language           = tree_sitter_toml(),
+            .name               = "TOML",
+            .argument_value     = "toml",
+            .files_format       = {".toml", ".TOML"},
+            .query_source       = toml_query,
+            .capture_tokens     = {
+                {"keyword",  TokenId::Keyword},
+                {"type",     TokenId::Type},
+                {"string",   TokenId::String},
+                {"number",   TokenId::Number},
+                {"constant", TokenId::Constant},
+                {"comment",  TokenId::Comment}
             }
         }}
     };

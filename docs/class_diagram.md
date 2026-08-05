@@ -142,6 +142,7 @@ classDiagram
         Json
         Ini
         Yaml
+        Toml
     }
     class TokenId {
         <<enum>>
