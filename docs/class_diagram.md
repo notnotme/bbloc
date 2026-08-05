@@ -204,6 +204,10 @@ classDiagram
     class Theme {
         note: "FreeType fonts + CVars + atlas"
     }
+    class TabStop {
+        <<free functions>>
+        note: "nextTabStop / visualColumns, shared tab-stop arithmetic for the text walks"
+    }
     class ColorId {
         <<enum>>
     }
@@ -251,6 +255,9 @@ classDiagram
     class QuadBuffer {
         note: "single shared instance, passed to render()"
     }
+    class TabStop {
+        <<free functions>>
+    }
 
     ViewState <|-- PromptState
     View~TState~ <|-- Editor
@@ -260,6 +267,9 @@ classDiagram
     InfoBar ..> ViewState : TState
     Prompt ..> PromptState : TState
     View~TState~ ..> QuadBuffer : stages one batch per render()
+    Editor ..> TabStop : uses
+    InfoBar ..> TabStop : uses
+    Prompt ..> TabStop : uses
 ```
 
 The mouse handlers have empty default implementations; `InfoBar` and `Prompt` keep them.

@@ -194,22 +194,23 @@ public:
     [[nodiscard]] int32_t getFontDescender() const;
 
     /**
-     * @brief Calculates the rendered width of a UTF-16 string.
+     * @brief Calculates the rendered width of a UTF-16 string, one font advance per unit.
      *
-     * The width lives in content space: a buffer line can be long enough for it to overflow
-     * a 32-bit pixel count, so the measure is carried in 64 bits end to end.
+     * Tabs get no special width: every caller measures tab-free text. Buffer text, where tabs
+     * snap to tab stops, is measured by the views instead. The width lives in content space: a
+     * buffer line can be long enough for it to overflow a 32-bit pixel count, so the measure is
+     * carried in 64 bits end to end.
      *
      * @param text Text to measure.
-     * @param ignoreTabs If true, tabs are ignored in the measurement.
      * @return Width in pixels.
      */
-    [[nodiscard]] int64_t measure(std::u16string_view text, bool ignoreTabs) const;
+    [[nodiscard]] int64_t measure(std::u16string_view text) const;
 
     /**
      * @brief Truncates a UTF-16 string from the start so it fits the given width.
      *
      * When the text is too wide, the leading part is replaced by an ellipsis (U+2026).
-     * Tabs are ignored, matching measure(text, true).
+     * Tabs are ignored, matching measure().
      *
      * @param text Text to truncate.
      * @param maxWidth Maximum width in pixels.

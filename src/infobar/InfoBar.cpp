@@ -26,6 +26,7 @@
 #include "../ApplicationWindow.h"
 #include "../core/theme/ColorId.h"
 #include "../core/theme/DimensionId.h"
+#include "../core/theme/TabStop.h"
 
 
 InfoBar::InfoBar(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram)
@@ -92,7 +93,7 @@ void InfoBar::drawText(QuadBuffer &quadBuffer, const CursorContext &context, con
     const auto font_size = m_theme.getFontSize();
     const auto font_descender = m_theme.getFontDescender();
     const auto font_advance = m_theme.getFontAdvance();
-    const auto tab_to_space = m_theme.getDimension(DimensionId::TabToSpace);
+    const uint32_t tab_width = static_cast<uint32_t>(std::max(m_theme.getDimension(DimensionId::TabToSpace), 1));
     const auto padding_width = m_theme.getDimension(DimensionId::PaddingWidth);
     const auto cursor_line = context.cursor.getLine();
     const auto cursor_column = context.cursor.getColumn();
@@ -111,7 +112,7 @@ void InfoBar::drawText(QuadBuffer &quadBuffer, const CursorContext &context, con
     }
     const auto string_info = utf8::utf8to16(std::format("{} • {} • {}:{} / {}", font_size, highlight_mode, cursor_line + 1, cursor_column + 1, cursor_line_count));
     // The measure lives in 64-bit content space; a one-line info string always fits the screen
-    const auto string_info_size = static_cast<int32_t>(m_theme.measure(string_info, true));
+    const auto string_info_size = static_cast<int32_t>(m_theme.measure(string_info));
     const auto left_text_offset = padding_width;
     const auto right_text_offset = width - string_info_size - padding_width;
     const auto cursor_name_max_width = std::max(right_text_offset - left_text_offset - padding_width, 0);
@@ -124,18 +125,26 @@ void InfoBar::drawText(QuadBuffer &quadBuffer, const CursorContext &context, con
     const auto pen_position_y = position_y + line_height + font_descender;
     for (const auto &[x_offset, string] : strings) {
         auto pen_position_x = position_x + x_offset;
+        // Each string anchors its own tab-stop grid at its offset, restarting at column 0
+        uint32_t visual_column = 0;
         for (const auto c : string) {
             switch (c) {
                 case ' ' :
                     pen_position_x += font_advance;
+                    ++visual_column;
                 break;
-                case '\t' :
-                    pen_position_x += font_advance * tab_to_space;
+                case '\t' : {
+                    // A tab advances the pen to the next tab stop, 1 to tab_width columns away
+                    const uint32_t next_tab_stop = nextTabStop(visual_column, tab_width);
+                    pen_position_x += font_advance * static_cast<int32_t>(next_tab_stop - visual_column);
+                    visual_column = next_tab_stop;
+                }
                 break;
                 default:
                     const auto &character = m_theme.getCharacter(c);
                     drawCharacter(quadBuffer, pen_position_x, pen_position_y, character, text_color);
                     pen_position_x += font_advance;
+                    ++visual_column;
                 break;
             }
         }

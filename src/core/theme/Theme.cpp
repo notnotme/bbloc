@@ -182,21 +182,12 @@ int32_t Theme::getFontDescender() const {
     return m_font_descender;
 }
 
-int64_t Theme::measure(const std::u16string_view text, const bool ignoreTabs) const {
-    if (ignoreTabs) {
-        return static_cast<int64_t>(text.length()) * m_font_advance;
-    }
-
-    const auto tab_to_space = getDimension(DimensionId::TabToSpace);
-    int64_t size = 0;
-    for (const auto c : text) {
-        size += c == '\t' ? m_font_advance * tab_to_space : m_font_advance;
-    }
-    return size;
+int64_t Theme::measure(const std::u16string_view text) const {
+    return static_cast<int64_t>(text.length()) * m_font_advance;
 }
 
 std::u16string Theme::ellipsizeStart(const std::u16string_view text, const int32_t maxWidth) const {
-    if (measure(text, true) <= maxWidth) {
+    if (measure(text) <= maxWidth) {
         return std::u16string(text);
     }
 

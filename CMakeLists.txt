@@ -37,6 +37,7 @@ add_executable(bbloc
         src/core/CursorContextManager.cpp
         src/core/CVarCommand.cpp
         src/core/ViewState.cpp
+        src/core/theme/TabStop.h
         src/core/theme/Theme.cpp
         src/command/QuitCommand.cpp
         src/command/OpenFileCommand.cpp

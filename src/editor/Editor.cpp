@@ -27,6 +27,7 @@
 
 #include "../ApplicationWindow.h"
 #include "../core/theme/DimensionId.h"
+#include "../core/theme/TabStop.h"
 
 
 /**
@@ -157,14 +158,13 @@ bool Editor::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_K
                 const uint32_t column = context.cursor.getColumn();
 
                 // The visual column only deviates from the character index by the tabs
-                // before the caret, each drawn tab_width wide.
-                uint32_t tab_count = 0;
+                // before the caret, each snapping to its own tab stop.
+                uint32_t visual_column = column;
                 if (const uint32_t line = context.cursor.getLine(); context.cursor.getLineTabCount(line) != 0) {
                     const std::u16string_view text = context.cursor.getString(line);
-                    tab_count = static_cast<uint32_t>(std::count(text.begin(), text.begin() + column, u'\t'));
+                    visual_column = visualColumns(text.substr(0, column), tab_width);
                 }
 
-                const uint32_t visual_column = column + tab_count * (tab_width - 1);
                 const uint32_t space_amount = tab_width - visual_column % tab_width;
                 const auto &edit = context.cursor.insert(std::u16string(space_amount, u' '));
                 context.highlighter.edit(edit);
@@ -258,18 +258,17 @@ int64_t Editor::measureLineText(const CursorContext &context, const uint32_t lin
     const auto font_advance = m_theme.getFontAdvance();
     const auto length = static_cast<int64_t>(text.length());
 
-    // Theme::measure(text, false) only deviates from length * advance on tabs, and the buffer
-    // tracks the tab count of every line: a tab-free line needs no walk at all
+    // The visual width only deviates from length * advance on tabs, and the buffer tracks the
+    // tab count of every line: a tab-free line needs no walk at all
     if (context.cursor.getLineTabCount(line) == 0) {
         return length * font_advance;
     }
 
-    // The per-line count covers the whole line, not the measured slice, so a tabby line still
-    // counts its tabs — O(length), but far cheaper than the per-character measure. Per-line
-    // prefix tab sums would make this O(1) too; not worth it while tabby lines stay rare.
-    const auto tab_count = static_cast<int64_t>(std::count(text.begin(), text.end(), u'\t'));
-    const auto tab_to_space = m_theme.getDimension(DimensionId::TabToSpace);
-    return (length + tab_count * (tab_to_space - 1)) * font_advance;
+    // Tabs snap to tab stops, so the measure is only valid for a prefix starting at visual
+    // column 0 — every caller measures such a prefix. O(length) on tabby lines, but the scan
+    // folds tab-free runs so it stays far cheaper than a per-character walk.
+    const uint32_t tab_width = static_cast<uint32_t>(std::max(m_theme.getDimension(DimensionId::TabToSpace), 1));
+    return static_cast<int64_t>(visualColumns(text, tab_width)) * font_advance;
 }
 
 void Editor::drawBackground(QuadBuffer &quadBuffer, const ViewState &viewState, const int32_t marginWidth) const {
@@ -354,7 +353,7 @@ void Editor::drawText(QuadBuffer &quadBuffer, const CursorContext &context, cons
     // Need some variable
     const auto indicator_width = m_theme.getDimension(DimensionId::IndicatorWidth);
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
-    const auto tab_to_space = m_theme.getDimension(DimensionId::TabToSpace);
+    const uint32_t tab_width = static_cast<uint32_t>(std::max(m_theme.getDimension(DimensionId::TabToSpace), 1));
 
     const auto line_height = m_theme.getLineHeight();
     const auto font_descender = m_theme.getFontDescender();
@@ -397,9 +396,10 @@ void Editor::drawText(QuadBuffer &quadBuffer, const CursorContext &context, cons
                 const auto &selected_background_color = m_theme.getColor(ColorId::SelectedTextBackground);
                 if (selected_range->line_start == line && selected_range->line_end == line) {
                     // The selection start / end on the same line. Select only a range of text.
-                    const auto selected_text = string.substr(selected_range->column_start, selected_range->column_end - selected_range->column_start);
-                    const auto selected_text_width = measureLineText(context, line, selected_text);
+                    // Both bounds are measured as line prefixes: a mid-line slice has no tab-stop
+                    // origin of its own, so the width is the difference of the two prefixes.
                     const auto selection_start_x = measureLineText(context, line, string.substr(0, selected_range->column_start));
+                    const auto selected_text_width = measureLineText(context, line, string.substr(0, selected_range->column_end)) - selection_start_x;
                     drawQuad(quadBuffer, projectToViewport(cursor_text_start_x - scrollX + selection_start_x), pen_position_y - line_height - font_descender, projectToViewport(selected_text_width), line_height, selected_background_color);
                 } else if (line == selected_range->line_start) {
                     // First line of selected text, the selection starts at column until the end of the text area.
@@ -434,9 +434,11 @@ void Editor::drawText(QuadBuffer &quadBuffer, const CursorContext &context, cons
                 }
             }
 
-            // The skipped prefix is tab-free, so its width (and the cursor offset inside it) is a plain multiply
+            // The skipped prefix is tab-free, so its width (and the cursor offset inside it) is a
+            // plain multiply, and its character index doubles as its visual column
             auto cursor_position_x = projectToViewport(cursor_text_start_x - scrollX + static_cast<int64_t>(std::min(cursor_column, start_column)) * font_advance);
             pen_position_x = projectToViewport(cursor_text_start_x - scrollX + static_cast<int64_t>(start_column) * font_advance);
+            uint32_t visual_column = start_column;
 
             for (auto character_column = start_column; character_column < string_length; ++character_column) {
                 if (pen_position_x > position_x + width) {
@@ -447,9 +449,14 @@ void Editor::drawText(QuadBuffer &quadBuffer, const CursorContext &context, cons
                 switch (const auto c = string[character_column]) {
                     case ' ':
                         pen_position_x += font_advance;
+                        ++visual_column;
                     break;
-                    case '\t':
-                        pen_position_x += font_advance * tab_to_space;
+                    case '\t': {
+                        // A tab advances the pen to the next tab stop, 1 to tab_width columns away
+                        const uint32_t next_tab_stop = nextTabStop(visual_column, tab_width);
+                        pen_position_x += font_advance * static_cast<int32_t>(next_tab_stop - visual_column);
+                        visual_column = next_tab_stop;
+                    }
                     break;
                     default:
                         if (pen_position_x + font_advance >= position_x) {
@@ -461,6 +468,7 @@ void Editor::drawText(QuadBuffer &quadBuffer, const CursorContext &context, cons
                             drawCharacter(quadBuffer, pen_position_x, pen_position_y, character, character_color);
                         }
                         pen_position_x += font_advance;
+                        ++visual_column;
                     break;
                 }
 
@@ -630,7 +638,7 @@ uint32_t Editor::columnAtPixel(const CursorContext &context, const uint32_t line
     const auto string = context.cursor.getString(line);
     const auto string_length = static_cast<uint32_t>(string.length());
     const auto font_advance = m_theme.getFontAdvance();
-    const auto tab_to_space = m_theme.getDimension(DimensionId::TabToSpace);
+    const uint32_t tab_width = static_cast<uint32_t>(std::max(m_theme.getDimension(DimensionId::TabToSpace), 1));
 
     // Same fast-skip as drawText: every character before the first tab is exactly one font
     // advance wide, so the walk can start right at the column holding the pixel, capped at the
@@ -645,13 +653,17 @@ uint32_t Editor::columnAtPixel(const CursorContext &context, const uint32_t line
     // Walk the remaining columns with the render advances and stop at the first boundary whose
     // character midpoint lies right of the pixel: a click on the right half of a character
     // places the caret after it. The pen walks in content space, like the pixel it resolves.
+    // The skipped prefix is tab-free, so its character index doubles as its visual column.
     auto pen_position_x = static_cast<int64_t>(start_column) * font_advance;
+    uint32_t visual_column = start_column;
     for (auto character_column = start_column; character_column < string_length; ++character_column) {
-        const auto character_width = string[character_column] == u'\t' ? font_advance * tab_to_space : font_advance;
+        const uint32_t next_visual_column = string[character_column] == u'\t' ? nextTabStop(visual_column, tab_width) : visual_column + 1;
+        const auto character_width = static_cast<int32_t>(next_visual_column - visual_column) * font_advance;
         if (targetX < pen_position_x + character_width / 2) {
             return character_column;
         }
         pen_position_x += character_width;
+        visual_column = next_visual_column;
     }
 
     // Past the end of the line: clamp to eol

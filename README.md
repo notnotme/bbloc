@@ -442,12 +442,10 @@ make
 - Mouse support: caret placement, drag selection, wheel scrolling, and scrollbar interactions
 
 ### Known Limitations
-- Tab alignment may not be perfect with mixed spaces
 - Undoing back to the last saved state still shows the buffer as modified
 
 ### Future Enhancements (no ordering)
 - Additional language support
-- Better tab alignment ?
 
 ## Contributing
 

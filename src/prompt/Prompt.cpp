@@ -18,6 +18,7 @@
  */
 #include "Prompt.h"
 
+#include <algorithm>
 #include <format>
 #include <iostream>
 #include <utf8.h>
@@ -25,6 +26,7 @@
 #include "../ApplicationWindow.h"
 #include "../core/theme/ColorId.h"
 #include "../core/theme/DimensionId.h"
+#include "../core/theme/TabStop.h"
 
 
 Prompt::Prompt(GlobalRegistry<CursorContext> &commandController, Theme &theme, QuadProgram &quadProgram)
@@ -151,7 +153,7 @@ void Prompt::drawText(QuadBuffer &quadBuffer, const CursorContext &context, cons
     // Keep some variable that frequently needed
     const auto &prompt_text_color = m_theme.getColor(ColorId::PromptText);
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
-    const auto tab_to_space = m_theme.getDimension(DimensionId::TabToSpace);
+    const uint32_t tab_width = static_cast<uint32_t>(std::max(m_theme.getDimension(DimensionId::TabToSpace), 1));
     const auto padding_width = m_theme.getDimension(DimensionId::PaddingWidth);
     const auto line_height = m_theme.getLineHeight();
     const auto font_descender = m_theme.getFontDescender();
@@ -161,19 +163,29 @@ void Prompt::drawText(QuadBuffer &quadBuffer, const CursorContext &context, cons
     const auto pen_position_y = position_y + border_size + line_height + font_descender;
     auto pen_position_x = position_x + padding_width;
 
+    // One visual column spans the prompt label and the input text, anchored at the padding
+    // origin, so the tab-stop grid stays continuous across the two strings
+    uint32_t visual_column = 0;
+
     // Draw the prompt text
     for (const auto prompt_text = viewState.getPromptText(); const auto c : prompt_text) {
         switch (c) {
             case ' ' :
                 pen_position_x += font_advance;
+                ++visual_column;
             break;
-            case '\t' :
-                pen_position_x += font_advance * tab_to_space;
+            case '\t' : {
+                // A tab advances the pen to the next tab stop, 1 to tab_width columns away
+                const uint32_t next_tab_stop = nextTabStop(visual_column, tab_width);
+                pen_position_x += font_advance * static_cast<int32_t>(next_tab_stop - visual_column);
+                visual_column = next_tab_stop;
+            }
             break;
             default:
                 const auto &character = m_theme.getCharacter(c);
                 drawCharacter(quadBuffer, pen_position_x, pen_position_y, character, prompt_text_color);
                 pen_position_x += font_advance;
+                ++visual_column;
             break;
         }
 
@@ -195,14 +207,20 @@ void Prompt::drawText(QuadBuffer &quadBuffer, const CursorContext &context, cons
         switch (const auto c = string[character_column]) {
             case ' ' :
                 pen_position_x += font_advance;
+                ++visual_column;
             break;
-            case '\t' :
-                pen_position_x += font_advance * tab_to_space;
+            case '\t' : {
+                // A tab advances the pen to the next tab stop, 1 to tab_width columns away
+                const uint32_t next_tab_stop = nextTabStop(visual_column, tab_width);
+                pen_position_x += font_advance * static_cast<int32_t>(next_tab_stop - visual_column);
+                visual_column = next_tab_stop;
+            }
             break;
             default:
                 const auto &character = m_theme.getCharacter(c);
                 drawCharacter(quadBuffer, pen_position_x, pen_position_y, character, input_text_color);
                 pen_position_x += font_advance;
+                ++visual_column;
             break;
         }
 
@@ -242,7 +260,7 @@ void Prompt::drawText(QuadBuffer &quadBuffer, const CursorContext &context, cons
     if (indicator_count > 0) {
         const auto string_indicator = utf8::utf8to16(std::format("{}/{}", indicator_index + 1, indicator_count));
         // The measure lives in 64-bit content space; a short counter string always fits the screen
-        const auto indicator_text_width = static_cast<int32_t>(m_theme.measure(string_indicator, true));
+        const auto indicator_text_width = static_cast<int32_t>(m_theme.measure(string_indicator));
         pen_position_x = position_x + width - padding_width - indicator_text_width;
         for (const auto c : string_indicator) {
             const auto &character = m_theme.getCharacter(c);

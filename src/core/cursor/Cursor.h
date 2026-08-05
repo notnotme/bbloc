@@ -180,7 +180,11 @@ public:
     /**
      * @brief Returns the weighted character length of the longest line in the buffer.
      *
-     * @param tabWeight The number of character widths a tab character occupies.
+     * With tab-stop rendering a tab expands to 1..tabWeight visual columns, so the weighted
+     * length is an upper bound on the visual width: the max horizontal scroll it feeds is
+     * slightly over-provisioned on tabby lines, which is accepted.
+     *
+     * @param tabWeight The number of character widths a tab character occupies at most.
      * @return The weighted length of the longest line, in characters.
      */
     [[nodiscard]] uint32_t getLongestLineLength(uint32_t tabWeight) const;
