@@ -443,20 +443,16 @@ make
 
 ### Known Limitations
 - Tab alignment may not be perfect with mixed spaces
-- Basic error handling
 - Undoing back to the last saved state still shows the buffer as modified
 
 ### Future Enhancements (no ordering)
-- Inline documentation needs improvement, to be re-done
-- Code base need a good cleanup as there is a lots of comments all over the place
 - Additional language support
-- Better keyboard layouts for Nintendo Switch
 - Better tab alignment ?
 
 ## Contributing
 
-This is a hobby project. Contriution are not yet open (code cleanup are more than necessary before).
-If you use it on Nintendo Switch and see bugs, reporting them are welcome.
+This is a hobby project. Contributions are not yet open.
+If you use it on Nintendo Switch and see bugs, reporting them is welcome.
 
 ### Code Style
 
