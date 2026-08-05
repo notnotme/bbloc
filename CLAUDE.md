@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 bbloc is a minimalist GPU-rendered text editor in C++20 (SDL2, OpenGL, glad, FreeType, utfcpp, tree-sitter). It targets Linux and Nintendo Switch (devkitPro). No test suite or lint config exists.
 
+## Plans
+
+Upcoming work is planned in numbered `docs/plan-*.md` files, executed in order. Delete each plan file in the commit that completes it. Current sequence: branch unification + input refactor, controller support, on-screen keyboard; a native deko3d Switch renderer may eventually replace the GL 4.3 one.
+
 ## Building
 
 Dependencies come from vcpkg; configuration requires the vcpkg toolchain file:
