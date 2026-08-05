@@ -76,6 +76,19 @@ private:
         Prompt    ///< The prompt received the press.
     };
 
+    /**
+     * @brief Touch gesture currently in progress.
+     *
+     * One finger acts as the left mouse button, routed through the MouseTarget capture;
+     * two fingers scroll the active context. Scroll mode ends only when every finger has
+     * lifted, so a trailing finger cannot start an accidental selection.
+     */
+    enum class TouchMode : uint8_t {
+        None,    ///< No finger on the screen.
+        Drag,    ///< Single finger: emulates a left-button press and drag.
+        Scroll   ///< Two or more fingers: scrolls the active context.
+    };
+
     /** SDL window handle. */
     SDL_Window *p_sdl_window;
 
@@ -138,6 +151,9 @@ private:
 
     /** View that received the current left-button press, None outside a press. */
     MouseTarget m_mouse_target;
+
+    /** Gesture the fingers currently perform, None while the screen is untouched. */
+    TouchMode m_touch_mode;
 
     /** Scratch vector whose capacity is reused by runCommand to tokenize command strings. */
     std::vector<std::u16string_view> m_token_scratch;

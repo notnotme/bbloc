@@ -279,6 +279,11 @@ The mouse handlers have empty default implementations; `InfoBar` and `Prompt` ke
 contains the point, then captures that view: `SDL_MOUSEMOTION` and `SDL_MOUSEBUTTONUP` keep
 going to it until the button is released, even when the pointer leaves the view.
 
+Touch input goes through the same capture (SDL's touch-to-mouse synthesis is disabled): a
+single finger replays the left-button press/drag/release path, while a second finger ends the
+drag and switches to a two-finger scroll of the active context (`TouchMode` member enum);
+scroll mode ends only when every finger has lifted.
+
 ---
 
 ## 9. Concrete Commands (`command/`)

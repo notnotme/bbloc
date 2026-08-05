@@ -19,6 +19,7 @@
 #include "ApplicationWindow.h"
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 
 #include <memory>
@@ -65,7 +66,8 @@ ApplicationWindow::ApplicationWindow()
       m_search_case_sensitive(std::make_shared<CVarBool>(false)),
       m_bind_command(std::make_shared<BindCommand>(m_command_manager)),
       m_orthogonal(),
-      m_mouse_target(MouseTarget::None) {}
+      m_mouse_target(MouseTarget::None),
+      m_touch_mode(TouchMode::None) {}
 
 bool ApplicationWindow::viewContains(const ViewState &viewState, const int32_t x, const int32_t y) {
     const auto position_x = viewState.getPositionX();
@@ -93,6 +95,9 @@ void ApplicationWindow::updateOrthogonal(const int32_t width, const int32_t heig
 }
 
 void ApplicationWindow::create(const std::string_view title, const int32_t width, const int32_t height, const int32_t argc, const char *argv[]) {
+    // Touch is handled explicitly in mainLoop; stop SDL from synthesizing mouse events from fingers
+    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+
     // Init SDL
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         throw std::runtime_error(std::string("Failed to initialize SDL: ").append(SDL_GetError()));
@@ -395,6 +400,118 @@ void ApplicationWindow::mainLoop() {
                     // Horizontal wheel: positive wheel.x means scrolling right, matching a scroll.x increase
                     context.scroll.x = context.scroll.x + event.wheel.x * m_theme.getFontAdvance();
                     context.wants_redraw = true;
+                }
+                break;
+                case SDL_FINGERDOWN: {
+                    const auto x = static_cast<int32_t>(event.tfinger.x * static_cast<float>(window_width));
+                    const auto y = static_cast<int32_t>(event.tfinger.y * static_cast<float>(window_height));
+                    const auto finger_count = SDL_GetNumTouchFingers(event.tfinger.touchId);
+
+                    if (m_touch_mode == TouchMode::None && finger_count == 1) {
+                        // First finger acts as a left-button press: route and capture like a mouse
+                        // press above. Drag mode is entered even when no view contains the point,
+                        // so a second finger can still turn the gesture into a scroll
+                        m_touch_mode = TouchMode::Drag;
+                        auto &context = m_context_manager.active();
+                        if (viewContains(m_editor_state, x, y)) {
+                            m_mouse_target = MouseTarget::Editor;
+                            m_editor.onMouseDown(context, m_editor_state, x, y);
+                        } else if (viewContains(m_prompt_state, x, y)) {
+                            m_mouse_target = MouseTarget::Prompt;
+                            m_prompt.onMouseDown(context, m_prompt_state, x, y);
+                        } else if (viewContains(m_info_bar_state, x, y)) {
+                            m_mouse_target = MouseTarget::InfoBar;
+                            m_info_bar.onMouseDown(context, m_info_bar_state, x, y);
+                        }
+                    } else if (finger_count >= 2 && m_touch_mode != TouchMode::Scroll) {
+                        // A second finger turns the gesture into a scroll: end the drag first so
+                        // the captured view closes its state (coordinates are ignored on release)
+                        if (m_mouse_target != MouseTarget::None) {
+                            auto &context = m_context_manager.active();
+                            switch (m_mouse_target) {
+                                case MouseTarget::Editor:
+                                    m_editor.onMouseUp(context, m_editor_state, x, y);
+                                break;
+                                case MouseTarget::Prompt:
+                                    m_prompt.onMouseUp(context, m_prompt_state, x, y);
+                                break;
+                                case MouseTarget::InfoBar:
+                                    m_info_bar.onMouseUp(context, m_info_bar_state, x, y);
+                                break;
+                                default:
+                                break;
+                            }
+                            m_mouse_target = MouseTarget::None;
+                        }
+                        m_touch_mode = TouchMode::Scroll;
+                    }
+                }
+                break;
+                case SDL_FINGERMOTION: {
+                    if (m_touch_mode == TouchMode::Scroll) {
+                        // Every finger reports its own motion, so split each event by the live
+                        // finger count to track the fingers 1:1. Fingers moving down reveal
+                        // earlier lines (scroll.y decreases), matching the wheel direction above.
+                        // follow_indicator is left untouched so the render-time clamp applies
+                        const auto finger_count = std::max(1, SDL_GetNumTouchFingers(event.tfinger.touchId));
+                        auto &context = m_context_manager.active();
+                        context.scroll.x = context.scroll.x - std::lround(event.tfinger.dx * static_cast<float>(window_width) / static_cast<float>(finger_count));
+                        context.scroll.y = context.scroll.y - std::lround(event.tfinger.dy * static_cast<float>(window_height) / static_cast<float>(finger_count));
+                        context.wants_redraw = true;
+                    } else if (m_touch_mode == TouchMode::Drag && m_mouse_target != MouseTarget::None) {
+                        // Single-finger drag: same routing as a captured mouse motion above
+                        const auto x = static_cast<int32_t>(event.tfinger.x * static_cast<float>(window_width));
+                        const auto y = static_cast<int32_t>(event.tfinger.y * static_cast<float>(window_height));
+                        auto &context = m_context_manager.active();
+                        switch (m_mouse_target) {
+                            case MouseTarget::Editor:
+                                m_editor.onMouseMotion(context, m_editor_state, x, y);
+                            break;
+                            case MouseTarget::Prompt:
+                                m_prompt.onMouseMotion(context, m_prompt_state, x, y);
+                            break;
+                            case MouseTarget::InfoBar:
+                                m_info_bar.onMouseMotion(context, m_info_bar_state, x, y);
+                            break;
+                            default:
+                            break;
+                        }
+                    }
+                }
+                break;
+                case SDL_FINGERUP: {
+                    // SDL removes the finger before posting the event: 0 means the last one lifted
+                    const auto finger_count = SDL_GetNumTouchFingers(event.tfinger.touchId);
+
+                    if (m_touch_mode == TouchMode::Drag) {
+                        // Release the capture after letting the pressed view end its drag
+                        if (m_mouse_target != MouseTarget::None) {
+                            const auto x = static_cast<int32_t>(event.tfinger.x * static_cast<float>(window_width));
+                            const auto y = static_cast<int32_t>(event.tfinger.y * static_cast<float>(window_height));
+                            auto &context = m_context_manager.active();
+                            switch (m_mouse_target) {
+                                case MouseTarget::Editor:
+                                    m_editor.onMouseUp(context, m_editor_state, x, y);
+                                break;
+                                case MouseTarget::Prompt:
+                                    m_prompt.onMouseUp(context, m_prompt_state, x, y);
+                                break;
+                                case MouseTarget::InfoBar:
+                                    m_info_bar.onMouseUp(context, m_info_bar_state, x, y);
+                                break;
+                                default:
+                                break;
+                            }
+                            m_mouse_target = MouseTarget::None;
+                        }
+                        m_touch_mode = TouchMode::None;
+                    }
+
+                    // Scroll mode ends only when every finger has lifted, so a trailing finger
+                    // keeps scrolling and can never start an accidental selection
+                    if (finger_count == 0) {
+                        m_touch_mode = TouchMode::None;
+                    }
                 }
                 break;
                 default:
