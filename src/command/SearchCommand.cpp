@@ -64,7 +64,7 @@ std::optional<std::u16string> SearchCommand::runSearch(CursorContext &payload, c
     }
 
     // Join the arguments back with single spaces, reserving the final length up front.
-    auto joined_term = std::u16string();
+    auto joined_term = std::u16string{};
     auto term_length = args.size() - 1;
     for (const auto &argument : args) {
         term_length += argument.length();
@@ -158,7 +158,7 @@ std::optional<std::u16string> SearchCommand::runFind(CursorContext &payload) con
             : stored_index + (backward ? -1 : 1);
 
         if (index >= 0 && index < stored_total) {
-            storeMatchStats(payload, {index, stored_total}, match.value(), case_sensitive, true);
+            storeMatchStats(payload, MatchStats{.index = index, .total = stored_total}, match.value(), case_sensitive, true);
             selectMatch(payload, match.value(), static_cast<uint32_t>(term.length()));
             return std::nullopt;
         }
@@ -256,7 +256,7 @@ std::optional<SearchCommand::MatchLocation> SearchCommand::searchForward(const C
         scanner.setLine(cursor.getString(line));
         const auto from = line == startLine ? startColumn : 0u;
         if (const auto position = scanner.indexOf(from); position != std::u16string_view::npos) {
-            return MatchLocation { line, static_cast<uint32_t>(position) };
+            return MatchLocation{.line = line, .column = static_cast<uint32_t>(position)};
         }
     }
 
@@ -273,7 +273,7 @@ std::optional<SearchCommand::MatchLocation> SearchCommand::searchBackward(const 
             : text.length() + 1;
 
         if (const auto position = scanner.lastIndexOf(limit); position != std::u16string_view::npos) {
-            return MatchLocation { line, static_cast<uint32_t>(position) };
+            return MatchLocation{.line = line, .column = static_cast<uint32_t>(position)};
         }
     }
 
@@ -283,7 +283,7 @@ std::optional<SearchCommand::MatchLocation> SearchCommand::searchBackward(const 
 SearchCommand::MatchStats SearchCommand::scanMatches(const Cursor &cursor, LineScanner &scanner, const MatchLocation &current) {
     const auto term_length = scanner.termLength();
     if (term_length == 0) {
-        return { -1, 0 };
+        return MatchStats{.index = -1, .total = 0};
     }
 
     auto index = -1;
@@ -291,7 +291,7 @@ SearchCommand::MatchStats SearchCommand::scanMatches(const Cursor &cursor, LineS
     const auto line_count = cursor.getLineCount();
     for (auto line = 0u; line < line_count; ++line) {
         scanner.setLine(cursor.getString(line));
-        auto from = size_t { 0 };
+        size_t from = 0;
         while (true) {
             const auto position = scanner.indexOf(from);
             if (position == std::u16string_view::npos) {
@@ -305,7 +305,7 @@ SearchCommand::MatchStats SearchCommand::scanMatches(const Cursor &cursor, LineS
         }
     }
 
-    return { index, total };
+    return MatchStats{.index = index, .total = total};
 }
 
 void SearchCommand::storeMatchStats(CursorContext &payload, const MatchStats &stats, const MatchLocation &match, const bool caseSensitive, const bool scanned) {
@@ -367,7 +367,7 @@ void SearchCommand::refreshMatchStats(CursorContext &payload, const bool caseSen
     const auto line_count = cursor.getLineCount();
     for (auto line = 0u; line < line_count; ++line) {
         scanner.setLine(cursor.getString(line));
-        auto from = size_t { 0 };
+        size_t from = 0;
         while (true) {
             const auto position = scanner.indexOf(from);
             if (position == std::u16string_view::npos) {
@@ -393,10 +393,10 @@ void SearchCommand::refreshMatchStats(CursorContext &payload, const bool caseSen
     // Prefer the ordinal of a match landing on the anchor; otherwise place the counter just past
     // the matches preceding it, clamped in case the anchor sits after the final match.
     const auto index = exact >= 0 ? exact : before;
-    const auto stats = MatchStats { std::clamp(index, 0, total - 1), total };
+    const auto stats = MatchStats{.index = std::clamp(index, 0, total - 1), .total = total};
 
     // Only an anchor sitting on a match got its exact ordinal, so only that one can be stepped.
-    storeMatchStats(payload, stats, { anchor_line, anchor_column }, caseSensitive, exact >= 0);
+    storeMatchStats(payload, stats, MatchLocation{.line = anchor_line, .column = anchor_column}, caseSensitive, exact >= 0);
 }
 
 SearchCommand::LineScanner::LineScanner(const std::u16string_view term, const bool caseSensitive)
@@ -447,7 +447,7 @@ size_t SearchCommand::LineScanner::termLength() const {
 bool SearchCommand::LineScanner::isSelfOverlapping() const {
     // A shift that leaves the term matching itself is exactly an overlap of two occurrences.
     const auto term = std::u16string_view { m_term };
-    for (auto shift = size_t { 1 }; shift < term.length(); ++shift) {
+    for (size_t shift = 1; shift < term.length(); ++shift) {
         if (term.substr(shift) == term.substr(0, term.length() - shift)) {
             return true;
         }

@@ -19,6 +19,7 @@ add_executable(bbloc
         src/core/cursor/buffer/LineBuffer.cpp
         src/core/cursor/Cursor.cpp
         src/core/cursor/PromptCursor.cpp
+        src/core/cursor/SurrogatePair.h
         src/core/cursor/UndoHistory.cpp
         src/core/cvar/CVarBool.cpp
         src/core/cvar/CVarColor.cpp

@@ -43,7 +43,7 @@ std::optional<std::u16string> PasteTextCommand::run(CursorContext &payload, cons
     // The clipboard is not guaranteed to hold UTF-8: on X11, SDL falls back to XA_STRING (Latin-1).
     // Catch the base exception, a truncated trailing sequence raises not_enough_room, not invalid_utf8.
     // Never substitute U+FFFD here: this text goes into the document, silent corruption is worse than a refusal.
-    auto utf16_clipboard_text = std::u16string();
+    auto utf16_clipboard_text = std::u16string{};
     try {
         utf16_clipboard_text = utf8::utf8to16(clipboard_text);
     } catch (const utf8::exception &) {

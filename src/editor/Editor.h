@@ -86,7 +86,7 @@ private:
     int32_t m_drag_grab;
 
     /** Scroll offset of the dragged axis when a scrollbar thumb was grabbed. */
-    int32_t m_drag_scroll;
+    int64_t m_drag_scroll;
 
     /** Line of the last cell placed by a mouse press or drag, to skip redundant updates. */
     uint32_t m_drag_line;
@@ -102,6 +102,28 @@ private:
     void registerShowScrollbarCVar() const;
 
     /**
+     * @brief Measures the whole buffer content height, in content-space pixels.
+     *
+     * The one place the line count enters the 64-bit content space: a 4G-line buffer
+     * overflows a 32-bit pixel count.
+     *
+     * @param context A reference to the cursor context.
+     * @return The content height in pixels.
+     */
+    [[nodiscard]] int64_t contentHeight(const CursorContext &context) const;
+
+    /**
+     * @brief Measures the width of the longest line, in content-space pixels.
+     *
+     * The one place the longest line length enters the 64-bit content space: a 4G-character
+     * line overflows a 32-bit pixel count.
+     *
+     * @param longestLineLength The weighted length of the longest line, in characters.
+     * @return The content width in pixels.
+     */
+    [[nodiscard]] int64_t contentWidth(uint32_t longestLineLength) const;
+
+    /**
      * @brief Measures text belonging to a buffer line, in pixels.
      *
      * Returns exactly what Theme::measure(text, false) returns — the callers position the cursor
@@ -112,9 +134,9 @@ private:
      * @param context A reference to the cursor context.
      * @param line The line the text belongs to, to query its tab count.
      * @param text The slice of the line to measure.
-     * @return The measured width in pixels.
+     * @return The measured width in content-space pixels.
      */
-    [[nodiscard]] int32_t measureLineText(const CursorContext &context, uint32_t line, std::u16string_view text) const;
+    [[nodiscard]] int64_t measureLineText(const CursorContext &context, uint32_t line, std::u16string_view text) const;
 
     /**
      * @brief Computes the effective scrollbar sizes for the current frame.
@@ -154,7 +176,7 @@ private:
      * @param scroll Current scroll offset of the axis.
      * @return The resolved scrollbar metrics.
      */
-    [[nodiscard]] static ScrollbarMetrics computeScrollbarMetrics(int64_t trackOrigin, int64_t viewSize, int64_t contentSize, int32_t scroll);
+    [[nodiscard]] static ScrollbarMetrics computeScrollbarMetrics(int64_t trackOrigin, int64_t viewSize, int64_t contentSize, int64_t scroll);
 
     /**
      * @brief Maps the pointer travel of a thumb drag back to a scroll offset.
@@ -166,7 +188,7 @@ private:
      * @param bar The scrollbar metrics of the dragged axis.
      * @param context A reference to the cursor context, to request the redraw.
      */
-    void applyThumbDrag(int32_t &scroll, int32_t pointer, const ScrollbarMetrics &bar, CursorContext &context) const;
+    void applyThumbDrag(int64_t &scroll, int32_t pointer, const ScrollbarMetrics &bar, CursorContext &context) const;
 
     /**
      * @brief Converts a pixel offset inside the text area to a column of the given line.
@@ -177,10 +199,10 @@ private:
      *
      * @param context A reference to the cursor context.
      * @param line The line index to resolve the column on.
-     * @param targetX Pixel offset from the text origin (scroll already applied).
+     * @param targetX Content-space pixel offset from the text origin (scroll already applied).
      * @return The resolved column index.
      */
-    [[nodiscard]] uint32_t columnAtPixel(const CursorContext &context, uint32_t line, int32_t targetX) const;
+    [[nodiscard]] uint32_t columnAtPixel(const CursorContext &context, uint32_t line, int64_t targetX) const;
 
     /**
      * @brief Places the cursor at the cell under a window pixel, optionally extending the selection.
@@ -242,7 +264,7 @@ private:
      * @param lineCountWidth The width in pixel of the greatest line number.
      * @param scrollY The editor y scroll offset.
      */
-    void drawMarginText(QuadBuffer &quadBuffer, const CursorContext &context, const ViewState &viewState, int32_t lineCountWidth, int32_t scrollY) const;
+    void drawMarginText(QuadBuffer &quadBuffer, const CursorContext &context, const ViewState &viewState, int32_t lineCountWidth, int64_t scrollY) const;
 
     /**
      * @brief Draw the text layer (glyphs, selection, and cursor indicator) of the editor.
@@ -254,7 +276,7 @@ private:
      * @param scrollY The editor y scroll offset.
      * @param marginWidth The width of the margin, without the border size.
      */
-    void drawText(QuadBuffer &quadBuffer, const CursorContext &context, const ViewState &viewState, int32_t scrollX, int32_t scrollY, int32_t marginWidth) const;
+    void drawText(QuadBuffer &quadBuffer, const CursorContext &context, const ViewState &viewState, int64_t scrollX, int64_t scrollY, int32_t marginWidth) const;
 
 public:
     /**

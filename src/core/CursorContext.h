@@ -44,8 +44,8 @@ private:
      * @brief Scroll state of a cursor's view.
      */
     struct ScrollState final {
-        int32_t x = 0;                  ///< Horizontal scroll value of cursor.
-        int32_t y = 0;                  ///< Vertical scroll value of cursor.
+        int64_t x = 0;                  ///< Horizontal scroll value of cursor, in content-space pixels.
+        int64_t y = 0;                  ///< Vertical scroll value of cursor, in content-space pixels.
         bool follow_indicator = false;  ///< View should scroll to the indicator on next render.
     };
 

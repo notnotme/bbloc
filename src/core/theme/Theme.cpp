@@ -85,7 +85,13 @@ void Theme::computeMaxFontSize() {
 
 void Theme::setFontSize(int32_t size) {
     size = std::clamp(size, MIN_FONT_SIZE, m_max_font_size);
-    FT_Size_RequestRec font_size_req = {FT_SIZE_REQUEST_TYPE_NOMINAL, 0, size * 64, 96, 96};
+    FT_Size_RequestRec font_size_req = {
+        .type = FT_SIZE_REQUEST_TYPE_NOMINAL,
+        .width = 0,
+        .height = size * 64,
+        .horiResolution = 96,
+        .vertResolution = 96
+    };
     if (FT_Request_Size(m_font, &font_size_req) != FT_Err_Ok) {
         if (m_line_height == 0) {
             // Nothing was ever sized successfully: there are no previous metrics to keep, and a
@@ -176,13 +182,13 @@ int32_t Theme::getFontDescender() const {
     return m_font_descender;
 }
 
-int32_t Theme::measure(const std::u16string_view text, const bool ignoreTabs) const {
+int64_t Theme::measure(const std::u16string_view text, const bool ignoreTabs) const {
     if (ignoreTabs) {
-        return static_cast<int32_t>(text.length() * m_font_advance);
+        return static_cast<int64_t>(text.length()) * m_font_advance;
     }
 
     const auto tab_to_space = getDimension(DimensionId::TabToSpace);
-    auto size = 0;
+    int64_t size = 0;
     for (const auto c : text) {
         size += c == '\t' ? m_font_advance * tab_to_space : m_font_advance;
     }

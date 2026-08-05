@@ -25,7 +25,7 @@
 
 
 void CVarCommand::registerCvar(const std::u16string_view name, std::shared_ptr<CVar> cvar, const CVarCallback &callback) {
-    const auto &[new_entry, success] = m_cvars.insert({ std::u16string(name), { std::move(cvar), callback } });
+    const auto &[new_entry, success] = m_cvars.insert({ std::u16string(name), CVarEntry{.cvar = std::move(cvar), .callback = callback} });
     if (!success) {
         throw std::runtime_error(std::string("CVar already registered: ").append(utf8::utf16to8(name)));
     }

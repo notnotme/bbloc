@@ -51,16 +51,16 @@
 class ApplicationWindow final : public CommandRunner {
 public:
     /** Initial capacity of m_quad_buffer in quads; the buffer regrows on demand. */
-    static constexpr auto DEFAULT_QUAD_CAPACITY = 8192;
+    static constexpr uint32_t DEFAULT_QUAD_CAPACITY = 8192;
 
     /** Default quad count reserved for the info bar view batch */
-    static constexpr auto INFO_BAR_DEFAULT_QUAD_COUNT = 1024;
+    static constexpr uint32_t INFO_BAR_DEFAULT_QUAD_COUNT = 1024;
 
     /** Default quad count reserved for the prompt view batch */
-    static constexpr auto PROMPT_DEFAULT_QUAD_COUNT = 1024;
+    static constexpr uint32_t PROMPT_DEFAULT_QUAD_COUNT = 1024;
 
     /** Default quad count reserved for the editor view batch */
-    static constexpr auto EDITOR_DEFAULT_QUAD_COUNT = DEFAULT_QUAD_CAPACITY - INFO_BAR_DEFAULT_QUAD_COUNT - PROMPT_DEFAULT_QUAD_COUNT;
+    static constexpr uint32_t EDITOR_DEFAULT_QUAD_COUNT = DEFAULT_QUAD_CAPACITY - INFO_BAR_DEFAULT_QUAD_COUNT - PROMPT_DEFAULT_QUAD_COUNT;
 
 private:
     /**

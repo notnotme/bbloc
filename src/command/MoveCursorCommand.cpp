@@ -153,13 +153,15 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
                     payload.stick.index = payload.cursor.getColumn();
                 break;
                 case Movement::PageUp: {
-                    const auto line_count = payload.theme.getDimension(DimensionId::PageUpDown);
+                    // The dimension CVar is a plain int; the page size enters the buffer domain here
+                    const auto line_count = static_cast<uint32_t>(payload.theme.getDimension(DimensionId::PageUpDown));
                     payload.cursor.pageUp(line_count);
                     stickToColumn(payload);
                 }
                 break;
                 case Movement::PageDown: {
-                    const auto line_count = payload.theme.getDimension(DimensionId::PageUpDown);
+                    // The dimension CVar is a plain int; the page size enters the buffer domain here
+                    const auto line_count = static_cast<uint32_t>(payload.theme.getDimension(DimensionId::PageUpDown));
                     payload.cursor.pageDown(line_count);
                     stickToColumn(payload);
                 }
@@ -205,7 +207,7 @@ MoveCursorCommand::Boolean MoveCursorCommand::mapBoolean(const std::u16string_vi
 void MoveCursorCommand::stickToColumn(CursorContext &payload) {
     if (payload.stick.active) {
         const auto cursor_line = payload.cursor.getLine();
-        const auto string_length = payload.cursor.getString().length();
+        const auto string_length = static_cast<uint32_t>(payload.cursor.getString().length());
         const auto new_column = payload.stick.index > string_length
             ? string_length
             : payload.stick.index;

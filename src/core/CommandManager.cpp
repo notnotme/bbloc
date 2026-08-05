@@ -87,7 +87,7 @@ void CommandManager::getPathCompletions(const std::u16string_view input, const b
     const auto parent_path = path_input.has_parent_path() ? path_input.parent_path() : ".";
 
     // Non-throwing filesystem overloads only: completing an unreadable path must never terminate the app.
-    auto error_code = std::error_code();
+    auto error_code = std::error_code{};
     if (!std::filesystem::is_directory(parent_path, error_code)) {
         return;
     }
@@ -117,7 +117,7 @@ void CommandManager::getPathCompletions(const std::u16string_view input, const b
                 complete_path.append("/");
             }
 
-            auto utf16_complete_path = std::u16string();
+            auto utf16_complete_path = std::u16string{};
             try {
                 utf16_complete_path = utf8::utf8to16(complete_path);
             } catch (const utf8::exception &) {
@@ -132,8 +132,8 @@ void CommandManager::getPathCompletions(const std::u16string_view input, const b
 
 void CommandManager::tokenize(const std::u16string_view input, std::vector<std::u16string_view> &tokens) {
     tokens.clear();
-    auto start = 0;
-    auto index = 0;
+    std::size_t start = 0;
+    std::size_t index = 0;
     while (index < input.length()) {
         constexpr auto space_delimiter = U' ';
         constexpr auto quote_delimiter = U'"';
@@ -174,8 +174,8 @@ void CommandManager::tokenize(const std::u16string_view input, std::vector<std::
 
 std::vector<std::u16string_view> CommandManager::split(const std::u16string_view input, const char16_t delimiter) {
     std::vector<std::u16string_view> parts;
-    auto start = 0;
-    auto index = 0;
+    std::size_t start = 0;
+    std::size_t index = 0;
     while (index < input.length()) {
         if (input[index] == delimiter) {
             ++index;

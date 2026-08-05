@@ -186,12 +186,12 @@ void Prompt::drawText(QuadBuffer &quadBuffer, const CursorContext &context, cons
     // Draw the prompt cursor text
     const auto &input_text_color = m_theme.getColor(ColorId::PromptInputText);
     const auto string = context.prompt_cursor.getString();
-    const auto string_length = string.length();
+    const auto string_length = static_cast<uint32_t>(string.length());
     const auto cursor_column = context.prompt_cursor.getColumn();
 
     // Needs to keep track of the cursor position indicator
     auto cursor_position_x = pen_position_x;
-    for (auto character_column = 0; character_column < string_length; ++character_column) {
+    for (uint32_t character_column = 0; character_column < string_length; ++character_column) {
         switch (const auto c = string[character_column]) {
             case ' ' :
                 pen_position_x += font_advance;
@@ -241,7 +241,8 @@ void Prompt::drawText(QuadBuffer &quadBuffer, const CursorContext &context, cons
 
     if (indicator_count > 0) {
         const auto string_indicator = utf8::utf8to16(std::format("{}/{}", indicator_index + 1, indicator_count));
-        const auto indicator_text_width = m_theme.measure(string_indicator, true);
+        // The measure lives in 64-bit content space; a short counter string always fits the screen
+        const auto indicator_text_width = static_cast<int32_t>(m_theme.measure(string_indicator, true));
         pen_position_x = position_x + width - padding_width - indicator_text_width;
         for (const auto c : string_indicator) {
             const auto &character = m_theme.getCharacter(c);

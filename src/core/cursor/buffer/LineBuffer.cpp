@@ -23,7 +23,7 @@
 
 LineBuffer::LineBuffer() {
     // Push one empty line and make it the current line.
-    m_line_data.emplace_back(0, 0);
+    m_line_data.push_back(LineData{.start = 0, .count = 0});
     m_current_line_index = 0;
 }
 
@@ -85,8 +85,9 @@ uint32_t LineBuffer::detachedLengthBefore(const uint32_t line) const {
 uint32_t LineBuffer::getByteOffset(const uint32_t line, const uint32_t column) const {
     // m_line_data[line].start excludes the detached current line's characters,
     // so lines after it must be shifted by its length to stay consistent.
-    const auto byte_offset = (m_line_data[line].start + column + detachedLengthBefore(line)) * sizeof(char16_t);
-    const auto line_ends = line * sizeof(char16_t); // "\n"
+    // The sizeof products widen to size_t; byte offsets are 32-bit (tree-sitter's own width).
+    const auto byte_offset = static_cast<uint32_t>((m_line_data[line].start + column + detachedLengthBefore(line)) * sizeof(char16_t));
+    const auto line_ends = static_cast<uint32_t>(line * sizeof(char16_t)); // "\n"
     return byte_offset + line_ends;
 }
 
@@ -106,7 +107,7 @@ uint32_t LineBuffer::getByteCount(uint32_t lineStart, uint32_t columnStart, uint
     const auto start_byte_offset = m_line_data[lineStart].start + columnStart + detachedLengthBefore(lineStart);
     const auto end_byte_offset = m_line_data[lineEnd].start + columnEnd + detachedLengthBefore(lineEnd);
     const auto line_ends = lineEnd - lineStart; // "\n"
-    return (end_byte_offset - start_byte_offset + line_ends) * sizeof(char16_t);
+    return static_cast<uint32_t>((end_byte_offset - start_byte_offset + line_ends) * sizeof(char16_t));
 }
 
 BufferEdit LineBuffer::insert(uint32_t line, uint32_t column, const std::u16string_view characters) {
@@ -114,21 +115,27 @@ BufferEdit LineBuffer::insert(uint32_t line, uint32_t column, const std::u16stri
         // Nothing inserted, describe the untouched position: byte offsets left at 0 would disagree
         // with the points and make the incremental re-parse dirty the whole start of the tree.
         const auto byte_offset = getByteOffset(line, column);
-        return {byte_offset, byte_offset, byte_offset, {line,column}, {line,column}, {line,column}};
+        return BufferEdit{
+            .start_byte = byte_offset,
+            .old_end_byte = byte_offset,
+            .new_end_byte = byte_offset,
+            .start = {.line = line, .column = column},
+            .old_end = {.line = line, .column = column},
+            .new_end = {.line = line, .column = column}
+        };
     }
 
     // Fast path: single-line insert (no "\n") into the current line only touches m_current_line.
     if (line == m_current_line_index && characters.find(U'\n') == std::u16string_view::npos) {
-        auto edit = BufferEdit();
-        edit.start_byte = getByteOffset(line, column);
-        edit.old_end_byte = edit.start_byte;
-        edit.new_end_byte = static_cast<uint32_t>(edit.start_byte + characters.length() * sizeof(char16_t));
-        edit.start.line = line;
-        edit.start.column = column;
-        edit.old_end.line = line;
-        edit.old_end.column = column;
-        edit.new_end.line = line;
-        edit.new_end.column = static_cast<uint32_t>(column + characters.length());
+        const auto start_byte = getByteOffset(line, column);
+        const auto edit = BufferEdit{
+            .start_byte = start_byte,
+            .old_end_byte = start_byte,
+            .new_end_byte = static_cast<uint32_t>(start_byte + characters.length() * sizeof(char16_t)),
+            .start = {.line = line, .column = column},
+            .old_end = {.line = line, .column = column},
+            .new_end = {.line = line, .column = static_cast<uint32_t>(column + characters.length())}
+        };
 
         m_current_line.insert(column, characters);
         m_longest_line.onEdit(*this, edit);
@@ -139,16 +146,15 @@ BufferEdit LineBuffer::insert(uint32_t line, uint32_t column, const std::u16stri
     // path would commit the whole line back and pull the very same tail out again, paying two
     // buffer moves and three sweeps of m_line_data for a split that costs one of each.
     if (line == m_current_line_index && characters == u"\n") {
-        auto edit = BufferEdit();
-        edit.start_byte = getByteOffset(line, column);
-        edit.old_end_byte = edit.start_byte;
-        edit.new_end_byte = static_cast<uint32_t>(edit.start_byte + sizeof(char16_t));
-        edit.start.line = line;
-        edit.start.column = column;
-        edit.old_end.line = line;
-        edit.old_end.column = column;
-        edit.new_end.line = line + 1;
-        edit.new_end.column = 0;
+        const auto start_byte = getByteOffset(line, column);
+        const auto edit = BufferEdit{
+            .start_byte = start_byte,
+            .old_end_byte = start_byte,
+            .new_end_byte = static_cast<uint32_t>(start_byte + sizeof(char16_t)),
+            .start = {.line = line, .column = column},
+            .old_end = {.line = line, .column = column},
+            .new_end = {.line = line + 1, .column = 0}
+        };
 
         // Commit the head only: it stays on this line, at the slot the current line already owns.
         const auto line_start = m_line_data[line].start;
@@ -156,7 +162,7 @@ BufferEdit LineBuffer::insert(uint32_t line, uint32_t column, const std::u16stri
         m_line_data[line].count = column;
 
         // Open the slot of the line the split creates, right where the head ends.
-        m_line_data.insert(m_line_data.begin() + line + 1, LineData{line_start + column, 0});
+        m_line_data.insert(m_line_data.begin() + line + 1, LineData{.start = line_start + column, .count = 0});
 
         // Only the head reached the buffer, so the lines below move by exactly its length.
         for (auto it = m_line_data.begin() + line + 2; it != m_line_data.end(); ++it) {
@@ -174,14 +180,16 @@ BufferEdit LineBuffer::insert(uint32_t line, uint32_t column, const std::u16stri
     // Slow path: the big buffer is involved. Fold everything back so the buffer is consistent.
     commitCurrentLine();
 
-    auto edit = BufferEdit();
-    edit.start_byte = getByteOffset(line, column);
-    edit.old_end_byte = edit.start_byte;
-    edit.new_end_byte = static_cast<uint32_t>(edit.start_byte + characters.length() * sizeof(char16_t));
-    edit.start.line = line;
-    edit.start.column = column;
-    edit.old_end.line = line;
-    edit.old_end.column = column;
+    // The edit's new_end is only known further down, once the trailing segment has been measured.
+    const auto start_byte = getByteOffset(line, column);
+    auto edit = BufferEdit{
+        .start_byte = start_byte,
+        .old_end_byte = start_byte,
+        .new_end_byte = static_cast<uint32_t>(start_byte + characters.length() * sizeof(char16_t)),
+        .start = {.line = line, .column = column},
+        .old_end = {.line = line, .column = column},
+        .new_end = {}
+    };
 
     // The segments land back to back at the same buffer offset, so the whole insertion is one splice:
     // count the newlines up front, then move the buffer and the line metadata exactly once each.
@@ -198,9 +206,9 @@ BufferEdit LineBuffer::insert(uint32_t line, uint32_t column, const std::u16stri
     }
 
     // The buffer holds the text without its line ends; a newline-free insert needs no flattening copy.
-    auto flattened = std::u16string();
+    auto flattened = std::u16string{};
     auto flattened_view = characters;
-    auto segment_start = size_t{0};
+    size_t segment_start = 0;
 
     if (newline_count > 0) {
         flattened.reserve(characters.length() - newline_count);
@@ -208,7 +216,7 @@ BufferEdit LineBuffer::insert(uint32_t line, uint32_t column, const std::u16stri
         // Single pass over the segments: each newline closes the line it ends and opens the next one,
         // whose start is the offset the already flattened characters push it to.
         auto current_line = line;
-        for (auto i = size_t{0}; i < characters.length(); ++i) {
+        for (size_t i = 0; i < characters.length(); ++i) {
             if (characters[i] != u'\n') {
                 continue;
             }
@@ -270,7 +278,14 @@ BufferEdit LineBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd, u
     } else if (line == lineEnd && column == columnEnd) {
         // Empty range, describe the untouched position
         const auto byte_offset = getByteOffset(line, column);
-        return {byte_offset, byte_offset, byte_offset, {line, column}, {line, column}, {line, column}};
+        return BufferEdit{
+            .start_byte = byte_offset,
+            .old_end_byte = byte_offset,
+            .new_end_byte = byte_offset,
+            .start = {.line = line, .column = column},
+            .old_end = {.line = line, .column = column},
+            .new_end = {.line = line, .column = column}
+        };
     }
 
     // Fast path: erase within the current line only touches m_current_line.
@@ -279,19 +294,16 @@ BufferEdit LineBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd, u
         const auto start_byte  = getByteOffset(line, column);
         const auto end_byte = getByteOffset(lineEnd, columnEnd);
 
-        // We need to fill a BufferEdit struct
-        auto edit = BufferEdit();
-        edit.start_byte = start_byte;
-        edit.old_end_byte = end_byte;
-        edit.new_end_byte = edit.start_byte;
-
-        // Start at line, column, and the old end point is at lineEnd, columnEnd
-        edit.start.line = line;
-        edit.start.column = column;
-        edit.old_end.line = lineEnd;
-        edit.old_end.column = columnEnd;
-        edit.new_end.line = line;
-        edit.new_end.column = column;
+        // We need to fill a BufferEdit struct: it starts at line, column, and the old
+        // end point is at lineEnd, columnEnd.
+        const auto edit = BufferEdit{
+            .start_byte = start_byte,
+            .old_end_byte = end_byte,
+            .new_end_byte = start_byte,
+            .start = {.line = line, .column = column},
+            .old_end = {.line = lineEnd, .column = columnEnd},
+            .new_end = {.line = line, .column = column}
+        };
 
         m_current_line.erase(column, columnEnd - column);
         m_longest_line.onEdit(*this, edit);
@@ -305,16 +317,15 @@ BufferEdit LineBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd, u
         // Both offsets are read before anything moves, where the slow path reads them after folding
         // the current line back. The two agree: committing does not move the current line's own
         // start, and detachedLengthBefore already accounts for it on the line below.
-        auto edit = BufferEdit();
-        edit.start_byte = getByteOffset(line, column);
-        edit.old_end_byte = getByteOffset(lineEnd, columnEnd);
-        edit.new_end_byte = edit.start_byte;
-        edit.start.line = line;
-        edit.start.column = column;
-        edit.old_end.line = lineEnd;
-        edit.old_end.column = columnEnd;
-        edit.new_end.line = line;
-        edit.new_end.column = column;
+        const auto start_byte = getByteOffset(line, column);
+        const auto edit = BufferEdit{
+            .start_byte = start_byte,
+            .old_end_byte = getByteOffset(lineEnd, columnEnd),
+            .new_end_byte = start_byte,
+            .start = {.line = line, .column = column},
+            .old_end = {.line = lineEnd, .column = columnEnd},
+            .new_end = {.line = line, .column = column}
+        };
 
         if (m_current_line_index == line + 1) {
             // The lower line is detached: pull the upper line's head in front of it, then drop the
@@ -358,19 +369,16 @@ BufferEdit LineBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd, u
     const auto start_byte = getByteOffset(line, column);
     const auto end_byte = getByteOffset(lineEnd, columnEnd);
 
-    // We need to fill a BufferEdit struct
-    auto edit = BufferEdit();
-    edit.start_byte = start_byte;
-    edit.old_end_byte = end_byte;
-    edit.new_end_byte = start_byte;
-
-    // Start at line, column, and the old end point is at lineEnd, columnEnd
-    edit.start.line = line;
-    edit.start.column = column;
-    edit.old_end.line = lineEnd;
-    edit.old_end.column = columnEnd;
-    edit.new_end.line = line;
-    edit.new_end.column = column;
+    // We need to fill a BufferEdit struct: it starts at line, column, and the old
+    // end point is at lineEnd, columnEnd.
+    const auto edit = BufferEdit{
+        .start_byte = start_byte,
+        .old_end_byte = end_byte,
+        .new_end_byte = start_byte,
+        .start = {.line = line, .column = column},
+        .old_end = {.line = lineEnd, .column = columnEnd},
+        .new_end = {.line = line, .column = column}
+    };
 
     // Get the iterator from first nd last line to erase in the range, and the column offset (in character count)
     const auto start_line = m_line_data.begin() + line;
@@ -423,7 +431,7 @@ BufferEdit LineBuffer::clear() {
     m_buffer.clear();
     m_current_line.clear();
     m_line_data.clear();
-    m_line_data.emplace_back(0, 0);
+    m_line_data.push_back(LineData{.start = 0, .count = 0});
     m_current_line_index = 0;
     m_longest_line.reset();
 

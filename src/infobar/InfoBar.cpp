@@ -110,9 +110,10 @@ void InfoBar::drawText(QuadBuffer &quadBuffer, const CursorContext &context, con
         string_cursor_name.append(utf8::utf8to16(std::format(" [{}/{}]", context.buffer_index, context.buffer_count)));
     }
     const auto string_info = utf8::utf8to16(std::format("{} • {} • {}:{} / {}", font_size, highlight_mode, cursor_line + 1, cursor_column + 1, cursor_line_count));
-    const auto string_info_size = m_theme.measure(string_info, true);
-    const auto left_text_offset = static_cast<int16_t>(padding_width);
-    const auto right_text_offset = static_cast<int16_t>(width - string_info_size - padding_width);
+    // The measure lives in 64-bit content space; a one-line info string always fits the screen
+    const auto string_info_size = static_cast<int32_t>(m_theme.measure(string_info, true));
+    const auto left_text_offset = padding_width;
+    const auto right_text_offset = width - string_info_size - padding_width;
     const auto cursor_name_max_width = std::max(right_text_offset - left_text_offset - padding_width, 0);
 
     const auto strings = {

@@ -20,6 +20,8 @@
 
 #include <algorithm>
 
+#include "SurrogatePair.h"
+
 
 /** @brief Tells whether a boundary at the given index falls between the two units of a surrogate pair. */
 static bool splitsSurrogatePair(const std::u16string_view text, const size_t index) {
@@ -73,7 +75,7 @@ void Cursor::pageUp(const uint32_t lineCount) {
         m_line = 0;
     }
 
-    const auto cursor_string_length = m_buffer->getString(m_line).length();
+    const auto cursor_string_length = static_cast<uint32_t>(m_buffer->getString(m_line).length());
     if (m_column > cursor_string_length) {
         m_column = cursor_string_length;
     }
@@ -92,7 +94,7 @@ void Cursor::pageDown(const uint32_t lineCount) {
         m_line = cursor_new_line;
     }
 
-    const auto cursor_string_length = m_buffer->getString(m_line).length();
+    const auto cursor_string_length = static_cast<uint32_t>(m_buffer->getString(m_line).length());
     if (m_column > cursor_string_length) {
         m_column = cursor_string_length;
     }
@@ -183,7 +185,7 @@ std::optional<std::vector<std::u16string_view>> Cursor::getSelectedText() const 
         return std::vector { m_buffer->getString(range->line_start).substr(range->column_start, range->column_end - range->column_start) };
     }
 
-    auto result = std::vector<std::u16string_view>();
+    auto result = std::vector<std::u16string_view>{};
     for (auto line = range->line_start; line <= range->line_end; ++line) {
         if (line == range->line_start) {
             result.emplace_back(m_buffer->getString(line).substr(range->column_start));
@@ -203,11 +205,11 @@ void Cursor::moveLeft() {
         // At the very beginning of a line, the cursor can't go left
         if (m_line > 0) {
             // The cursor can go above instead
-            m_column = m_buffer->getString(m_line - 1).length();
+            m_column = static_cast<uint32_t>(m_buffer->getString(m_line - 1).length());
             --m_line;
         }
     } else {
-        m_column -= charLengthBefore(m_column);
+        m_column -= charLengthBefore(m_buffer->getString(m_line), m_column);
     }
 }
 
@@ -222,7 +224,7 @@ void Cursor::moveRight() {
             ++m_line;
         }
     } else {
-        m_column += charLengthAfter(m_column);
+        m_column += charLengthAfter(m_buffer->getString(m_line), m_column);
     }
 }
 
@@ -230,7 +232,7 @@ void Cursor::moveUp() {
     m_history.markBoundary();
 
     if (m_line > 0) {
-        const auto string_above_length = m_buffer->getString(m_line - 1).length();
+        const auto string_above_length = static_cast<uint32_t>(m_buffer->getString(m_line - 1).length());
         if (m_column > string_above_length) {
             m_column = string_above_length;
         }
@@ -245,7 +247,7 @@ void Cursor::moveDown() {
     m_history.markBoundary();
 
     if (m_line < m_buffer->getStringCount() - 1) {
-        const auto string_below_length = m_buffer->getString(m_line + 1).length();
+        const auto string_below_length = static_cast<uint32_t>(m_buffer->getString(m_line + 1).length());
         if (m_column > string_below_length) {
             // The cursor can't stay at the same X position, put it at the end of the next line
             m_column = string_below_length;
@@ -253,7 +255,7 @@ void Cursor::moveDown() {
         m_column = snapToCharBoundary(m_line + 1, m_column);
         ++m_line;
     } else {
-        m_column = m_buffer->getString(m_line).length();
+        m_column = static_cast<uint32_t>(m_buffer->getString(m_line).length());
     }
 }
 
@@ -264,7 +266,7 @@ void Cursor::moveToStartOfLine() {
 
 void Cursor::moveToEndOfLine() {
     m_history.markBoundary();
-    m_column = m_buffer->getString(m_line).length();
+    m_column = static_cast<uint32_t>(m_buffer->getString(m_line).length());
 }
 
 void Cursor::moveToStartOfFile() {
@@ -276,7 +278,7 @@ void Cursor::moveToStartOfFile() {
 void Cursor::moveToEndOfFile() {
     m_history.markBoundary();
     const auto string_count = m_buffer->getStringCount() - 1;
-    const auto string_length = m_buffer->getString(string_count).length();
+    const auto string_length = static_cast<uint32_t>(m_buffer->getString(string_count).length());
     m_line = string_count;
     m_column = string_length;
 }
@@ -339,7 +341,7 @@ std::optional<BufferEdit> Cursor::eraseLeft() {
         // We can erase on the left since column > 0
         recordBeforeEdit();
         m_is_modified = true;
-        const auto &edit = m_buffer->erase(m_line, m_column, m_line, m_column - charLengthBefore(m_column));
+        const auto &edit = m_buffer->erase(m_line, m_column, m_line, m_column - charLengthBefore(m_buffer->getString(m_line), m_column));
         m_column = edit.new_end.column;
         return edit;
     }
@@ -348,7 +350,7 @@ std::optional<BufferEdit> Cursor::eraseLeft() {
         // We can't erase left because column = 0, so we move the remainder of this line to the end of the line above
         recordBeforeEdit();
         m_is_modified = true;
-        const auto string_above_length = m_buffer->getString(m_line - 1).length();
+        const auto string_above_length = static_cast<uint32_t>(m_buffer->getString(m_line - 1).length());
         const auto &edit =  m_buffer->erase(m_line, m_column, m_line - 1, string_above_length);
         m_line = edit.new_end.line;
         m_column = edit.new_end.column;
@@ -365,7 +367,7 @@ std::optional<BufferEdit> Cursor::eraseRight() {
         // We can erase on the right since column < string_length
         recordBeforeEdit();
         m_is_modified = true;
-        return m_buffer->erase(m_line, m_column, m_line, m_column + charLengthAfter(m_column));
+        return m_buffer->erase(m_line, m_column, m_line, m_column + charLengthAfter(m_buffer->getString(m_line), m_column));
     }
 
     if (m_line < m_buffer->getStringCount() - 1) {
@@ -419,7 +421,7 @@ BufferEdit Cursor::clear() {
 }
 
 std::u16string Cursor::getText() const {
-    auto text = std::u16string();
+    auto text = std::u16string{};
     const auto line_count = m_buffer->getStringCount();
 
     // The offset of the very last column already accounts for the line separators, so it is the
@@ -439,26 +441,8 @@ std::u16string Cursor::getText() const {
 
 void Cursor::recordBeforeEdit() {
     if (m_history.isAtBoundary()) {
-        m_history.push({getText(), m_line, m_column});
+        m_history.push(UndoHistory::Snapshot{.text = getText(), .line = m_line, .column = m_column});
     }
-}
-
-uint32_t Cursor::charLengthBefore(const uint32_t column) const {
-    const auto &string = m_buffer->getString(m_line);
-    if (column >= 2 && (string[column - 1] & 0xFC00) == 0xDC00 && (string[column - 2] & 0xFC00) == 0xD800) {
-        // Never split a surrogate pair
-        return 2;
-    }
-    return 1;
-}
-
-uint32_t Cursor::charLengthAfter(const uint32_t column) const {
-    const auto &string = m_buffer->getString(m_line);
-    if (column + 1 < string.length() && (string[column] & 0xFC00) == 0xD800 && (string[column + 1] & 0xFC00) == 0xDC00) {
-        // Never split a surrogate pair
-        return 2;
-    }
-    return 1;
 }
 
 uint32_t Cursor::snapToCharBoundary(const uint32_t line, const uint32_t column) const {
@@ -497,7 +481,7 @@ BufferEdit Cursor::restore(const UndoHistory::Snapshot &snapshot, const std::u16
     }
 
     // Both points describe the buffer as it stands, which is exactly what currentText holds.
-    const auto start = advanceToIndex(currentText, 0, {0, 0}, prefix_length);
+    const auto start = advanceToIndex(currentText, 0, BufferEdit::Position{.line = 0, .column = 0}, prefix_length);
     const auto old_end = advanceToIndex(currentText, prefix_length, start, currentText.length() - suffix_length);
     const auto middle = std::u16string_view(new_text).substr(prefix_length, new_text.length() - suffix_length - prefix_length);
 
@@ -536,7 +520,7 @@ std::optional<BufferEdit> Cursor::undo() {
     // The current text is needed twice, as the state handed to the history and as the left side of
     // the diff below: joining the lines once and copying it is cheaper than building it twice.
     const auto current_text = getText();
-    const auto &snapshot = m_history.undo({current_text, m_line, m_column});
+    const auto &snapshot = m_history.undo(UndoHistory::Snapshot{.text = current_text, .line = m_line, .column = m_column});
     if (!snapshot) {
         return std::nullopt;
     }
@@ -551,7 +535,7 @@ std::optional<BufferEdit> Cursor::redo() {
     }
 
     const auto current_text = getText();
-    const auto &snapshot = m_history.redo({current_text, m_line, m_column});
+    const auto &snapshot = m_history.redo(UndoHistory::Snapshot{.text = current_text, .line = m_line, .column = m_column});
     if (!snapshot) {
         return std::nullopt;
     }

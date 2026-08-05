@@ -35,7 +35,7 @@
 class AtlasArray final {
 private:
     /** Number of codepoints stored in the ASCII fast-path array. */
-    static constexpr char16_t ASCII_ENTRY_COUNT = 128;
+    static constexpr uint32_t ASCII_ENTRY_COUNT = 128;
 
 private:
     /** Maximum height of the current row (used for packing). */

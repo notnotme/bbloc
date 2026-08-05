@@ -77,7 +77,7 @@ std::optional<std::u16string> OpenFileCommand::run(CursorContext &payload, const
 
     // Read the file fully before touching any buffer,
     // so a failed load leaves no half-open buffer behind.
-    auto content = std::u16string();
+    auto content = std::u16string{};
     if (auto error = readFile(path, content)) {
         return error;
     }
@@ -105,7 +105,7 @@ std::optional<std::u16string> OpenFileCommand::run(CursorContext &payload, const
 
 std::optional<size_t> OpenFileCommand::findOpenContext(const std::string &path) const {
     // Resolve the requested path once; the per-context resolution happens in the loop.
-    auto path_error = std::error_code();
+    auto path_error = std::error_code{};
     const auto canonical_path = std::filesystem::weakly_canonical(path, path_error);
 
     for (size_t index = 0; index < m_context_manager.getCount(); ++index) {
@@ -121,7 +121,7 @@ std::optional<size_t> OpenFileCommand::findOpenContext(const std::string &path) 
 
         // Compare full canonical paths, so "./a.txt" and "a.txt" name the same file.
         // On resolution failure, treat the paths as different: the exact match above already ran.
-        auto name_error = std::error_code();
+        auto name_error = std::error_code{};
         const auto canonical_name = std::filesystem::weakly_canonical(name, name_error);
         if (!path_error && !name_error && canonical_name == canonical_path) {
             return index;
@@ -132,7 +132,7 @@ std::optional<size_t> OpenFileCommand::findOpenContext(const std::string &path) 
 }
 
 std::optional<std::u16string> OpenFileCommand::readFile(const std::string &path, std::u16string &outContent) {
-    auto error_code = std::error_code();
+    auto error_code = std::error_code{};
     const auto is_regular_file = std::filesystem::is_regular_file(path, error_code);
     auto ifs = std::ifstream(path, std::ios::in);
     if (!ifs || !is_regular_file) {
@@ -143,8 +143,8 @@ std::optional<std::u16string> OpenFileCommand::readFile(const std::string &path,
     // Start to count the lines from 1
     auto line_count = 1u;
     // Stores temporary line and the whole text.
-    auto line = std::string();
-    auto all_line = std::u16string();
+    auto line = std::string{};
+    auto all_line = std::u16string{};
 
     // A UTF-16 unit count never exceeds the UTF-8 byte count, so the file size is a tight upper bound.
     if (const auto file_size = std::filesystem::file_size(path, error_code); !error_code) {

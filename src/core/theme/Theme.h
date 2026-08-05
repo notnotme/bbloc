@@ -196,11 +196,14 @@ public:
     /**
      * @brief Calculates the rendered width of a UTF-16 string.
      *
+     * The width lives in content space: a buffer line can be long enough for it to overflow
+     * a 32-bit pixel count, so the measure is carried in 64 bits end to end.
+     *
      * @param text Text to measure.
      * @param ignoreTabs If true, tabs are ignored in the measurement.
      * @return Width in pixels.
      */
-    [[nodiscard]] int32_t measure(std::u16string_view text, bool ignoreTabs) const;
+    [[nodiscard]] int64_t measure(std::u16string_view text, bool ignoreTabs) const;
 
     /**
      * @brief Truncates a UTF-16 string from the start so it fits the given width.

@@ -93,8 +93,8 @@ inline bool CVar::isReadOnly() const {
 inline void CVar::provideValueCompletion(const int32_t componentIndex, const AutoCompleteCallback &itemCallback) const {
     const auto value = getStringValue();
 
-    auto index = 0;
-    auto component_index = 0;
+    std::size_t index = 0;
+    int32_t component_index = 0;
     while (index < value.length()) {
         constexpr auto space_delimiter = u' ';
 

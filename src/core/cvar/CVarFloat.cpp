@@ -32,7 +32,7 @@ std::optional<std::u16string> CVarFloat::setValueFromStrings(const std::span<con
 
     try {
         const auto arg = utf8::utf16to8(args[0]);
-        auto parsed_length = static_cast<std::size_t>(0);
+        std::size_t parsed_length = 0;
         const auto value = std::stof(arg, &parsed_length);
         if (parsed_length != arg.length()) {
             // Reject trailing garbage such as "4x"

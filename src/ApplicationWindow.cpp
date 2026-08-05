@@ -68,8 +68,8 @@ ApplicationWindow::ApplicationWindow()
       m_mouse_target(MouseTarget::None) {}
 
 bool ApplicationWindow::viewContains(const ViewState &viewState, const int32_t x, const int32_t y) {
-    const auto position_x = static_cast<int32_t>(viewState.getPositionX());
-    const auto position_y = static_cast<int32_t>(viewState.getPositionY());
+    const auto position_x = viewState.getPositionX();
+    const auto position_y = viewState.getPositionY();
     return x >= position_x && x < position_x + viewState.getWidth()
         && y >= position_y && y < position_y + viewState.getHeight();
 }
@@ -204,7 +204,7 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
 }
 
 void ApplicationWindow::openFile(const std::string_view path) {
-    auto utf16_path = std::u16string();
+    auto utf16_path = std::u16string{};
     try {
         utf16_path = utf8::utf8to16(path);
     } catch (const utf8::exception &) {
@@ -412,17 +412,17 @@ void ApplicationWindow::mainLoop() {
             // Need to redraw the whole views
             const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
             const auto line_height = m_theme.getLineHeight();
-            const auto bar_height = static_cast<int16_t>(line_height + border_size);
-            const auto bar_width = static_cast<int16_t>(window_width);
+            const auto bar_height = line_height + border_size;
+            const auto bar_width = window_width;
 
             m_info_bar_state.setPosition(0, 0);
             m_info_bar_state.setSize(bar_width, bar_height);
 
-            m_prompt_state.setPosition(0, static_cast<int16_t>(window_height - bar_height));
+            m_prompt_state.setPosition(0, window_height - bar_height);
             m_prompt_state.setSize(bar_width, bar_height);
 
             m_editor_state.setPosition(0, bar_height);
-            m_editor_state.setSize(bar_width, static_cast<uint16_t>(std::max(0, window_height - bar_height * 2)));
+            m_editor_state.setSize(bar_width, std::max(0, window_height - bar_height * 2));
 
             glViewport(0, 0, window_width, window_height);
             glScissor(0, 0, window_width, window_height);

@@ -25,28 +25,28 @@ ViewState::ViewState()
       m_width(0),
       m_height(0) {}
 
-int16_t ViewState::getPositionX() const {
+int32_t ViewState::getPositionX() const {
     return m_position_x;
 }
 
-int16_t ViewState::getPositionY() const {
+int32_t ViewState::getPositionY() const {
     return m_position_y;
 }
 
-uint16_t ViewState::getWidth() const {
+int32_t ViewState::getWidth() const {
     return m_width;
 }
 
-uint16_t ViewState::getHeight() const {
+int32_t ViewState::getHeight() const {
     return m_height;
 }
 
-void ViewState::setPosition(const int16_t x, const int16_t y) {
+void ViewState::setPosition(const int32_t x, const int32_t y) {
     m_position_x = x;
     m_position_y = y;
 }
 
-void ViewState::setSize(const uint16_t width, const uint16_t height) {
+void ViewState::setSize(const int32_t width, const int32_t height) {
     m_width = width;
     m_height = height;
 }

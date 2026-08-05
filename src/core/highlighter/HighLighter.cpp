@@ -140,12 +140,12 @@ void HighLighter::updateCache(const uint32_t line) const {
 }
 
 void HighLighter::paintCacheLines(const TSNode rootNode, const uint32_t firstLine, const uint32_t lastLine) const {
-    ts_query_cursor_set_point_range(p_ts_query_cursor, TSPoint(firstLine, 0), TSPoint(lastLine + 1, 0));
+    ts_query_cursor_set_point_range(p_ts_query_cursor, TSPoint{.row = firstLine, .column = 0}, TSPoint{.row = lastLine + 1, .column = 0});
     ts_query_cursor_exec(p_ts_query_cursor, p_current_parser->getQuery(), rootNode);
 
     TSQueryMatch match;
     while (ts_query_cursor_next_match(p_ts_query_cursor, &match)) {
-        for (auto i = 0; i < match.capture_count; ++i) {
+        for (uint16_t i = 0; i < match.capture_count; ++i) {
             const auto capture = match.captures[i];
             const auto node = capture.node;
             const auto start_point = ts_node_start_point(node);
@@ -281,14 +281,15 @@ bool HighLighter::shiftLineCache(const BufferEdit &edit) {
 
 void HighLighter::edit(const BufferEdit &edit) {
     if (p_ts_tree != nullptr) {
-        // This just converts and relays the object coming from the cursor
+        // This just converts and relays the object coming from the cursor. The column products
+        // widen to size_t through sizeof, so they re-enter tree-sitter's 32-bit space explicitly.
         const auto ts_edit = TSInputEdit {
             .start_byte = edit.start_byte,
             .old_end_byte = edit.old_end_byte,
             .new_end_byte = edit.new_end_byte,
-            .start_point = TSPoint(edit.start.line, edit.start.column * sizeof(char16_t)),
-            .old_end_point = TSPoint(edit.old_end.line, edit.old_end.column * sizeof(char16_t)),
-            .new_end_point = TSPoint(edit.new_end.line, edit.new_end.column * sizeof(char16_t))
+            .start_point = TSPoint{.row = edit.start.line, .column = static_cast<uint32_t>(edit.start.column * sizeof(char16_t))},
+            .old_end_point = TSPoint{.row = edit.old_end.line, .column = static_cast<uint32_t>(edit.old_end.column * sizeof(char16_t))},
+            .new_end_point = TSPoint{.row = edit.new_end.line, .column = static_cast<uint32_t>(edit.new_end.column * sizeof(char16_t))}
         };
 
         ts_tree_edit(p_ts_tree, &ts_edit);
@@ -371,10 +372,10 @@ const char *HighLighter::inputCallback(void *payload, const uint32_t byteIndex, 
 
     // Multiply and divide column according to char size, we are working with char16_t (2 bytes)
     const auto line = position.row;
-    const auto column = position.column / sizeof(char16_t);
+    const auto column = static_cast<uint32_t>(position.column / sizeof(char16_t));
     if (const auto &optional_line = self->readCallback(line, column)) {
         // We got some data
-        *bytesRead = optional_line->length() * sizeof(char16_t);
+        *bytesRead = static_cast<uint32_t>(optional_line->length() * sizeof(char16_t));
         return reinterpret_cast<const char*>(optional_line->data());
     }
 

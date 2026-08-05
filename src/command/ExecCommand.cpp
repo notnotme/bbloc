@@ -49,7 +49,7 @@ std::optional<std::u16string> ExecCommand::run(CursorContext &payload, const std
 
     // Get the path of the file and tries to open the file at this location
     const auto path = utf8::utf16to8(args[0]);
-    auto error_code = std::error_code();
+    auto error_code = std::error_code{};
     const auto is_regular_file = std::filesystem::is_regular_file(path, error_code);
     auto ifs = std::ifstream(path, std::ios::in);
     if (!ifs || !is_regular_file) {
@@ -58,10 +58,10 @@ std::optional<std::u16string> ExecCommand::run(CursorContext &payload, const std
     }
 
     // This will store the command list to run and the current line of the file that we are reading.
-    auto command_list = std::vector<std::u16string>();
-    auto line = std::string();
+    auto command_list = std::vector<std::u16string>{};
+    auto line = std::string{};
 
-    auto line_count = 1;
+    auto line_count = 1u;
     while (getline(ifs, line)) {
         if (const auto &end_it = utf8::find_invalid(line.begin(), line.end()); end_it != line.end()) {
             // Invalid sequence: stop the command list

@@ -50,7 +50,7 @@ std::optional<std::u16string> CopyTextCommand::copySelectionToClipboard(const Cu
         joined_length += line.length();
     }
 
-    auto to_clipboard_text = std::u16string();
+    auto to_clipboard_text = std::u16string{};
     to_clipboard_text.reserve(joined_length);
     auto is_first_line = true;
     for (const auto &line : selection.value()) {

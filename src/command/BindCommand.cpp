@@ -42,7 +42,7 @@ void BindCommand::provideAutoComplete(const std::span<const std::u16string_view>
     if (argumentIndex == 0) {
         // Complete the last modifier of an eventual "+" separated combo, keeping what precedes it.
         const auto last_plus_index = input.rfind(u'+');
-        const auto combo_prefix = last_plus_index == std::u16string_view::npos ? std::u16string_view() : input.substr(0, last_plus_index + 1);
+        const auto combo_prefix = last_plus_index == std::u16string_view::npos ? std::u16string_view{} : input.substr(0, last_plus_index + 1);
         const auto modifier_input = last_plus_index == std::u16string_view::npos ? input : input.substr(last_plus_index + 1);
 
         for (const auto &name : std::views::keys(MODIFIER_MAP)) {
@@ -52,7 +52,7 @@ void BindCommand::provideAutoComplete(const std::span<const std::u16string_view>
         }
     } else if (argumentIndex == 1) {
         // Enumerate every key name known to SDL, skipping unnamed keys and duplicates.
-        auto seen_names = std::unordered_set<std::string>();
+        auto seen_names = std::unordered_set<std::string>{};
         for (auto scancode = 1; scancode < SDL_NUM_SCANCODES; ++scancode) {
             const auto key = SDL_GetKeyFromScancode(static_cast<SDL_Scancode>(scancode));
             if (key == SDLK_UNKNOWN) {

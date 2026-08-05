@@ -31,7 +31,7 @@ Parser::Parser(const ParserDescriptor &descriptor)
     p_query = ts_query_new(
         m_descriptor.language,
         m_descriptor.query_source.data(),
-        m_descriptor.query_source.length(),
+        static_cast<uint32_t>(m_descriptor.query_source.length()),
         &error_offset,
         &error_type
     );

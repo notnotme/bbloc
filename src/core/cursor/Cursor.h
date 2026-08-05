@@ -87,22 +87,6 @@ private:
     void recordBeforeEdit();
 
     /**
-     * @brief Measures the character ending at the given column on the current line.
-     *
-     * @param column The column just after the character.
-     * @return 2 when the character is a surrogate pair, 1 otherwise.
-     */
-    [[nodiscard]] uint32_t charLengthBefore(uint32_t column) const;
-
-    /**
-     * @brief Measures the character starting at the given column on the current line.
-     *
-     * @param column The column of the character.
-     * @return 2 when the character is a surrogate pair, 1 otherwise.
-     */
-    [[nodiscard]] uint32_t charLengthAfter(uint32_t column) const;
-
-    /**
      * @brief Pulls a column off the trailing half of a surrogate pair.
      *
      * Moves clamping on a line length alone can land between the two code units of a non-BMP

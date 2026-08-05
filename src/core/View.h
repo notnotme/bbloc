@@ -44,6 +44,15 @@
 template <typename TState = ViewState>
 class View {
 protected:
+    /** Lowest quad position the 16-bit vertex format holds; staged quads saturate at it. */
+    static constexpr int32_t MIN_QUAD_POSITION = std::numeric_limits<int16_t>::min();
+
+    /** Highest quad position the 16-bit vertex format holds; staged quads saturate at it. */
+    static constexpr int32_t MAX_QUAD_POSITION = std::numeric_limits<int16_t>::max();
+
+    /** Largest quad size the 16-bit vertex format holds; staged quads saturate at it. */
+    static constexpr int32_t MAX_QUAD_SIZE = std::numeric_limits<uint16_t>::max();
+
     /** Reference to a command controller. */
     GlobalRegistry<CursorContext> &m_command_controller;
 
@@ -223,23 +232,21 @@ void View<TState>::drawQuad(QuadBuffer &quadBuffer, const int32_t x, const int32
     // Plain quads are not culled against the viewport before being staged, unlike glyphs: a far
     // horizontal scroll pushes them past what the vertex format holds. Clamping saturates them at
     // the edge instead of letting the narrowing wrap them around to the opposite side.
-    constexpr auto min_position = static_cast<int32_t>(std::numeric_limits<int16_t>::min());
-    constexpr auto max_position = static_cast<int32_t>(std::numeric_limits<int16_t>::max());
-    constexpr auto max_size = static_cast<int32_t>(std::numeric_limits<uint16_t>::max());
-
     quadBuffer.insert(
-        static_cast<int16_t>(std::clamp(x, min_position, max_position)),
-        static_cast<int16_t>(std::clamp(y, min_position, max_position)),
-        static_cast<uint16_t>(std::clamp(width, 0, max_size)),
-        static_cast<uint16_t>(std::clamp(height, 0, max_size)),
+        static_cast<int16_t>(std::clamp(x, MIN_QUAD_POSITION, MAX_QUAD_POSITION)),
+        static_cast<int16_t>(std::clamp(y, MIN_QUAD_POSITION, MAX_QUAD_POSITION)),
+        static_cast<uint16_t>(std::clamp(width, 0, MAX_QUAD_SIZE)),
+        static_cast<uint16_t>(std::clamp(height, 0, MAX_QUAD_SIZE)),
         color.red, color.green, color.blue, color.alpha);
 }
 
 template<typename TState>
 void View<TState>::drawCharacter(QuadBuffer &quadBuffer, const int32_t x, const int32_t y, const AtlasEntry &character, const Color &color) const {
+    // Same saturation as drawQuad: a position past what the vertex format holds is clamped to the
+    // edge instead of being wrapped around to the opposite side by the narrowing.
     quadBuffer.insert(
-        static_cast<int16_t>(x + character.bearing_x),
-        static_cast<int16_t>(y - character.bearing_y),
+        static_cast<int16_t>(std::clamp(x + character.bearing_x, MIN_QUAD_POSITION, MAX_QUAD_POSITION)),
+        static_cast<int16_t>(std::clamp(y - character.bearing_y, MIN_QUAD_POSITION, MAX_QUAD_POSITION)),
         character.width, character.height,
         character.texture_s, character.texture_t, character.layer,
         color.red, color.green, color.blue, color.alpha);

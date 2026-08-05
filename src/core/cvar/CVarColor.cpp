@@ -26,8 +26,8 @@
 
 /** @brief Parses a color channel in [0, 255]; throws std::invalid_argument on any other input. */
 static uint8_t parseChannel(const std::u16string_view arg) {
+    std::size_t parsed_length = 0;
     const auto utf8_arg = utf8::utf16to8(arg);
-    auto parsed_length = static_cast<std::size_t>(0);
     const auto value = std::stoi(utf8_arg, &parsed_length);
     if (parsed_length != utf8_arg.length() || value < 0 || value > 255) {
         throw std::invalid_argument("Color channel out of range");
@@ -37,7 +37,7 @@ static uint8_t parseChannel(const std::u16string_view arg) {
 }
 
 CVarColor::CVarColor(const uint8_t red, const uint8_t green, const uint8_t blue, const uint8_t alpha, const bool isReadOnly)
-    : TypedCVar({red, green, blue, alpha}, isReadOnly) {}
+    : TypedCVar(Color{.red = red, .green = green, .blue = blue, .alpha = alpha}, isReadOnly) {}
 
 std::optional<std::u16string> CVarColor::setValueFromStrings(const std::span<const std::u16string_view> args) {
     if (args.size() < 3 || args.size() > 4) {
@@ -49,10 +49,7 @@ std::optional<std::u16string> CVarColor::setValueFromStrings(const std::span<con
         const auto arg_g = parseChannel(args[1]);
         const auto arg_b = parseChannel(args[2]);
         const auto arg_a = args.size() >= 4 ? parseChannel(args[3]) : static_cast<uint8_t>(255);
-        m_value.red = arg_r;
-        m_value.green = arg_g;
-        m_value.blue = arg_b;
-        m_value.alpha = arg_a;
+        m_value = Color{.red = arg_r, .green = arg_g, .blue = arg_b, .alpha = arg_a};
     } catch (...) {
         return u"Unable to convert arguments to color";
     }

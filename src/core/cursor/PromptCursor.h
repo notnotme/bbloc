@@ -19,6 +19,7 @@
 #ifndef PROMPT_CURSOR_H
 #define PROMPT_CURSOR_H
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 
@@ -35,24 +36,7 @@ private:
     std::u16string m_string;
 
     /** Current column position of the cursor in the buffer. */
-    int32_t m_column;
-
-private:
-    /**
-     * @brief Measures the character ending at the given column.
-     *
-     * @param column The column just after the character.
-     * @return 2 when the character is a surrogate pair, 1 otherwise.
-     */
-    [[nodiscard]] int32_t charLengthBefore(int32_t column) const;
-
-    /**
-     * @brief Measures the character starting at the given column.
-     *
-     * @param column The column of the character.
-     * @return 2 when the character is a surrogate pair, 1 otherwise.
-     */
-    [[nodiscard]] int32_t charLengthAfter(int32_t column) const;
+    uint32_t m_column;
 
 public:
     /** @brief Deleted copy constructor. */
@@ -65,7 +49,7 @@ public:
     explicit PromptCursor();
 
     /** @brief Returns the current column of the cursor position. */
-    [[nodiscard]] int32_t getColumn() const;
+    [[nodiscard]] uint32_t getColumn() const;
 
     /** @brief Returns the current string content of the prompt. */
     [[nodiscard]] std::u16string_view getString() const;
@@ -87,7 +71,7 @@ public:
      *
      * @param column Desired column position (will be clamped to bounds).
      */
-    void setPosition(int32_t column);
+    void setPosition(uint32_t column);
 
     /**
      * @brief Inserts characters at the current cursor position.

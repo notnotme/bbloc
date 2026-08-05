@@ -78,46 +78,49 @@ uint32_t QuadBuffer::endBatch() {
 }
 
 void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, const uint16_t height, const uint8_t tintR, const uint8_t tintG, const uint8_t tintB, const uint8_t tintA) {
-    auto &vertex = m_staging.emplace_back();
-    vertex.translation_x = x;
-    vertex.translation_y = y;
-    vertex.width = width;
-    vertex.height = height;
-    vertex.tint_r = tintR;
-    vertex.tint_g = tintG;
-    vertex.tint_b = tintB;
-    vertex.tint_a = tintA;
-    vertex.texture_layer = 255;
+    m_staging.push_back(QuadVertex{
+        .translation_x = x,
+        .translation_y = y,
+        .width = width,
+        .height = height,
+        .tint_r = tintR,
+        .tint_g = tintG,
+        .tint_b = tintB,
+        .tint_a = tintA,
+        .texture_layer = 255
+    });
 }
 
 void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, const uint16_t height, const uint8_t textureS, const uint8_t textureT, const uint8_t textureLayer) {
-    auto &vertex = m_staging.emplace_back();
-    vertex.translation_x = x;
-    vertex.translation_y = y;
-    vertex.width = width;
-    vertex.height = height;
-    vertex.texture_s = textureS;
-    vertex.texture_t = textureT;
-    vertex.tint_r = 255;
-    vertex.tint_g = 255;
-    vertex.tint_b = 255;
-    vertex.tint_a = 255;
-    vertex.texture_layer = textureLayer;
+    m_staging.push_back(QuadVertex{
+        .translation_x = x,
+        .translation_y = y,
+        .width = width,
+        .height = height,
+        .texture_s = textureS,
+        .texture_t = textureT,
+        .tint_r = 255,
+        .tint_g = 255,
+        .tint_b = 255,
+        .tint_a = 255,
+        .texture_layer = textureLayer
+    });
 }
 
 void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, const uint16_t height, const uint8_t textureS, const uint8_t textureT, const uint8_t textureLayer, const uint8_t tintR, const uint8_t tintG, const uint8_t tintB, const uint8_t tintA) {
-    auto &vertex = m_staging.emplace_back();
-    vertex.translation_x = x;
-    vertex.translation_y = y;
-    vertex.width = width;
-    vertex.height = height;
-    vertex.texture_s = textureS;
-    vertex.texture_t = textureT;
-    vertex.tint_r = tintR;
-    vertex.tint_g = tintG;
-    vertex.tint_b = tintB;
-    vertex.tint_a = tintA;
-    vertex.texture_layer = textureLayer;
+    m_staging.push_back(QuadVertex{
+        .translation_x = x,
+        .translation_y = y,
+        .width = width,
+        .height = height,
+        .texture_s = textureS,
+        .texture_t = textureT,
+        .tint_r = tintR,
+        .tint_g = tintG,
+        .tint_b = tintB,
+        .tint_a = tintA,
+        .texture_layer = textureLayer
+    });
 }
 
 void QuadBuffer::destroy() {

@@ -84,17 +84,16 @@ struct CommandFeedback final {
  * @return The feedback to store in the context, carrying a fresh identity.
  */
 [[nodiscard]] inline CommandFeedback requestArgument(std::u16string promptMessage, std::u16string commandString, CommandRunner &runner) {
-    // Built field by field rather than with designated initializers: this one leaves the completion
-    // provider empty, and skipping a designator in a header every translation unit sees is noisy.
-    auto feedback = CommandFeedback();
-    feedback.prompt_message = std::move(promptMessage);
-    feedback.command_string = std::move(commandString);
-    feedback.on_validate_callback = [&runner](const std::u16string_view input, const std::u16string_view command) -> std::optional<std::u16string> {
-        runner.runCommand(std::u16string(command).append(u" ").append(input), true);
-        return std::nullopt;
+    // The completion provider is empty on purpose: this prompt completes nothing.
+    return CommandFeedback{
+        .prompt_message = std::move(promptMessage),
+        .command_string = std::move(commandString),
+        .on_complete_callback = {},
+        .on_validate_callback = [&runner](const std::u16string_view input, const std::u16string_view command) -> std::optional<std::u16string> {
+            runner.runCommand(std::u16string(command).append(u" ").append(input), true);
+            return std::nullopt;
+        }
     };
-
-    return feedback;
 }
 
 /**
@@ -108,16 +107,15 @@ struct CommandFeedback final {
  */
 [[nodiscard]] inline CommandFeedback requestPathArgument(std::u16string promptMessage, std::u16string commandString, CommandRunner &runner,
                                                          std::function<void(std::u16string_view input, const AutoCompleteCallback &itemCallback)> pathCompletions) {
-    auto feedback = CommandFeedback();
-    feedback.prompt_message = std::move(promptMessage);
-    feedback.command_string = std::move(commandString);
-    feedback.on_complete_callback = std::move(pathCompletions);
-    feedback.on_validate_callback = [&runner](const std::u16string_view input, const std::u16string_view command) -> std::optional<std::u16string> {
-        runner.runCommand(std::u16string(command).append(u" ").append(quoteArgument(input)), true);
-        return std::nullopt;
+    return CommandFeedback{
+        .prompt_message = std::move(promptMessage),
+        .command_string = std::move(commandString),
+        .on_complete_callback = std::move(pathCompletions),
+        .on_validate_callback = [&runner](const std::u16string_view input, const std::u16string_view command) -> std::optional<std::u16string> {
+            runner.runCommand(std::u16string(command).append(u" ").append(quoteArgument(input)), true);
+            return std::nullopt;
+        }
     };
-
-    return feedback;
 }
 
 

@@ -30,16 +30,16 @@
 class ViewState {
 protected:
     /** X offset of the InfoBar within the window (in pixels). */
-    int16_t m_position_x;
+    int32_t m_position_x;
 
     /** Y offset of the InfoBar within the window (in pixels). */
-    int16_t m_position_y;
+    int32_t m_position_y;
 
     /** Width of the InfoBar (in pixels). */
-    uint16_t m_width;
+    int32_t m_width;
 
     /** Height of the InfoBar (in pixels). */
-    uint16_t m_height;
+    int32_t m_height;
 
 public:
     /** @brief Deleted copy constructor. */
@@ -55,16 +55,16 @@ public:
     virtual ~ViewState() = default;
 
     /** @brief Returns the X position of the view. */
-    [[nodiscard]] int16_t getPositionX() const;
+    [[nodiscard]] int32_t getPositionX() const;
 
     /** @brief Returns the Y position of the view. */
-    [[nodiscard]] int16_t getPositionY() const;
+    [[nodiscard]] int32_t getPositionY() const;
 
     /** @brief Returns the width of the view. */
-    [[nodiscard]] uint16_t getWidth() const;
+    [[nodiscard]] int32_t getWidth() const;
 
     /** @brief Returns the height of the view. */
-    [[nodiscard]] uint16_t getHeight() const;
+    [[nodiscard]] int32_t getHeight() const;
 
     /**
      * @brief Sets the position of the info bar view.
@@ -72,7 +72,7 @@ public:
      * @param x The new X position.
      * @param y The new Y position.
      */
-    void setPosition(int16_t x, int16_t y);
+    void setPosition(int32_t x, int32_t y);
 
     /**
      * @brief Sets the size of the info bar view.
@@ -80,7 +80,7 @@ public:
      * @param width The new width in pixels.
      * @param height The new height in pixels.
      */
-    void setSize(uint16_t width, uint16_t height);
+    void setSize(int32_t width, int32_t height);
 };
 
 

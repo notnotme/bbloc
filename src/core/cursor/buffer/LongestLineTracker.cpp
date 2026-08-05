@@ -28,12 +28,12 @@ LongestLineTracker::LongestLineTracker()
       m_max_length(0),
       m_tab_weight(1),
       m_is_max_dirty(false) {
-    m_metrics.emplace_back();
+    m_metrics.push_back(LineMetric{});
 }
 
 void LongestLineTracker::reset() {
     m_metrics.clear();
-    m_metrics.emplace_back();
+    m_metrics.push_back(LineMetric{});
     m_max_line = 0;
     m_max_length = 0;
     m_is_max_dirty = false;
@@ -41,7 +41,7 @@ void LongestLineTracker::reset() {
 
 LongestLineTracker::LineMetric LongestLineTracker::measureLine(const std::u16string_view line) {
     const auto tab_count = static_cast<uint32_t>(std::count(line.begin(), line.end(), u'\t'));
-    return {static_cast<uint32_t>(line.length()), tab_count};
+    return LineMetric{.count = static_cast<uint32_t>(line.length()), .tab_count = tab_count};
 }
 
 uint32_t LongestLineTracker::weightedLength(const LineMetric &metric) const {

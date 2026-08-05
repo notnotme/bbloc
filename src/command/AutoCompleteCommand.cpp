@@ -64,7 +64,7 @@ std::optional<std::u16string> AutoCompleteCommand::run(CursorContext &payload, c
 
     // Get and tokenize the input string
     const auto input = payload.prompt_cursor.getString();
-    auto tokens = std::vector<std::u16string_view>();
+    auto tokens = std::vector<std::u16string_view>{};
     CommandManager::tokenize(input, tokens);
 
     // Reset the history index if we were browsing it
@@ -96,7 +96,7 @@ std::optional<std::u16string> AutoCompleteCommand::run(CursorContext &payload, c
             }
 
             // One buffer reused across candidates; addCompletion copies the view into its own storage.
-            auto completion_buffer = std::u16string();
+            auto completion_buffer = std::u16string{};
             payload.command_feedback->on_complete_callback(lookup, [&](const std::u16string_view item) {
                 // Candidates containing a space must be quoted, unless the user already opened a quote
                 const auto needs_quote = !quote_is_open && item.find(u' ') != std::u16string_view::npos;
@@ -131,7 +131,7 @@ std::optional<std::u16string> AutoCompleteCommand::run(CursorContext &payload, c
             : tokens.size() - 2);
 
         // Reconstitute the left part of the input, which completions do not replace.
-        auto reconstituted_command = std::u16string();
+        auto reconstituted_command = std::u16string{};
         if (completing_last_token) {
             // Everything before the completed token, keeping an eventual opening quote.
             reconstituted_command = input.substr(0, tokens.back().data() - input.data());
@@ -144,7 +144,7 @@ std::optional<std::u16string> AutoCompleteCommand::run(CursorContext &payload, c
         }
 
         // Gather the arguments written before the one being completed, excluding the command name.
-        auto previous_args = std::span<const std::u16string_view>();
+        auto previous_args = std::span<const std::u16string_view>{};
         if (completing_last_token && tokens.size() >= 2) {
             previous_args = std::span(tokens).subspan(1, tokens.size() - 2);
         } else if (!completing_last_token && !tokens.empty()) {

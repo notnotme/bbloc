@@ -93,10 +93,14 @@ classDiagram
 ```mermaid
 classDiagram
     class Cursor {
-        note: "multi-line, selection support, undo/redo, modified flag"
+        note: "multi-line, selection support, undo/redo, modified flag; uint32 line/column"
     }
     class PromptCursor {
-        note: "single-line command input"
+        note: "single-line command input; uint32 column"
+    }
+    class SurrogatePair {
+        <<free functions>>
+        note: "charLengthBefore / charLengthAfter, shared surrogate-pair stepping"
     }
     class TextBuffer {
         <<abstract>>
@@ -114,6 +118,8 @@ classDiagram
 
     Cursor *-- TextBuffer
     Cursor *-- UndoHistory
+    Cursor ..> SurrogatePair : uses
+    PromptCursor ..> SurrogatePair : uses
     UndoHistory *-- Snapshot : nested
     UndoHistory o-- CVarInt : shared dim_max_undo
     Cursor ..> TextRange : returns
@@ -225,6 +231,7 @@ classDiagram
 classDiagram
     class ViewState {
         <<abstract>>
+        note: "int32 window rectangle (position + size)"
     }
     class PromptState
     class View~TState~ {
@@ -345,7 +352,7 @@ classDiagram
     class PromptCursor
     class ScrollState {
         <<struct>>
-        note: "scroll x/y + follow_indicator"
+        note: "scroll x/y (int64 content-space pixels) + follow_indicator"
     }
     class ColumnStick {
         <<struct>>
