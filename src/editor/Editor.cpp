@@ -151,8 +151,21 @@ bool Editor::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_K
             context.eraseSelectionIfAny();
 
             if (m_is_tab_to_space->m_value) {
-                // We have to replace the tab character by x amount of space character
-                const auto space_amount = m_theme.getDimension(DimensionId::TabToSpace);
+                // Pad up to the next tab stop rather than inserting a fixed run of spaces,
+                // so the caret lands where the neighbouring lines align.
+                const uint32_t tab_width = static_cast<uint32_t>(std::max(m_theme.getDimension(DimensionId::TabToSpace), 1));
+                const uint32_t column = context.cursor.getColumn();
+
+                // The visual column only deviates from the character index by the tabs
+                // before the caret, each drawn tab_width wide.
+                uint32_t tab_count = 0;
+                if (const uint32_t line = context.cursor.getLine(); context.cursor.getLineTabCount(line) != 0) {
+                    const std::u16string_view text = context.cursor.getString(line);
+                    tab_count = static_cast<uint32_t>(std::count(text.begin(), text.begin() + column, u'\t'));
+                }
+
+                const uint32_t visual_column = column + tab_count * (tab_width - 1);
+                const uint32_t space_amount = tab_width - visual_column % tab_width;
                 const auto &edit = context.cursor.insert(std::u16string(space_amount, u' '));
                 context.highlighter.edit(edit);
             } else {
