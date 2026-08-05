@@ -141,6 +141,7 @@ classDiagram
         Cpp
         Json
         Ini
+        Yaml
     }
     class TokenId {
         <<enum>>

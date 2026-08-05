@@ -23,10 +23,12 @@
 #include <tree_sitter/tree-sitter-cpp.h>
 #include <tree_sitter/tree-sitter-ini.h>
 #include <tree_sitter/tree-sitter-json.h>
+#include <tree_sitter/tree-sitter-yaml.h>
 
 #include "query/cpp_query.h"
 #include "query/ini_query.h"
 #include "query/json_query.h"
+#include "query/yaml_query.h"
 
 
 const std::unordered_map<HighLightId, ParserDescriptor> &ParserCatalog::getDescriptors() {
@@ -75,6 +77,22 @@ const std::unordered_map<HighLightId, ParserDescriptor> &ParserCatalog::getDescr
                 {"type",    TokenId::Type},
                 {"keyword", TokenId::Keyword},
                 {"string",  TokenId::String}
+            }
+        }},
+        { HighLightId::Yaml, {
+            .language           = tree_sitter_yaml(),
+            .name               = "YAML",
+            .argument_value     = "yaml",
+            .files_format       = {".yaml", ".YAML", ".yml", ".YML"},
+            .query_source       = yaml_query,
+            .capture_tokens     = {
+                {"keyword",      TokenId::Keyword},
+                {"string",       TokenId::String},
+                {"number",       TokenId::Number},
+                {"constant",     TokenId::Constant},
+                {"comment",      TokenId::Comment},
+                {"type",         TokenId::Type},
+                {"preprocessor", TokenId::Preprocessor}
             }
         }}
     };
