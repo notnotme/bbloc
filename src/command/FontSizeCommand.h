@@ -39,9 +39,9 @@ class FontSizeCommand final : public Command<CursorContext> {
 private:
     /** @brief Represent a "size direction". */
     enum class Size {
-        UNKNOWN,
-        PLUS,
-        MINUS
+        Unknown,
+        Plus,
+        Minus
     };
 
 private:
@@ -51,7 +51,7 @@ private:
     /**
      * Map a "size" argument into a Size. Argument "size" can be one of "+" or "-".
      * @param size The string representation of the size in the font unit.
-     * @return The corresponding Size, or UNKNOWN.
+     * @return The corresponding Size, or Unknown.
      */
     static Size mapSize(std::u16string_view size);
 

@@ -4,6 +4,13 @@ project(bbloc VERSION 0.0.0 DESCRIPTION "Simple gpu rendering text editor.")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Export compile commands for clang-tidy, reachable from the repository root
+# (the symlink always tracks the most recently configured build).
+# Module scanning is off: no modules used, and its GCC-only flags break clang-tidy.
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+file(CREATE_LINK "${CMAKE_BINARY_DIR}/compile_commands.json" "${CMAKE_SOURCE_DIR}/compile_commands.json" SYMBOLIC)
+
 # Source files
 # ========================================
 add_executable(bbloc

@@ -186,11 +186,11 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     m_command_manager.registerCommand(u"redo", std::make_shared<RedoCommand>(), false, false);
     m_command_manager.registerCommand(u"move", std::make_shared<MoveCursorCommand>(m_prompt_state), false, true);
     m_command_manager.registerCommand(u"goto_line", std::make_shared<GotoLineCommand>(), false, false);
-    m_command_manager.registerCommand(u"search", std::make_shared<SearchCommand>(SearchCommand::Action::SEARCH, m_search_case_sensitive), false, false);
-    m_command_manager.registerCommand(u"find_next", std::make_shared<SearchCommand>(SearchCommand::Action::FIND_NEXT, m_search_case_sensitive), false, false);
-    m_command_manager.registerCommand(u"find_prev", std::make_shared<SearchCommand>(SearchCommand::Action::FIND_PREV, m_search_case_sensitive), false, false);
-    m_command_manager.registerCommand(u"replace", std::make_shared<SearchCommand>(SearchCommand::Action::REPLACE, m_search_case_sensitive), false, false);
-    m_command_manager.registerCommand(u"replace_all", std::make_shared<SearchCommand>(SearchCommand::Action::REPLACE_ALL, m_search_case_sensitive), false, false);
+    m_command_manager.registerCommand(u"search", std::make_shared<SearchCommand>(SearchCommand::Action::Search, m_search_case_sensitive), false, false);
+    m_command_manager.registerCommand(u"find_next", std::make_shared<SearchCommand>(SearchCommand::Action::FindNext, m_search_case_sensitive), false, false);
+    m_command_manager.registerCommand(u"find_prev", std::make_shared<SearchCommand>(SearchCommand::Action::FindPrev, m_search_case_sensitive), false, false);
+    m_command_manager.registerCommand(u"replace", std::make_shared<SearchCommand>(SearchCommand::Action::Replace, m_search_case_sensitive), false, false);
+    m_command_manager.registerCommand(u"replace_all", std::make_shared<SearchCommand>(SearchCommand::Action::ReplaceAll, m_search_case_sensitive), false, false);
     m_command_manager.registerCommand(u"exec", std::make_shared<ExecCommand>(), false, false);
     m_command_manager.registerCommand(u"auto_complete", std::make_shared<AutoCompleteCommand>(m_prompt_state), true, true);
 
@@ -219,11 +219,11 @@ void ApplicationWindow::openFile(const std::string_view path) {
 
 void ApplicationWindow::mainLoop() {
     // Request performance query used to calculate dt time
-    const auto performanceQuery = static_cast<float>(SDL_GetPerformanceFrequency());
+    const auto performance_query = static_cast<float>(SDL_GetPerformanceFrequency());
     auto window_width = 0;
     auto window_height = 0;
     auto is_running = true;
-    auto lastTime = SDL_GetPerformanceCounter();
+    auto last_time = SDL_GetPerformanceCounter();
     SDL_GetWindowSize(p_sdl_window, &window_width, &window_height);
     SDL_ShowWindow(p_sdl_window);
 
@@ -287,9 +287,9 @@ void ApplicationWindow::mainLoop() {
                     }
 
                     if (const auto command = m_bind_command->getBinding(event.key.keysym.sym, event.key.keysym.mod)) {
-                        const auto currentTime = SDL_GetPerformanceCounter();
+                        const auto current_time = SDL_GetPerformanceCounter();
                         if (runCommand(command.value(), false)) {
-                            const auto command_time_elapsed = static_cast<float>(SDL_GetPerformanceCounter() - currentTime) / performanceQuery;
+                            const auto command_time_elapsed = static_cast<float>(SDL_GetPerformanceCounter() - current_time) / performance_query;
                             if (command_time_elapsed > m_command_time->m_value) {
                                 m_command_time->m_value = command_time_elapsed;
                             }
@@ -403,9 +403,9 @@ void ApplicationWindow::mainLoop() {
         }
 
         // Calculate dt time
-        const auto currentTime = SDL_GetPerformanceCounter();
-        const auto dt = static_cast<float>(currentTime - lastTime) / performanceQuery;
-        lastTime = currentTime;
+        const auto current_time = SDL_GetPerformanceCounter();
+        const auto dt = static_cast<float>(current_time - last_time) / performance_query;
+        last_time = current_time;
         // The views always render the active context; fetch it after the events, which may have switched it.
         auto &context = m_context_manager.active();
         if (context.wants_redraw) {
@@ -447,7 +447,7 @@ void ApplicationWindow::mainLoop() {
             }
 
             // Update max_render_time metrics before the swap, which blocks on vsync
-            const auto frame_time_elapsed = static_cast<float>(SDL_GetPerformanceCounter() - currentTime) / performanceQuery;
+            const auto frame_time_elapsed = static_cast<float>(SDL_GetPerformanceCounter() - current_time) / performance_query;
             if (frame_time_elapsed > m_draw_time->m_value) {
                 m_draw_time->m_value = frame_time_elapsed;
             }

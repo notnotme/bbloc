@@ -135,21 +135,21 @@ void CommandManager::tokenize(const std::u16string_view input, std::vector<std::
     auto start = 0;
     auto index = 0;
     while (index < input.length()) {
-        constexpr auto SPACE_DELIMITER = U' ';
-        constexpr auto QUOTE_DELIMITER = U'"';
+        constexpr auto space_delimiter = U' ';
+        constexpr auto quote_delimiter = U'"';
 
         // Skip blank spaces
-        if (input[index] == SPACE_DELIMITER) {
+        if (input[index] == space_delimiter) {
             ++index;
             continue;
         }
 
         start = index;
-        if (input[index] == QUOTE_DELIMITER) {
+        if (input[index] == quote_delimiter) {
             // skip opening quote
             ++start;
             ++index;
-            while (index < input.length() && input[index] != QUOTE_DELIMITER) {
+            while (index < input.length() && input[index] != quote_delimiter) {
                 ++index;
             }
 
@@ -164,7 +164,7 @@ void CommandManager::tokenize(const std::u16string_view input, std::vector<std::
             }
         } else {
             // Unquoted word
-            while (index < input.size() && input[index] != SPACE_DELIMITER) {
+            while (index < input.size() && input[index] != space_delimiter) {
                 ++index;
             }
             tokens.emplace_back(input.substr(start, index - start));

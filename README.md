@@ -380,13 +380,13 @@ make
 ## Screenshots
 
 **Default Theme**
-![Default theme](./capture.png)
+![Default theme](./misc/capture.png)
 
 **Light Theme**
-![Light theme](./light_theme.png)
+![Light theme](./misc/light_theme.png)
 
 **Dark Theme**
-![Dark theme](./dark_theme.png)
+![Dark theme](./misc/dark_theme.png)
 
 ## Technical Implementation Details
 
@@ -457,3 +457,12 @@ make
 
 This is a hobby project. Contriution are not yet open (code cleanup are more than necessary before).
 If you use it on Nintendo Switch and see bugs, reporting them are welcome.
+
+### Code Style
+
+Code style is checked with clang-tidy ([.clang-tidy](./.clang-tidy)) on every commit through a pre-commit hook.
+Activate the hook once after cloning:
+
+```bash
+git config core.hooksPath misc
+```

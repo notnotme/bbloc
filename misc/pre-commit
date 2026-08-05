@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+#
+# Copyright (C) 2026 Romain Graillot
+#
+# This file is part of bbloc.
+#
+# bbloc is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# bbloc is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# pre-commit: runs clang-tidy (.clang-tidy at the repository root) on the
+# staged C++ files. Activate once after cloning:
+#
+#   git config core.hooksPath misc
+#
+# Bypass for an exceptional commit: git commit --no-verify
+
+set -u
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+# compile_commands.json is symlinked here by CMake at configure time
+if [ ! -e compile_commands.json ]; then
+    echo "pre-commit: compile_commands.json not found — configure a build first (cmake -B <build-dir> ...)." >&2
+    exit 1
+fi
+
+# staged sources; a staged header is checked through its same-name .cpp when one exists
+declare -A files=()
+while IFS= read -r f; do
+    case "$f" in
+        *.cpp)
+            files["$f"]=1
+            ;;
+        *.h)
+            if [ -f "${f%.h}.cpp" ]; then
+                files["${f%.h}.cpp"]=1
+            fi
+            ;;
+    esac
+done < <(git diff --cached --name-only --diff-filter=ACMR -- 'src/*.cpp' 'src/*.h')
+
+if [ "${#files[@]}" -eq 0 ]; then
+    exit 0
+fi
+
+if ! clang-tidy -p . --quiet "${!files[@]}"; then
+    echo "pre-commit: style violations found (bypass with git commit --no-verify)." >&2
+    exit 1
+fi

@@ -223,15 +223,15 @@ void View<TState>::drawQuad(QuadBuffer &quadBuffer, const int32_t x, const int32
     // Plain quads are not culled against the viewport before being staged, unlike glyphs: a far
     // horizontal scroll pushes them past what the vertex format holds. Clamping saturates them at
     // the edge instead of letting the narrowing wrap them around to the opposite side.
-    constexpr auto MIN_POSITION = static_cast<int32_t>(std::numeric_limits<int16_t>::min());
-    constexpr auto MAX_POSITION = static_cast<int32_t>(std::numeric_limits<int16_t>::max());
-    constexpr auto MAX_SIZE = static_cast<int32_t>(std::numeric_limits<uint16_t>::max());
+    constexpr auto min_position = static_cast<int32_t>(std::numeric_limits<int16_t>::min());
+    constexpr auto max_position = static_cast<int32_t>(std::numeric_limits<int16_t>::max());
+    constexpr auto max_size = static_cast<int32_t>(std::numeric_limits<uint16_t>::max());
 
     quadBuffer.insert(
-        static_cast<int16_t>(std::clamp(x, MIN_POSITION, MAX_POSITION)),
-        static_cast<int16_t>(std::clamp(y, MIN_POSITION, MAX_POSITION)),
-        static_cast<uint16_t>(std::clamp(width, 0, MAX_SIZE)),
-        static_cast<uint16_t>(std::clamp(height, 0, MAX_SIZE)),
+        static_cast<int16_t>(std::clamp(x, min_position, max_position)),
+        static_cast<int16_t>(std::clamp(y, min_position, max_position)),
+        static_cast<uint16_t>(std::clamp(width, 0, max_size)),
+        static_cast<uint16_t>(std::clamp(height, 0, max_size)),
         color.red, color.green, color.blue, color.alpha);
 }
 

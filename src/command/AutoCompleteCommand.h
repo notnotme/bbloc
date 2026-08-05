@@ -40,9 +40,9 @@ class AutoCompleteCommand final : public Command<CursorContext> {
 private:
     /** @brief Represent a direction in the form of enum. */
     enum class Direction {
-        UNKNOWN,    ///< Unknown direction.
-        FORWARD,    ///< Direction goes forward.
-        BACKWARD    ///< Direction goes backward.
+        Unknown,    ///< Unknown direction.
+        Forward,    ///< Direction goes forward.
+        Backward    ///< Direction goes backward.
     };
 
 private:

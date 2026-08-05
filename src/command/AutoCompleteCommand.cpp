@@ -24,8 +24,8 @@
 
 
 const U16StringMap<AutoCompleteCommand::Direction> AutoCompleteCommand::DIRECTION_MAP = {
-    { u"forward", Direction::FORWARD },
-    { u"backward", Direction::BACKWARD }
+    { u"forward", Direction::Forward },
+    { u"backward", Direction::Backward }
 };
 
 AutoCompleteCommand::AutoCompleteCommand(PromptState &promptState)
@@ -55,9 +55,9 @@ std::optional<std::u16string> AutoCompleteCommand::run(CursorContext &payload, c
         // User decide.
         ? mapDirection(args[0])
         // Goes forward by default.
-        : Direction::FORWARD;
+        : Direction::Forward;
 
-    if (direction == Direction::UNKNOWN) {
+    if (direction == Direction::Unknown) {
         // Return an error if we can't determine the direction
         return std::u16string(u"Unknown direction argument: ").append(args[0]);
     }
@@ -71,7 +71,7 @@ std::optional<std::u16string> AutoCompleteCommand::run(CursorContext &payload, c
     m_prompt_state.clearHistoryIndex();
     if (m_prompt_state.getCompletionCount() > 0) {
         // The viewState completion list is not empty, loop inside
-        const auto completion = direction == Direction::FORWARD
+        const auto completion = direction == Direction::Forward
             ? m_prompt_state.nextCompletion()
             : m_prompt_state.previousCompletion();
 
@@ -218,5 +218,5 @@ AutoCompleteCommand::Direction AutoCompleteCommand::mapDirection(const std::u16s
         return mapped_direction->second;
     }
 
-    return Direction::UNKNOWN;
+    return Direction::Unknown;
 }

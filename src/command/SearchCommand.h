@@ -40,11 +40,11 @@ class SearchCommand final : public Command<CursorContext> {
 public:
     /** @brief The concrete behaviour a given instance performs. */
     enum class Action {
-        SEARCH,       ///< Store a new search term and select its first match.
-        FIND_NEXT,    ///< Select the next match of the stored term.
-        FIND_PREV,    ///< Select the previous match of the stored term.
-        REPLACE,      ///< Replace the next match of a term with a replacement.
-        REPLACE_ALL   ///< Replace every match of a term with a replacement.
+        Search,       ///< Store a new search term and select its first match.
+        FindNext,     ///< Select the next match of the stored term.
+        FindPrev,     ///< Select the previous match of the stored term.
+        Replace,      ///< Replace the next match of a term with a replacement.
+        ReplaceAll    ///< Replace every match of a term with a replacement.
     };
 
 private:
@@ -223,7 +223,7 @@ private:
     static void replaceSelection(CursorContext &payload, std::u16string_view replacement);
 
     /**
-     * @brief Runs the SEARCH action: stores the term and selects its first match.
+     * @brief Runs the Search action: stores the term and selects its first match.
      * @param payload The cursor context to update.
      * @param args The command arguments forming the term.
      * @return A status or error message.
@@ -231,14 +231,14 @@ private:
     [[nodiscard]] std::optional<std::u16string> runSearch(CursorContext &payload, std::span<const std::u16string_view> args) const;
 
     /**
-     * @brief Runs the FIND_NEXT or FIND_PREV action using the stored term.
+     * @brief Runs the FindNext or FindPrev action using the stored term.
      * @param payload The cursor context to update.
      * @return A status or error message.
      */
     [[nodiscard]] std::optional<std::u16string> runFind(CursorContext &payload) const;
 
     /**
-     * @brief Runs the REPLACE or REPLACE_ALL action.
+     * @brief Runs the Replace or ReplaceAll action.
      * @param payload The cursor context to update.
      * @param args The command arguments: the term and its replacement.
      * @return A status or error message.

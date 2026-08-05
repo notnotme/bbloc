@@ -23,8 +23,8 @@
 
 
 const U16StringMap<FontSizeCommand::Size> FontSizeCommand::SIZE_MAP = {
-    { u"+", Size::PLUS },
-    { u"-", Size::MINUS}
+    { u"+", Size::Plus },
+    { u"-", Size::Minus}
 };
 
 void FontSizeCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
@@ -51,13 +51,13 @@ std::optional<std::u16string> FontSizeCommand::run(CursorContext &payload, const
 
     // The first argument mapped to a size direction (+/-)
     switch (size) {
-        case Size::PLUS:
+        case Size::Plus:
             payload.theme.setFontSize(font_size + 1);
         break;
-        case Size::MINUS:
+        case Size::Minus:
             payload.theme.setFontSize(font_size - 1);
         break;
-        case Size::UNKNOWN:
+        case Size::Unknown:
             // We don't know the direction, so assume we got a size instead.
             try {
                 const auto utf16_pixel_size = utf8::utf16to8(args[0]);
@@ -78,5 +78,5 @@ FontSizeCommand::Size FontSizeCommand::mapSize(const std::u16string_view size) {
         return mapped_size->second;
     }
 
-    return Size::UNKNOWN;
+    return Size::Unknown;
 }

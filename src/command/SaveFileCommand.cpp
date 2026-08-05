@@ -47,9 +47,9 @@ void SaveFileCommand::provideAutoComplete(const std::span<const std::u16string_v
         CommandManager::getPathCompletions(input, false, itemCallback);
     } else if (argumentIndex == 1) {
         // The second argument can only be the overwrite flag
-        constexpr auto FORCE_FLAG = std::u16string_view(u"-f");
-        if (FORCE_FLAG.starts_with(input)) {
-            itemCallback(FORCE_FLAG);
+        constexpr auto force_flag = std::u16string_view(u"-f");
+        if (force_flag.starts_with(input)) {
+            itemCallback(force_flag);
         }
     }
 }

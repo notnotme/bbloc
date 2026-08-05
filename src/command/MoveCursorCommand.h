@@ -38,23 +38,23 @@
 class MoveCursorCommand final : public Command<CursorContext> {
 private:
     enum class Movement {
-        UNKNOWN,
-        UP,
-        DOWN,
-        LEFT,
-        RIGHT,
-        BEGIN_LINE,
-        END_LINE,
-        PAGE_UP,
-        PAGE_DOWN,
-        BEGIN_FILE,
-        END_FILE
+        Unknown,
+        Up,
+        Down,
+        Left,
+        Right,
+        BeginLine,
+        EndLine,
+        PageUp,
+        PageDown,
+        BeginFile,
+        EndFile
     };
 
     enum class Boolean {
-        UNKNOWN,
-        TRUE,
-        FALSE
+        Unknown,
+        True,
+        False
     };
 
 private:
@@ -70,14 +70,14 @@ private:
     /**
      * @brief Map a movement string representation to the enum representation.
      * @param movement The movement string to map.
-     * @return The Movement value, UNKNOWN otherwise.
+     * @return The Movement value, Unknown otherwise.
      */
     static Movement mapMovement(std::u16string_view movement);
 
     /**
      * @brief Map a boolean string representation to the enum representation.
      * @param value The boolean string to map.
-     * @return The Boolean value, UNKNOWN otherwise.
+     * @return The Boolean value, Unknown otherwise.
      */
     static Boolean mapBoolean(std::u16string_view value);
 

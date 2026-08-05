@@ -122,7 +122,7 @@ const Color &Theme::getColor(const TokenId id) const {
 
 const AtlasEntry &Theme::getCharacter(const char16_t character) {
     // Stands in for a glyph the atlas cannot store: it draws nothing instead of aborting the frame.
-    static constexpr auto BLANK_ENTRY = AtlasEntry {};
+    static constexpr auto blank_entry = AtlasEntry {};
 
     // If we already generated the character, we return it
     if (const auto &entry = m_atlas_array.get(character); entry != nullptr) {
@@ -146,7 +146,7 @@ const AtlasEntry &Theme::getCharacter(const char16_t character) {
         // The glyph is bigger than the texture, or the atlas ran out of layers. Remember the
         // failure, otherwise every frame reloads the glyph for each of its occurrences on screen.
         m_atlas_array.insertBlank(character);
-        return BLANK_ENTRY;
+        return blank_entry;
     }
 
     m_quad_texture.blit(

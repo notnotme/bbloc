@@ -30,9 +30,9 @@ BufferCommand::BufferCommand(CursorContextManager &contextManager)
 void BufferCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     if (argumentIndex == 1 && previousArgs.size() == 1 && previousArgs[0] == u"close") {
         // The second argument of "close" can only be the flag skipping the confirmation
-        constexpr auto FORCE_FLAG = std::u16string_view(u"-f");
-        if (FORCE_FLAG.starts_with(input)) {
-            itemCallback(FORCE_FLAG);
+        constexpr auto force_flag = std::u16string_view(u"-f");
+        if (force_flag.starts_with(input)) {
+            itemCallback(force_flag);
         }
         return;
     }

@@ -279,20 +279,20 @@ void Editor::drawMarginText(QuadBuffer &quadBuffer, const CursorContext &context
     auto line_index = first_line_in_viewport;
 
     // Line numbers are ASCII digits, format them into a stack buffer to avoid per-line allocations
-    constexpr auto MAX_LINE_NUMBER_DIGITS = std::numeric_limits<uint32_t>::digits10 + 1;
-    std::array<char16_t, MAX_LINE_NUMBER_DIGITS> line_number_digits{};
+    constexpr auto max_line_number_digits = std::numeric_limits<uint32_t>::digits10 + 1;
+    std::array<char16_t, max_line_number_digits> line_number_digits{};
 
     while (line_index < cursor_line_count) {
         if (line_index >= 0) {
             // Fill the buffer from its end, least significant digit first
             auto digit_count = 0;
             for (auto remainder = static_cast<uint32_t>(line_index) + 1; remainder > 0; remainder /= 10) {
-                line_number_digits[MAX_LINE_NUMBER_DIGITS - 1 - digit_count] = static_cast<char16_t>(u'0' + remainder % 10);
+                line_number_digits[max_line_number_digits - 1 - digit_count] = static_cast<char16_t>(u'0' + remainder % 10);
                 ++digit_count;
             }
 
             pen_position_x = position_x + padding_width + lineCountWidth - digit_count * font_advance;
-            for (auto digit_index = MAX_LINE_NUMBER_DIGITS - digit_count; digit_index < MAX_LINE_NUMBER_DIGITS; ++digit_index) {
+            for (auto digit_index = max_line_number_digits - digit_count; digit_index < max_line_number_digits; ++digit_index) {
                 const auto &character = m_theme.getCharacter(line_number_digits[digit_index]);
                 drawCharacter(quadBuffer, pen_position_x, pen_position_y, character, line_number_color);
                 pen_position_x += font_advance;

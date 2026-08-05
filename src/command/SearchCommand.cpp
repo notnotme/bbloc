@@ -35,16 +35,16 @@ void SearchCommand::provideAutoComplete(const std::span<const std::u16string_vie
 
 std::optional<std::u16string> SearchCommand::run(CursorContext &payload, const std::span<const std::u16string_view> args) {
     switch (m_action) {
-        case Action::SEARCH:
+        case Action::Search:
             return runSearch(payload, args);
-        case Action::FIND_NEXT:
-        case Action::FIND_PREV:
+        case Action::FindNext:
+        case Action::FindPrev:
             if (!args.empty()) {
                 return u"Expected 0 argument.";
             }
             return runFind(payload);
-        case Action::REPLACE:
-        case Action::REPLACE_ALL:
+        case Action::Replace:
+        case Action::ReplaceAll:
             return runReplace(payload, args);
     }
 
@@ -111,7 +111,7 @@ std::optional<std::u16string> SearchCommand::runFind(CursorContext &payload) con
     const auto &term = payload.search.term.value();
     const auto &cursor = payload.cursor;
     const auto case_sensitive = m_case_sensitive->m_value;
-    const auto backward = m_action == Action::FIND_PREV;
+    const auto backward = m_action == Action::FindPrev;
     auto scanner = LineScanner(term, case_sensitive);
     const auto selection = cursor.getSelectedRange();
 
@@ -186,7 +186,7 @@ std::optional<std::u16string> SearchCommand::runReplace(CursorContext &payload, 
     auto scanner = LineScanner(from, case_sensitive);
     payload.search.term = std::u16string(from);
 
-    if (m_action == Action::REPLACE) {
+    if (m_action == Action::Replace) {
         auto match = searchForward(cursor, scanner, cursor.getLine(), cursor.getColumn());
         if (!match) {
             match = searchForward(cursor, scanner, 0, 0);

@@ -77,47 +77,47 @@ uint32_t QuadBuffer::endBatch() {
     return batch_count;
 }
 
-void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, const uint16_t height, const uint8_t tint_r, const uint8_t tint_g, const uint8_t tint_b, const uint8_t tint_a) {
+void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, const uint16_t height, const uint8_t tintR, const uint8_t tintG, const uint8_t tintB, const uint8_t tintA) {
     auto &vertex = m_staging.emplace_back();
     vertex.translation_x = x;
     vertex.translation_y = y;
     vertex.width = width;
     vertex.height = height;
-    vertex.tint_r = tint_r;
-    vertex.tint_g = tint_g;
-    vertex.tint_b = tint_b;
-    vertex.tint_a = tint_a;
+    vertex.tint_r = tintR;
+    vertex.tint_g = tintG;
+    vertex.tint_b = tintB;
+    vertex.tint_a = tintA;
     vertex.texture_layer = 255;
 }
 
-void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, const uint16_t height, const uint8_t texture_s, const uint8_t texture_t, const uint8_t texture_layer) {
+void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, const uint16_t height, const uint8_t textureS, const uint8_t textureT, const uint8_t textureLayer) {
     auto &vertex = m_staging.emplace_back();
     vertex.translation_x = x;
     vertex.translation_y = y;
     vertex.width = width;
     vertex.height = height;
-    vertex.texture_s = texture_s;
-    vertex.texture_t = texture_t;
+    vertex.texture_s = textureS;
+    vertex.texture_t = textureT;
     vertex.tint_r = 255;
     vertex.tint_g = 255;
     vertex.tint_b = 255;
     vertex.tint_a = 255;
-    vertex.texture_layer = texture_layer;
+    vertex.texture_layer = textureLayer;
 }
 
-void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, const uint16_t height, const uint8_t texture_s, const uint8_t texture_t, const uint8_t texture_layer, const uint8_t tint_r, const uint8_t tint_g, const uint8_t tint_b, const uint8_t tint_a) {
+void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, const uint16_t height, const uint8_t textureS, const uint8_t textureT, const uint8_t textureLayer, const uint8_t tintR, const uint8_t tintG, const uint8_t tintB, const uint8_t tintA) {
     auto &vertex = m_staging.emplace_back();
     vertex.translation_x = x;
     vertex.translation_y = y;
     vertex.width = width;
     vertex.height = height;
-    vertex.texture_s = texture_s;
-    vertex.texture_t = texture_t;
-    vertex.tint_r = tint_r;
-    vertex.tint_g = tint_g;
-    vertex.tint_b = tint_b;
-    vertex.tint_a = tint_a;
-    vertex.texture_layer = texture_layer;
+    vertex.texture_s = textureS;
+    vertex.texture_t = textureT;
+    vertex.tint_r = tintR;
+    vertex.tint_g = tintG;
+    vertex.tint_b = tintB;
+    vertex.tint_a = tintA;
+    vertex.texture_layer = textureLayer;
 }
 
 void QuadBuffer::destroy() {

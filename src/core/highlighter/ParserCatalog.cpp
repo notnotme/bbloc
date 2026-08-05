@@ -30,7 +30,7 @@
 
 
 const std::unordered_map<HighLightId, ParserDescriptor> &ParserCatalog::getDescriptors() {
-    static const std::unordered_map<HighLightId, ParserDescriptor> DESCRIPTORS = {
+    static const std::unordered_map<HighLightId, ParserDescriptor> descriptors = {
         { HighLightId::Json, {
             .language           = tree_sitter_json(),
             .name               = "JSON",
@@ -79,20 +79,20 @@ const std::unordered_map<HighLightId, ParserDescriptor> &ParserCatalog::getDescr
         }}
     };
 
-    return DESCRIPTORS;
+    return descriptors;
 }
 
 const std::unordered_map<HighLightId, Parser> &ParserCatalog::getParsers() {
-    static const std::unordered_map<HighLightId, Parser> PARSERS = [] {
-        std::unordered_map<HighLightId, Parser> parsers;
+    static const std::unordered_map<HighLightId, Parser> parsers = [] {
+        std::unordered_map<HighLightId, Parser> catalog;
         for (const auto &[id, descriptor] : getDescriptors()) {
-            parsers.try_emplace(id, descriptor);
+            catalog.try_emplace(id, descriptor);
         }
 
-        return parsers;
+        return catalog;
     }();
 
-    return PARSERS;
+    return parsers;
 }
 
 HighLightId ParserCatalog::findModeByExtension(const std::string_view extension) {

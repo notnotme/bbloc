@@ -152,7 +152,9 @@ void HighLighter::paintCacheLines(const TSNode rootNode, const uint32_t firstLin
             const auto end_point = ts_node_end_point(node);
 
             const auto token_id = p_current_parser->getTokenId(capture.index);
-            if (token_id == TokenId::None) continue;
+            if (token_id == TokenId::None) {
+                continue;
+            }
 
             // A node may start before or end after the painted range; clamp its lines to it
             const auto first_line = std::max(start_point.row, firstLine);
@@ -197,7 +199,9 @@ void HighLighter::repaintChangedLines(TSTree *newTree) {
     for (uint32_t i = 0; i < range_count; ++i) {
         const auto range_first = ranges[i].start_point.row;
         const auto range_last = ranges[i].end_point.row;
-        if (range_first > cache_last || range_last < cache_first) continue;
+        if (range_first > cache_last || range_last < cache_first) {
+            continue;
+        }
 
         repaint_first = std::min(repaint_first, std::max(range_first, cache_first));
         repaint_last = std::max(repaint_last, std::min(range_last, cache_last));

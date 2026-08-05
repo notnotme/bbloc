@@ -22,21 +22,21 @@
 
 
 const U16StringMap<MoveCursorCommand::Movement> MoveCursorCommand::MOVEMENT_MAP = {
-    { u"up", Movement::UP },
-    { u"down", Movement::DOWN },
-    { u"left", Movement::LEFT },
-    { u"right", Movement::RIGHT },
-    { u"bol", Movement::BEGIN_LINE },
-    { u"eol", Movement::END_LINE },
-    { u"page_up", Movement::PAGE_UP },
-    { u"page_down", Movement::PAGE_DOWN },
-    { u"bof", Movement::BEGIN_FILE },
-    { u"eof",  Movement::END_FILE }
+    { u"up", Movement::Up },
+    { u"down", Movement::Down },
+    { u"left", Movement::Left },
+    { u"right", Movement::Right },
+    { u"bol", Movement::BeginLine },
+    { u"eol", Movement::EndLine },
+    { u"page_up", Movement::PageUp },
+    { u"page_down", Movement::PageDown },
+    { u"bof", Movement::BeginFile },
+    { u"eof",  Movement::EndFile }
 };
 
 const U16StringMap<MoveCursorCommand::Boolean> MoveCursorCommand::BOOLEAN_MAP = {
-    { u"true", Boolean::TRUE },
-    { u"false", Boolean::FALSE }
+    { u"true", Boolean::True },
+    { u"false", Boolean::False }
 };
 
 MoveCursorCommand::MoveCursorCommand(PromptState &promptState)
@@ -61,7 +61,7 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
 
     // Tries to map the movement argument
     const auto movement = mapMovement(args[0]);
-    if (movement == Movement::UNKNOWN) {
+    if (movement == Movement::Unknown) {
         return std::u16string(u"Unknown direction argument: ").append(args[0]);
     }
 
@@ -71,9 +71,9 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
         // User decide.
         ? mapBoolean(args[1])
         // Don't enable or expand the selection by default.
-        : Boolean::FALSE;
+        : Boolean::False;
 
-    if (has_select_argument && select_text == Boolean::UNKNOWN) {
+    if (has_select_argument && select_text == Boolean::Unknown) {
         // If the user precise the select argument but it cannot be parsed.
         return std::u16string(u"Selected argument expect a boolean value: ").append(args[1]);
     }
@@ -84,7 +84,7 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
         case FocusTarget::Prompt:
             switch (movement) {
                 // History is not navigable while a feedback expects an answer.
-                case Movement::UP:
+                case Movement::Up:
                     if (!payload.command_feedback && m_prompt_state.getHistoryCount() > 0) {
                         m_prompt_state.clearCompletions();
 
@@ -94,7 +94,7 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
                         payload.wants_redraw = true;
                     }
                 break;
-                case Movement::DOWN:
+                case Movement::Down:
                     if (!payload.command_feedback && m_prompt_state.getHistoryCount() > 0) {
                         m_prompt_state.clearCompletions();
 
@@ -104,19 +104,19 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
                         payload.wants_redraw = true;
                     }
                 break;
-                case Movement::LEFT:
+                case Movement::Left:
                     payload.prompt_cursor.moveLeft();
                     payload.wants_redraw = true;
                 break;
-                case Movement::RIGHT:
+                case Movement::Right:
                     payload.prompt_cursor.moveRight();
                     payload.wants_redraw = true;
                 break;
-                case Movement::BEGIN_LINE:
+                case Movement::BeginLine:
                     payload.prompt_cursor.moveToStart();
                     payload.wants_redraw = true;
                 break;
-                case Movement::END_LINE:
+                case Movement::EndLine:
                     payload.prompt_cursor.moveToEnd();
                     payload.wants_redraw = true;
                 break;
@@ -126,49 +126,49 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
         break;
         case FocusTarget::Editor:
             payload.search.resetMatches();
-            payload.cursor.activateSelection(select_text == Boolean::TRUE);
+            payload.cursor.activateSelection(select_text == Boolean::True);
             switch (movement) {
-                case Movement::UP:
+                case Movement::Up:
                     payload.cursor.moveUp();
                     stickToColumn(payload);
                 break;
-                case Movement::DOWN:
+                case Movement::Down:
                     payload.cursor.moveDown();
                     stickToColumn(payload);
                 break;
-                case Movement::LEFT:
+                case Movement::Left:
                     payload.cursor.moveLeft();
                     payload.stick.index = payload.cursor.getColumn();
                 break;
-                case Movement::RIGHT:
+                case Movement::Right:
                     payload.cursor.moveRight();
                     payload.stick.index = payload.cursor.getColumn();
                 break;
-                case Movement::BEGIN_LINE:
+                case Movement::BeginLine:
                     payload.cursor.moveToStartOfLine();
                     payload.stick.index = payload.cursor.getColumn();
                 break;
-                case Movement::END_LINE:
+                case Movement::EndLine:
                     payload.cursor.moveToEndOfLine();
                     payload.stick.index = payload.cursor.getColumn();
                 break;
-                case Movement::PAGE_UP: {
+                case Movement::PageUp: {
                     const auto line_count = payload.theme.getDimension(DimensionId::PageUpDown);
                     payload.cursor.pageUp(line_count);
                     stickToColumn(payload);
                 }
                 break;
-                case Movement::PAGE_DOWN: {
+                case Movement::PageDown: {
                     const auto line_count = payload.theme.getDimension(DimensionId::PageUpDown);
                     payload.cursor.pageDown(line_count);
                     stickToColumn(payload);
                 }
                 break;
-                case Movement::BEGIN_FILE:
+                case Movement::BeginFile:
                     payload.cursor.moveToStartOfFile();
                     payload.stick.index = payload.cursor.getColumn();
                 break;
-                case Movement::END_FILE:
+                case Movement::EndFile:
                     payload.cursor.moveToEndOfFile();
                     payload.stick.index = payload.cursor.getColumn();
                 break;
@@ -191,7 +191,7 @@ MoveCursorCommand::Movement MoveCursorCommand::mapMovement(const std::u16string_
         return mapped_movement->second;
     }
 
-    return Movement::UNKNOWN;
+    return Movement::Unknown;
 }
 
 MoveCursorCommand::Boolean MoveCursorCommand::mapBoolean(const std::u16string_view value) {
@@ -199,7 +199,7 @@ MoveCursorCommand::Boolean MoveCursorCommand::mapBoolean(const std::u16string_vi
         return mapped_boolean->second;
     }
 
-    return Boolean::UNKNOWN;
+    return Boolean::Unknown;
 }
 
 void MoveCursorCommand::stickToColumn(CursorContext &payload) {

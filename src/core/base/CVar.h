@@ -96,16 +96,16 @@ inline void CVar::provideValueCompletion(const int32_t componentIndex, const Aut
     auto index = 0;
     auto component_index = 0;
     while (index < value.length()) {
-        constexpr auto SPACE_DELIMITER = u' ';
+        constexpr auto space_delimiter = u' ';
 
         // Skip blank spaces
-        if (value[index] == SPACE_DELIMITER) {
+        if (value[index] == space_delimiter) {
             ++index;
             continue;
         }
 
         const auto start = index;
-        while (index < value.length() && value[index] != SPACE_DELIMITER) {
+        while (index < value.length() && value[index] != space_delimiter) {
             ++index;
         }
 

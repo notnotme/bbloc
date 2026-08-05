@@ -40,7 +40,7 @@
 class Editor final : public View<> {
 private:
     /** Minimum scrollbar thumb size in pixels, so it stays visible and grabbable on huge contents. */
-    static constexpr auto MIN_THUMB_SIZE = int64_t{16};
+    static constexpr int64_t MIN_THUMB_SIZE = 16;
 
     /**
      * @brief Mouse drag interactions the editor can be in between a press and its release.

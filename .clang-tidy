@@ -1,0 +1,29 @@
+# Rules kept by review (clang-tidy cannot express them):
+#  - members: m_ prefix, p_ when pointer; aggregate fields keep their names
+#  - member init in the ctor init-list; ctor-less structs in-class, all or none
+#  - final on every class/struct nothing inherits from
+#  - no function calls in for-loop conditions
+#  - single-word enum constants are still CamelCase (Search, not SEARCH)
+
+Checks: >
+  -*,
+  misc-const-correctness,
+  modernize-use-nodiscard,
+  readability-braces-around-statements,
+  readability-identifier-naming,
+  readability-make-member-function-const
+
+WarningsAsErrors: '*'
+HeaderFilterRegex: '.*/src/.*'
+
+CheckOptions:
+  readability-identifier-naming.EnumCase: CamelCase
+  readability-identifier-naming.EnumConstantCase: CamelCase
+  readability-identifier-naming.LocalVariableCase: lower_case
+  readability-identifier-naming.LocalConstantCase: lower_case
+  readability-identifier-naming.LocalPointerCase: lower_case
+  readability-identifier-naming.LocalConstantPointerCase: lower_case
+  readability-identifier-naming.ParameterCase: camelBack
+  readability-identifier-naming.ConstantParameterCase: camelBack
+  readability-identifier-naming.PointerParameterCase: camelBack
+  readability-identifier-naming.ConstantPointerParameterCase: camelBack

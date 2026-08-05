@@ -107,13 +107,13 @@ public:
      * @param y Y position in pixels.
      * @param width Width of the quad.
      * @param height Height of the quad.
-     * @param tint_r Red component of tint color.
-     * @param tint_g Green component of tint color.
-     * @param tint_b Blue component of tint color.
-     * @param tint_a Alpha component of tint color.
+     * @param tintR Red component of tint color.
+     * @param tintG Green component of tint color.
+     * @param tintB Blue component of tint color.
+     * @param tintA Alpha component of tint color.
      */
     void insert(int16_t x, int16_t y, uint16_t width, uint16_t height,
-                uint8_t tint_r, uint8_t tint_g, uint8_t tint_b, uint8_t tint_a);
+                uint8_t tintR, uint8_t tintG, uint8_t tintB, uint8_t tintA);
 
     /**
      * @brief Inserts a textured quad with a full tint (255) into the buffer.
@@ -122,12 +122,12 @@ public:
      * @param y Y position in pixels.
      * @param width Width of the quad.
      * @param height Height of the quad.
-     * @param texture_s Texture UV coordinate S.
-     * @param texture_t Texture UV coordinate T.
-     * @param texture_layer Texture layer index.
+     * @param textureS Texture UV coordinate S.
+     * @param textureT Texture UV coordinate T.
+     * @param textureLayer Texture layer index.
      */
     void insert(int16_t x, int16_t y, uint16_t width, uint16_t height,
-                uint8_t texture_s, uint8_t texture_t, uint8_t texture_layer);
+                uint8_t textureS, uint8_t textureT, uint8_t textureLayer);
 
     /**
      * @brief Inserts a textured and tinted quad into the buffer.
@@ -136,17 +136,17 @@ public:
      * @param y Y position in pixels.
      * @param width Width of the quad.
      * @param height Height of the quad.
-     * @param texture_s Texture UV coordinate S.
-     * @param texture_t Texture UV coordinate T.
-     * @param texture_layer Texture layer index.
-     * @param tint_r Red component of tint color.
-     * @param tint_g Green component of tint color.
-     * @param tint_b Blue component of tint color.
-     * @param tint_a Alpha component of tint color.
+     * @param textureS Texture UV coordinate S.
+     * @param textureT Texture UV coordinate T.
+     * @param textureLayer Texture layer index.
+     * @param tintR Red component of tint color.
+     * @param tintG Green component of tint color.
+     * @param tintB Blue component of tint color.
+     * @param tintA Alpha component of tint color.
      */
     void insert(int16_t x, int16_t y, uint16_t width, uint16_t height,
-                uint8_t texture_s, uint8_t texture_t, uint8_t texture_layer,
-                uint8_t tint_r, uint8_t tint_g, uint8_t tint_b, uint8_t tint_a);
+                uint8_t textureS, uint8_t textureT, uint8_t textureLayer,
+                uint8_t tintR, uint8_t tintG, uint8_t tintB, uint8_t tintA);
 
     /** @brief Returns the OpenGL buffer ID. */
     [[nodiscard]] GLuint getBuffer() const;
