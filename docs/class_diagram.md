@@ -428,6 +428,9 @@ classDiagram
     class BufferCommand {
         note: "buffer next / prev / close / name, via CursorContextManager"
     }
+    class HelpCommand {
+        note: "opens romfs/manual.txt through the open command, jumps to a === section heading"
+    }
 
     Command~CursorContext~ <|-- BindCommand
     Command~CursorContext~ <|-- MoveCursorCommand
@@ -450,6 +453,7 @@ classDiagram
     Command~CursorContext~ <|-- SearchCommand
     Command~CursorContext~ <|-- GotoLineCommand
     Command~CursorContext~ <|-- BufferCommand
+    Command~CursorContext~ <|-- HelpCommand
 ```
 
 ---

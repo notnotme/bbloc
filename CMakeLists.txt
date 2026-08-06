@@ -82,6 +82,7 @@ add_executable(bbloc
         src/command/MoveCursorCommand.cpp
         src/command/OskCommand.cpp
         src/command/GotoLineCommand.cpp
+        src/command/HelpCommand.cpp
         src/command/ExecCommand.cpp
         src/command/AutoCompleteCommand.cpp
         src/editor/Editor.cpp

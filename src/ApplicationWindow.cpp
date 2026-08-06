@@ -41,6 +41,7 @@
 #include "command/ExecCommand.h"
 #include "command/FontSizeCommand.h"
 #include "command/GotoLineCommand.h"
+#include "command/HelpCommand.h"
 #include "command/MoveCursorCommand.h"
 #include "command/OpenFileCommand.h"
 #include "command/OskCommand.h"
@@ -224,6 +225,7 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     m_command_manager.registerCommand(u"exec", std::make_shared<ExecCommand>(), false, false);
     m_command_manager.registerCommand(u"auto_complete", std::make_shared<AutoCompleteCommand>(m_prompt_state), true, true);
     m_command_manager.registerCommand(u"osk", std::make_shared<OskCommand>(m_osk_state), false, true);
+    m_command_manager.registerCommand(u"help", std::make_shared<HelpCommand>(m_context_manager), false, false);
 
     // Don't run it "from prompt", so its not added to history
     runCommand(std::u16string(u"exec ").append(utf8::utf8to16(path)).append(u"autoexec"), false);
