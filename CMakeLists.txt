@@ -83,6 +83,8 @@ add_executable(bbloc
         src/command/AutoCompleteCommand.cpp
         src/editor/Editor.cpp
         src/infobar/InfoBar.cpp
+        src/input/KeyboardInput.cpp
+        src/input/PointerInput.cpp
         src/prompt/Prompt.cpp
         src/prompt/PromptState.cpp
         src/ApplicationWindow.cpp

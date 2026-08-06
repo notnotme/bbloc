@@ -19,7 +19,6 @@
 #include "ApplicationWindow.h"
 
 #include <algorithm>
-#include <cmath>
 #include <filesystem>
 
 #include <memory>
@@ -70,14 +69,20 @@ ApplicationWindow::ApplicationWindow()
       m_search_case_sensitive(std::make_shared<CVarBool>(false)),
       m_bind_command(std::make_shared<BindCommand>(m_command_manager)),
       m_orthogonal(),
-      m_mouse_target(MouseTarget::None),
-      m_touch_mode(TouchMode::None) {}
+      m_keyboard_input(*this, m_context_manager, m_editor, m_editor_state, m_prompt, m_prompt_state),
+      m_pointer_input(m_context_manager, m_theme, m_info_bar, m_info_bar_state, m_editor, m_editor_state, m_prompt, m_prompt_state) {}
 
-bool ApplicationWindow::viewContains(const ViewState &viewState, const int32_t x, const int32_t y) {
-    const auto position_x = viewState.getPositionX();
-    const auto position_y = viewState.getPositionY();
-    return x >= position_x && x < position_x + viewState.getWidth()
-        && y >= position_y && y < position_y + viewState.getHeight();
+void ApplicationWindow::runBoundCommand(const SDL_Keycode keycode, const uint16_t modifiers) {
+    if (const auto command = m_bind_command->getBinding(keycode, modifiers)) {
+        const auto current_time = SDL_GetPerformanceCounter();
+        if (runCommand(command.value(), false)) {
+            const auto performance_query = static_cast<float>(SDL_GetPerformanceFrequency());
+            const auto command_time_elapsed = static_cast<float>(SDL_GetPerformanceCounter() - current_time) / performance_query;
+            if (command_time_elapsed > m_command_time->m_value) {
+                m_command_time->m_value = command_time_elapsed;
+            }
+        }
+    }
 }
 
 void ApplicationWindow::updateOrthogonal(const int32_t width, const int32_t height) {
@@ -278,262 +283,32 @@ void ApplicationWindow::mainLoop() {
                         break;
                     }
                 break;
-                case SDL_KEYDOWN: {
-                    // Chords are shortcuts, never editing keys: skip the focused view and go straight
-                    // to the bindings (same rationale as the SDL_TEXTINPUT chord rule below)
-                    const auto is_chord = event.key.keysym.mod & (KMOD_CTRL | KMOD_LALT);
-
-                    if (!is_chord) {
-                        // The prompt dispatches a command on Return, which can switch the active context
-                        // or close (and destroy) this one: re-read active() before touching it afterwards.
-                        auto &context = m_context_manager.active();
-                        bool consumed = false;
-                        switch (context.focus_target) {
-                            case FocusTarget::Editor:
-                                if (m_editor.onKeyDown(context, m_editor_state, event.key.keysym.sym, event.key.keysym.mod)) {
-                                    // If the view return true, the text changed: redraw the views
-                                    context.search.resetMatches();
-                                    context.wants_redraw = true;
-                                    consumed = true;
-                                }
-                            break;
-                            case FocusTarget::Prompt:
-                                if (m_prompt.onKeyDown(context, m_prompt_state, event.key.keysym.sym, event.key.keysym.mod)) {
-                                    // If the view return true, then redraw the views.
-                                    // `context` may be gone by now (the prompt ran "buffer close"): flag the new active one.
-                                    m_context_manager.active().wants_redraw = true;
-                                    consumed = true;
-                                }
-                            break;
-                        }
-
-                        if (consumed) {
-                            break;
-                        }
-                    }
-
-                    if (const auto command = m_bind_command->getBinding(event.key.keysym.sym, event.key.keysym.mod)) {
-                        const auto current_time = SDL_GetPerformanceCounter();
-                        if (runCommand(command.value(), false)) {
-                            const auto command_time_elapsed = static_cast<float>(SDL_GetPerformanceCounter() - current_time) / performance_query;
-                            if (command_time_elapsed > m_command_time->m_value) {
-                                m_command_time->m_value = command_time_elapsed;
-                            }
-                            break;
-                        }
-                    }
-                }
+                case SDL_KEYDOWN:
+                    m_keyboard_input.onKeyDown(event.key);
                 break;
-                case SDL_TEXTINPUT: {
-                    // Don't type text for shortcut chords: X11 still delivers TEXTINPUT for Ctrl/Alt+letter
-                    const auto block_text_input = SDL_GetModState() & (KMOD_CTRL | KMOD_LALT);
-                    if (!block_text_input) {
-                        // Redirect to input focus. We always redraw new characters.
-                        auto &context = m_context_manager.active();
-                        context.wants_redraw = true;
-                        switch (context.focus_target) {
-                            case FocusTarget::Editor:
-                                m_editor.onTextInput(context, m_editor_state, event.text.text);
-                                context.search.resetMatches();
-                                break;
-                            case FocusTarget::Prompt:
-                                m_prompt.onTextInput(context, m_prompt_state, event.text.text);
-                                break;
-                        }
-                    }
-                }
+                case SDL_TEXTINPUT:
+                    m_keyboard_input.onTextInput(event.text);
                 break;
-                case SDL_MOUSEBUTTONDOWN: {
-                    // Left button only; other buttons are ignored for now
-                    if (event.button.button != SDL_BUTTON_LEFT) {
-                        break;
-                    }
-
-                    // Route the press to the view whose rectangle contains it, and capture that
-                    // view: motion and release keep going to it until the button is released
-                    auto &context = m_context_manager.active();
-                    const auto x = event.button.x;
-                    const auto y = event.button.y;
-                    if (viewContains(m_editor_state, x, y)) {
-                        m_mouse_target = MouseTarget::Editor;
-                        m_editor.onMouseDown(context, m_editor_state, x, y);
-                    } else if (viewContains(m_prompt_state, x, y)) {
-                        m_mouse_target = MouseTarget::Prompt;
-                        m_prompt.onMouseDown(context, m_prompt_state, x, y);
-                    } else if (viewContains(m_info_bar_state, x, y)) {
-                        m_mouse_target = MouseTarget::InfoBar;
-                        m_info_bar.onMouseDown(context, m_info_bar_state, x, y);
-                    }
-                }
+                case SDL_MOUSEBUTTONDOWN:
+                    m_pointer_input.onMouseDown(event.button);
                 break;
-                case SDL_MOUSEMOTION: {
-                    // Motion only matters during a left-button drag: keep routing it to the view
-                    // that received the press, even when the pointer leaves its rectangle
-                    if (m_mouse_target == MouseTarget::None || !(event.motion.state & SDL_BUTTON_LMASK)) {
-                        break;
-                    }
-
-                    auto &context = m_context_manager.active();
-                    switch (m_mouse_target) {
-                        case MouseTarget::Editor:
-                            m_editor.onMouseMotion(context, m_editor_state, event.motion.x, event.motion.y);
-                        break;
-                        case MouseTarget::Prompt:
-                            m_prompt.onMouseMotion(context, m_prompt_state, event.motion.x, event.motion.y);
-                        break;
-                        case MouseTarget::InfoBar:
-                            m_info_bar.onMouseMotion(context, m_info_bar_state, event.motion.x, event.motion.y);
-                        break;
-                        default:
-                        break;
-                    }
-                }
+                case SDL_MOUSEMOTION:
+                    m_pointer_input.onMouseMotion(event.motion);
                 break;
-                case SDL_MOUSEBUTTONUP: {
-                    if (event.button.button != SDL_BUTTON_LEFT || m_mouse_target == MouseTarget::None) {
-                        break;
-                    }
-
-                    // Release the capture after letting the pressed view end its drag
-                    auto &context = m_context_manager.active();
-                    switch (m_mouse_target) {
-                        case MouseTarget::Editor:
-                            m_editor.onMouseUp(context, m_editor_state, event.button.x, event.button.y);
-                        break;
-                        case MouseTarget::Prompt:
-                            m_prompt.onMouseUp(context, m_prompt_state, event.button.x, event.button.y);
-                        break;
-                        case MouseTarget::InfoBar:
-                            m_info_bar.onMouseUp(context, m_info_bar_state, event.button.x, event.button.y);
-                        break;
-                        default:
-                        break;
-                    }
-                    m_mouse_target = MouseTarget::None;
-                }
+                case SDL_MOUSEBUTTONUP:
+                    m_pointer_input.onMouseUp(event.button);
                 break;
-                case SDL_MOUSEWHEEL: {
-                    // We must have an updated value for the line_height, so request the size from the theme now
-                    auto &context = m_context_manager.active();
-                    const auto line_height = m_theme.getLineHeight();
-                    const auto scroll_amount = event.wheel.y * -line_height;
-                    context.scroll.y = context.scroll.y + scroll_amount;
-                    // Horizontal wheel: positive wheel.x means scrolling right, matching a scroll.x increase
-                    context.scroll.x = context.scroll.x + event.wheel.x * m_theme.getFontAdvance();
-                    context.wants_redraw = true;
-                }
+                case SDL_MOUSEWHEEL:
+                    m_pointer_input.onMouseWheel(event.wheel);
                 break;
-                case SDL_FINGERDOWN: {
-                    const auto x = static_cast<int32_t>(event.tfinger.x * static_cast<float>(window_width));
-                    const auto y = static_cast<int32_t>(event.tfinger.y * static_cast<float>(window_height));
-                    const auto finger_count = SDL_GetNumTouchFingers(event.tfinger.touchId);
-
-                    if (m_touch_mode == TouchMode::None && finger_count == 1) {
-                        // First finger acts as a left-button press: route and capture like a mouse
-                        // press above. Drag mode is entered even when no view contains the point,
-                        // so a second finger can still turn the gesture into a scroll
-                        m_touch_mode = TouchMode::Drag;
-                        auto &context = m_context_manager.active();
-                        if (viewContains(m_editor_state, x, y)) {
-                            m_mouse_target = MouseTarget::Editor;
-                            m_editor.onMouseDown(context, m_editor_state, x, y);
-                        } else if (viewContains(m_prompt_state, x, y)) {
-                            m_mouse_target = MouseTarget::Prompt;
-                            m_prompt.onMouseDown(context, m_prompt_state, x, y);
-                        } else if (viewContains(m_info_bar_state, x, y)) {
-                            m_mouse_target = MouseTarget::InfoBar;
-                            m_info_bar.onMouseDown(context, m_info_bar_state, x, y);
-                        }
-                    } else if (finger_count >= 2 && m_touch_mode != TouchMode::Scroll) {
-                        // A second finger turns the gesture into a scroll: end the drag first so
-                        // the captured view closes its state (coordinates are ignored on release)
-                        if (m_mouse_target != MouseTarget::None) {
-                            auto &context = m_context_manager.active();
-                            switch (m_mouse_target) {
-                                case MouseTarget::Editor:
-                                    m_editor.onMouseUp(context, m_editor_state, x, y);
-                                break;
-                                case MouseTarget::Prompt:
-                                    m_prompt.onMouseUp(context, m_prompt_state, x, y);
-                                break;
-                                case MouseTarget::InfoBar:
-                                    m_info_bar.onMouseUp(context, m_info_bar_state, x, y);
-                                break;
-                                default:
-                                break;
-                            }
-                            m_mouse_target = MouseTarget::None;
-                        }
-                        m_touch_mode = TouchMode::Scroll;
-                    }
-                }
+                case SDL_FINGERDOWN:
+                    m_pointer_input.onFingerDown(event.tfinger, window_width, window_height);
                 break;
-                case SDL_FINGERMOTION: {
-                    if (m_touch_mode == TouchMode::Scroll) {
-                        // Every finger reports its own motion, so split each event by the live
-                        // finger count to track the fingers 1:1. Fingers moving down reveal
-                        // earlier lines (scroll.y decreases), matching the wheel direction above.
-                        // follow_indicator is left untouched so the render-time clamp applies
-                        const auto finger_count = std::max(1, SDL_GetNumTouchFingers(event.tfinger.touchId));
-                        auto &context = m_context_manager.active();
-                        context.scroll.x = context.scroll.x - std::lround(event.tfinger.dx * static_cast<float>(window_width) / static_cast<float>(finger_count));
-                        context.scroll.y = context.scroll.y - std::lround(event.tfinger.dy * static_cast<float>(window_height) / static_cast<float>(finger_count));
-                        context.wants_redraw = true;
-                    } else if (m_touch_mode == TouchMode::Drag && m_mouse_target != MouseTarget::None) {
-                        // Single-finger drag: same routing as a captured mouse motion above
-                        const auto x = static_cast<int32_t>(event.tfinger.x * static_cast<float>(window_width));
-                        const auto y = static_cast<int32_t>(event.tfinger.y * static_cast<float>(window_height));
-                        auto &context = m_context_manager.active();
-                        switch (m_mouse_target) {
-                            case MouseTarget::Editor:
-                                m_editor.onMouseMotion(context, m_editor_state, x, y);
-                            break;
-                            case MouseTarget::Prompt:
-                                m_prompt.onMouseMotion(context, m_prompt_state, x, y);
-                            break;
-                            case MouseTarget::InfoBar:
-                                m_info_bar.onMouseMotion(context, m_info_bar_state, x, y);
-                            break;
-                            default:
-                            break;
-                        }
-                    }
-                }
+                case SDL_FINGERMOTION:
+                    m_pointer_input.onFingerMotion(event.tfinger, window_width, window_height);
                 break;
-                case SDL_FINGERUP: {
-                    // SDL removes the finger before posting the event: 0 means the last one lifted
-                    const auto finger_count = SDL_GetNumTouchFingers(event.tfinger.touchId);
-
-                    if (m_touch_mode == TouchMode::Drag) {
-                        // Release the capture after letting the pressed view end its drag
-                        if (m_mouse_target != MouseTarget::None) {
-                            const auto x = static_cast<int32_t>(event.tfinger.x * static_cast<float>(window_width));
-                            const auto y = static_cast<int32_t>(event.tfinger.y * static_cast<float>(window_height));
-                            auto &context = m_context_manager.active();
-                            switch (m_mouse_target) {
-                                case MouseTarget::Editor:
-                                    m_editor.onMouseUp(context, m_editor_state, x, y);
-                                break;
-                                case MouseTarget::Prompt:
-                                    m_prompt.onMouseUp(context, m_prompt_state, x, y);
-                                break;
-                                case MouseTarget::InfoBar:
-                                    m_info_bar.onMouseUp(context, m_info_bar_state, x, y);
-                                break;
-                                default:
-                                break;
-                            }
-                            m_mouse_target = MouseTarget::None;
-                        }
-                        m_touch_mode = TouchMode::None;
-                    }
-
-                    // Scroll mode ends only when every finger has lifted, so a trailing finger
-                    // keeps scrolling and can never start an accidental selection
-                    if (finger_count == 0) {
-                        m_touch_mode = TouchMode::None;
-                    }
-                }
+                case SDL_FINGERUP:
+                    m_pointer_input.onFingerUp(event.tfinger, window_width, window_height);
                 break;
                 default:
                 break;

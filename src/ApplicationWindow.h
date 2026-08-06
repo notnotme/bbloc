@@ -38,6 +38,8 @@
 #include "command/BindCommand.h"
 #include "editor/Editor.h"
 #include "infobar/InfoBar.h"
+#include "input/KeyboardInput.h"
+#include "input/PointerInput.h"
 #include "prompt/Prompt.h"
 #include "prompt/PromptState.h"
 
@@ -63,32 +65,6 @@ public:
     static constexpr uint32_t EDITOR_DEFAULT_QUAD_COUNT = DEFAULT_QUAD_CAPACITY - INFO_BAR_DEFAULT_QUAD_COUNT - PROMPT_DEFAULT_QUAD_COUNT;
 
 private:
-    /**
-     * @brief Views a mouse press can be routed to.
-     *
-     * The view under a left-button press captures the pointer: motion and release events keep
-     * being routed to it until the button is released, even when the pointer leaves the view.
-     */
-    enum class MouseTarget : uint8_t {
-        None,     ///< No press in progress.
-        InfoBar,  ///< The info bar received the press.
-        Editor,   ///< The editor received the press.
-        Prompt    ///< The prompt received the press.
-    };
-
-    /**
-     * @brief Touch gesture currently in progress.
-     *
-     * One finger acts as the left mouse button, routed through the MouseTarget capture;
-     * two fingers scroll the active context. Scroll mode ends only when every finger has
-     * lifted, so a trailing finger cannot start an accidental selection.
-     */
-    enum class TouchMode : uint8_t {
-        None,    ///< No finger on the screen.
-        Drag,    ///< Single finger: emulates a left-button press and drag.
-        Scroll   ///< Two or more fingers: scrolls the active context.
-    };
-
     /** SDL window handle. */
     SDL_Window *p_sdl_window;
 
@@ -149,11 +125,11 @@ private:
     /** 4x4 orthogonal projection matrix for 2D rendering. */
     std::array<float, 16> m_orthogonal;
 
-    /** View that received the current left-button press, None outside a press. */
-    MouseTarget m_mouse_target;
+    /** Handler dispatching SDL keyboard events (key presses, text input). */
+    KeyboardInput m_keyboard_input;
 
-    /** Gesture the fingers currently perform, None while the screen is untouched. */
-    TouchMode m_touch_mode;
+    /** Handler dispatching SDL pointer events (mouse, wheel, touch fingers). */
+    PointerInput m_pointer_input;
 
     /** Scratch vector whose capacity is reused by runCommand to tokenize command strings. */
     std::vector<std::u16string_view> m_token_scratch;
@@ -165,16 +141,6 @@ private:
      * @param height New window height.
      */
     void updateOrthogonal(int32_t width, int32_t height);
-
-    /**
-     * @brief Tells whether a window point lies inside a view rectangle.
-     *
-     * @param viewState The view state holding the rectangle to test.
-     * @param x Window-relative x coordinate of the point, in pixels.
-     * @param y Window-relative y coordinate of the point, in pixels.
-     * @return true when the point is inside the rectangle, false otherwise.
-     */
-    [[nodiscard]] static bool viewContains(const ViewState &viewState, int32_t x, int32_t y);
 
     /**
      * @brief Resets the prompt line to display the given text.
@@ -197,6 +163,42 @@ private:
      * @return true when a command ran, false when the input was empty or dropped by the prompt gate.
      */
     bool runCommand(std::u16string_view command, bool fromPrompt) override;
+
+    /**
+     * @brief Looks up the key binding and runs the bound command, if any.
+     *
+     * The execution is timed and the maximum is tracked in the inf_command_time CVar.
+     * Part of CommandRunner; controller bindings (plan 2) will dispatch through it too.
+     *
+     * @param keycode The pressed key.
+     * @param modifiers The active key modifiers.
+     */
+    void runBoundCommand(SDL_Keycode keycode, uint16_t modifiers) override;
+
+    /**
+     * @brief Provides command name completions for the command prompt.
+     *
+     * Invoked when the user is typing a command; filters available commands based on partial input. It use
+     * CommandManager under the hood to retrieve the items. Parts of CommandRunner.
+     *
+     * @param input Partial command name typed by the user.
+     * @param itemCallback Callback to return matching command names.
+     */
+    void getCommandCompletions(std::u16string_view input, const AutoCompleteCallback &itemCallback) override;
+
+    /**
+     * @brief Provides argument completions for a specific command.
+     *
+     * Use CommandManager under the hood to provide argument completions.
+     * Parts of CommandRunner.
+     *
+     * @param command Name of the command whose arguments are being completed.
+     * @param previousArgs The arguments typed before the one being completed, excluding the command name.
+     * @param argumentIndex Index of the current argument being typed.
+     * @param input Partial input for the current argument.
+     * @param itemCallback Callback to return matching argument suggestions.
+     */
+    void getArgumentsCompletions(std::u16string_view command, std::span<const std::u16string_view> previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) override;
 
     /**
      * @brief Opens the file at the given path in the editor.
@@ -240,31 +242,6 @@ public:
 
     /** @brief Starts the main application loop (event handling and rendering). */
     void mainLoop();
-
-    /**
-     * @brief Provides command name completions for the command prompt.
-     *
-     * Invoked when the user is typing a command; filters available commands based on partial input. It use
-     * CommandManager under the hood to retrieve the items. Parts of CommandRunner.
-     *
-     * @param input Partial command name typed by the user.
-     * @param itemCallback Callback to return matching command names.
-     */
-    void getCommandCompletions(std::u16string_view input, const AutoCompleteCallback &itemCallback) override;
-
-    /**
-     * @brief Provides argument completions for a specific command.
-     *
-     * Use CommandManager under the hood to provide argument completions.
-     * Parts of CommandRunner.
-     *
-     * @param command Name of the command whose arguments are being completed.
-     * @param previousArgs The arguments typed before the one being completed, excluding the command name.
-     * @param argumentIndex Index of the current argument being typed.
-     * @param input Partial input for the current argument.
-     * @param itemCallback Callback to return matching argument suggestions.
-     */
-    void getArgumentsCompletions(std::u16string_view command, std::span<const std::u16string_view> previousArgs, int32_t argumentIndex, std::u16string_view input, const AutoCompleteCallback &itemCallback) override;
 };
 
 

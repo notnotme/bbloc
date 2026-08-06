@@ -22,6 +22,8 @@
 #include <span>
 #include <string_view>
 
+#include <SDL_keycode.h>
+
 
 /**
  * @brief Abstract interface for executing user commands and providing auto-completion suggestions.
@@ -42,6 +44,17 @@ public:
      * @return true if a command was successfully executed; false if unrecognized.
      */
     virtual bool runCommand(std::u16string_view input, bool fromPrompt) = 0;
+
+    /**
+     * @brief Looks up the key binding and runs the bound command, if any.
+     *
+     * The execution is timed by implementations (inf_command_time). This is also the
+     * dispatch path for future controller bindings.
+     *
+     * @param keycode The pressed key.
+     * @param modifiers The active key modifiers.
+     */
+    virtual void runBoundCommand(SDL_Keycode keycode, uint16_t modifiers) = 0;
 
     /**
      * @brief Provides auto-completion suggestions for command names.

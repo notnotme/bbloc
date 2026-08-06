@@ -236,7 +236,7 @@ classDiagram
 
 ---
 
-## 8. Views & States (`core/` + `editor/` + `infobar/` + `prompt/`)
+## 8. Views, States & Input (`core/` + `editor/` + `infobar/` + `prompt/` + `input/`)
 
 ```mermaid
 classDiagram
@@ -265,6 +265,12 @@ classDiagram
     class TabStop {
         <<free functions>>
     }
+    class KeyboardInput {
+        note: "SDL key/text events: chord detection, focused-view dispatch, binding fallback"
+    }
+    class PointerInput {
+        note: "SDL mouse/wheel/touch events; owns the MouseTarget capture and TouchMode gesture state"
+    }
 
     ViewState <|-- PromptState
     View~TState~ <|-- Editor
@@ -277,17 +283,30 @@ classDiagram
     Editor ..> TabStop : uses
     InfoBar ..> TabStop : uses
     Prompt ..> TabStop : uses
+    KeyboardInput ..> View~TState~ : dispatches key/text to focused view
+    PointerInput ..> View~TState~ : routes captured pointer events
 ```
 
 The mouse handlers have empty default implementations; `InfoBar` and `Prompt` keep them.
-`ApplicationWindow::mainLoop` routes a left `SDL_MOUSEBUTTONDOWN` to the view whose rectangle
-contains the point, then captures that view: `SDL_MOUSEMOTION` and `SDL_MOUSEBUTTONUP` keep
-going to it until the button is released, even when the pointer leaves the view.
+`ApplicationWindow::mainLoop` delegates every keyboard and pointer event to the two handlers
+in `src/input/`, keeping only quit, window, and the temporary gamepad events for itself.
+
+`KeyboardInput` sends key presses to the focused view first — unless Ctrl/Alt makes them a
+shortcut chord — then falls back to the key bindings through `CommandRunner::runBoundCommand`
+(implemented by `ApplicationWindow`), which times the run into `inf_command_time` (controller
+bindings will dispatch through it too, plan 2). Text input is routed to the focused view the
+same way, with chords blocked.
+
+`PointerInput` routes a left `SDL_MOUSEBUTTONDOWN` to the view whose rectangle contains the
+point, then captures that view: `SDL_MOUSEMOTION` and `SDL_MOUSEBUTTONUP` keep going to it
+until the button is released, even when the pointer leaves the view. Wheel events scroll the
+active context directly.
 
 Touch input goes through the same capture (SDL's touch-to-mouse synthesis is disabled): a
 single finger replays the left-button press/drag/release path, while a second finger ends the
-drag and switches to a two-finger scroll of the active context (`TouchMode` member enum);
-scroll mode ends only when every finger has lifted.
+drag and switches to a two-finger scroll of the active context (the `TouchMode` enum owned by
+`PointerInput`, like the `MouseTarget` capture state); scroll mode ends only when every finger
+has lifted.
 
 ---
 
@@ -409,10 +428,17 @@ classDiagram
     class Platform {
         note: "static-only: assetPath / preferredColorScheme; Desktop or Switch impl selected by CMake"
     }
+    class KeyboardInput
+    class PointerInput
     class HighLighter
 
     ApplicationWindow --|> CommandRunner
     ApplicationWindow ..> Platform : asset paths + startup color scheme
+    ApplicationWindow *-- KeyboardInput
+    ApplicationWindow *-- PointerInput
+    KeyboardInput ..> CommandRunner : runBoundCommand fallback
+    KeyboardInput ..> View~TState~ : dispatches to focused view
+    PointerInput ..> View~TState~ : routes captured pointer events
     ApplicationWindow *-- CommandManager
     ApplicationWindow *-- Theme
     ApplicationWindow *-- PromptCursor
