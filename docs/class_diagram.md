@@ -143,6 +143,7 @@ classDiagram
         Ini
         Yaml
         Toml
+        Markdown
     }
     class TokenId {
         <<enum>>

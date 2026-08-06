@@ -57,7 +57,7 @@ Single-threaded SDL event loop. `ApplicationWindow` (src/ApplicationWindow.cpp) 
 
 **CVars** (src/core/cvar/): typed runtime config (int/bool/float/Color) registered with optional change callbacks; modified at runtime via the `cvar` command. Theme colors and dimensions are CVars (see `core/theme/ColorId.h`, `DimensionId.h`); `romfs/light_theme` and `romfs/dark_theme` are just command scripts setting them.
 
-**Syntax highlighting** (src/core/highlighter/): tree-sitter with incremental re-parsing on `BufferEdit`. Languages (C++, JSON, INI, YAML, TOML) are declared in `ParserCatalog` with their queries in `core/highlighter/query/*_query.h` — adding a language means a new query header, a catalog entry, and linking the grammar in `CMakeLists.txt`.
+**Syntax highlighting** (src/core/highlighter/): tree-sitter with incremental re-parsing on `BufferEdit`. Languages (C++, JSON, INI, YAML, TOML, Markdown) are declared in `ParserCatalog` with their queries in `core/highlighter/query/*_query.h` — adding a language means a new query header, a catalog entry, and linking the grammar in `CMakeLists.txt`.
 
 **Text encoding**: UTF-16 (`std::u16string`) internally everywhere; UTF-8 only at file I/O boundaries, converted with utfcpp.
 

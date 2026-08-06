@@ -149,6 +149,11 @@ pkg_check_modules(TREE_SITTER_TOML REQUIRED tree-sitter-toml)
 target_include_directories(bbloc PRIVATE ${TREE_SITTER_TOML_INCLUDE_DIRS})
 target_link_libraries(bbloc PRIVATE ${TREE_SITTER_TOML_LIBRARIES})
 
+# tree-sitter markdown languages (block grammar; the inline grammar is unused)
+pkg_check_modules(TREE_SITTER_MARKDOWN REQUIRED tree-sitter-markdown)
+target_include_directories(bbloc PRIVATE ${TREE_SITTER_MARKDOWN_INCLUDE_DIRS})
+target_link_libraries(bbloc PRIVATE ${TREE_SITTER_MARKDOWN_LIBRARIES})
+
 if(NINTENDO_SWITCH)
     # Freetype2 (portlibs pkg-config)
     pkg_check_modules(FREETYPE2 REQUIRED freetype2)

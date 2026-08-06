@@ -10,6 +10,7 @@ This project includes third-party software:
 - tree-sitter-ini — Apache License 2.0
 - tree-sitter-yaml — MIT License
 - tree-sitter-toml — MIT License
+- tree-sitter-markdown — MIT License
 
 Fonts:
 

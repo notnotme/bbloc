@@ -30,8 +30,9 @@ enum class HighLightId {
     Cpp,  ///< C++ syntax highlighting.
     Json, ///< JSON syntax highlighting.
     Ini,  ///< INI syntax highlighting.
-    Yaml, ///< YAML syntax highlighting.
-    Toml  ///< TOML syntax highlighting.
+    Yaml,    ///< YAML syntax highlighting.
+    Toml,    ///< TOML syntax highlighting.
+    Markdown ///< Markdown syntax highlighting (block grammar).
 };
 
 #endif //HIGH_LIGHT_ID_H

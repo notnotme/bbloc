@@ -23,12 +23,14 @@
 #include <tree_sitter/tree-sitter-cpp.h>
 #include <tree_sitter/tree-sitter-ini.h>
 #include <tree_sitter/tree-sitter-json.h>
+#include <tree_sitter/tree-sitter-markdown.h>
 #include <tree_sitter/tree-sitter-toml.h>
 #include <tree_sitter/tree-sitter-yaml.h>
 
 #include "query/cpp_query.h"
 #include "query/ini_query.h"
 #include "query/json_query.h"
+#include "query/markdown_query.h"
 #include "query/toml_query.h"
 #include "query/yaml_query.h"
 
@@ -110,6 +112,23 @@ const std::unordered_map<HighLightId, ParserDescriptor> &ParserCatalog::getDescr
                 {"number",   TokenId::Number},
                 {"constant", TokenId::Constant},
                 {"comment",  TokenId::Comment}
+            }
+        }},
+        { HighLightId::Markdown, {
+            .language           = tree_sitter_markdown(),
+            .name               = "Markdown",
+            .argument_value     = "markdown",
+            .files_format       = {".md", ".MD", ".markdown"},
+            .query_source       = markdown_query,
+            .capture_tokens     = {
+                {"keyword",      TokenId::Keyword},
+                {"string",       TokenId::String},
+                {"comment",      TokenId::Comment},
+                {"preprocessor", TokenId::Preprocessor},
+                {"statement",    TokenId::Statement},
+                {"constant",     TokenId::Constant},
+                {"type",         TokenId::Type},
+                {"variable",     TokenId::Variable}
             }
         }}
     };
