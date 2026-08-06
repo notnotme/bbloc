@@ -121,6 +121,10 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
         throw std::runtime_error(std::string("Failed to initialize SDL: ").append(SDL_GetError()));
     }
 
+    // Platform mapping overrides must be in place before the first CONTROLLERDEVICEADDED
+    // is polled, which opens the controller with whatever mapping is registered.
+    Platform::addControllerMappings();
+
     // Set the OpenGL Core context version required by the compiled renderer backend
     // (4.5 for the DSA set, 4.3 for the bind-based set) and double buffered RGB8 surface
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);

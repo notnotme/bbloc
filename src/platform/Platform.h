@@ -66,6 +66,16 @@ public:
      *         the patched SDL uses); "qwerty" on desktop and for layouts without a table.
      */
     [[nodiscard]] static std::string_view keyboardLayout();
+
+    /**
+     * @brief Registers platform game-controller mapping overrides, after SDL_Init.
+     *
+     * The Switch SDL port maps the console pad positionally (Xbox layout: SDL A = the
+     * bottom button, which Nintendo labels B), so `pad:a` bindings would land on the
+     * wrong labels. The Switch implementation overrides the pad's mapping with a
+     * label-true one; desktop is a no-op (SDL's database already matches labels there).
+     */
+    static void addControllerMappings();
 };
 
 

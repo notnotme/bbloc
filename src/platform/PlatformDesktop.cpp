@@ -33,3 +33,7 @@ std::string_view Platform::keyboardLayout() {
     // No layout query wired up on desktop: default to qwerty, overridable via "osk layout".
     return "qwerty";
 }
+
+void Platform::addControllerMappings() {
+    // No overrides: SDL's controller database matches button labels on desktop.
+}

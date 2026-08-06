@@ -18,6 +18,7 @@
  */
 #include "Platform.h"
 
+#include <SDL.h>
 #include <switch.h>
 
 
@@ -81,4 +82,18 @@ std::optional<Platform::ColorScheme> Platform::preferredColorScheme() {
         return std::nullopt;
     }
     return color_set == ColorSetId_Dark ? ColorScheme::Dark : ColorScheme::Light;
+}
+
+void Platform::addControllerMappings() {
+    // The port's database entry for the console pad ("Switch Controller" GUID) is
+    // positional: a:b1,b:b0,x:b3,y:b2 — SDL A lands on the button labeled B. This
+    // label-true override keeps every other assignment identical, so "pad:a" is the
+    // labeled A everywhere. Single sideways Joy-Cons keep the driver's positional
+    // remap tables and are not corrected here.
+    SDL_GameControllerAddMapping(
+        "000038f853776974636820436f6e7400,Switch Controller,"
+        "a:b0,b:b1,x:b2,y:b3,back:b11,start:b10,"
+        "dpdown:b15,dpleft:b12,dpright:b14,dpup:b13,"
+        "leftshoulder:b6,rightshoulder:b7,lefttrigger:b8,righttrigger:b9,"
+        "leftstick:b4,rightstick:b5,leftx:a0,lefty:a1,rightx:a2,righty:a3,");
 }

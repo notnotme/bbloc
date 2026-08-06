@@ -501,7 +501,7 @@ classDiagram
         note: "gl45 (DSA) or gl43 (bind-based) source set, selected by CMake"
     }
     class Platform {
-        note: "static-only: assetPath / preferredColorScheme; Desktop or Switch impl selected by CMake"
+        note: "static-only: assetPath / preferredColorScheme / keyboardLayout / addControllerMappings; Desktop or Switch impl selected by CMake"
     }
     class KeyboardInput
     class PointerInput
