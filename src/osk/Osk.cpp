@@ -633,6 +633,8 @@ void Osk::onMouseDown(CursorContext &context, OskState &viewState, const int32_t
         viewState.getRepeater().disarm();
         if (isRepeatable(cell.p_def->kind)) {
             viewState.getRepeater().arm(encodeKey(viewState.getPage(), cell.row, cell.col), sticky_modifiers);
+            // Remember what this tap typed into: the repeats must not follow the focus elsewhere
+            viewState.setRepeatTarget(context.effectiveFocus());
         }
     });
 }
@@ -735,8 +737,17 @@ bool Osk::onPadInput(CursorContext &context, OskState &viewState, const SDL_Keyc
 }
 
 void Osk::tickRepeat(CursorContext &context, OskState &viewState) const {
-    (void) context;
     if (!viewState.getRepeater().isDue()) {
+        return;
+    }
+
+    // A repeat only keeps firing while it still lands where the press did. The tap may have run
+    // a command — Enter over the prompt opens a file — which closes the prompt and makes another
+    // buffer active. The release ending the hold is polled only after that command returned, so
+    // on a slow open the deadline passes first and the repeat would type into the file just
+    // opened, leaving a blank line at its top.
+    if (!viewState.isRepeatTarget(context.effectiveFocus())) {
+        viewState.getRepeater().disarm();
         return;
     }
 

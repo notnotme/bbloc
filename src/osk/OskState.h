@@ -24,6 +24,7 @@
 
 #include <SDL_keycode.h>
 
+#include "../core/FocusTarget.h"
 #include "../core/ViewState.h"
 #include "../input/InputRepeater.h"
 #include "OskLayout.h"
@@ -88,6 +89,9 @@ private:
 
     /** Auto-repeat state of the held key (arrows, Backspace, Delete). */
     InputRepeater m_repeater;
+
+    /** Effective focus the press that armed the repeat was delivered to. */
+    FocusTarget m_repeat_focus;
 
 public:
     /** @brief Deleted copy constructor. */
@@ -158,6 +162,21 @@ public:
 
     /** @brief Gets the hold auto-repeat state, read-only. */
     [[nodiscard]] const InputRepeater &getRepeater() const;
+
+    /**
+     * @brief Records what the armed repeat types into, captured when the key was pressed.
+     *
+     * @param focus The effective focus the press was delivered to.
+     */
+    void setRepeatTarget(FocusTarget focus);
+
+    /**
+     * @brief Tells whether a repeat would still land where its press did.
+     *
+     * @param focus The effective focus a repeat would be delivered to.
+     * @return true when it matches the one captured at press time.
+     */
+    [[nodiscard]] bool isRepeatTarget(FocusTarget focus) const;
 
     /**
      * @brief Shows or hides the on-screen keyboard.

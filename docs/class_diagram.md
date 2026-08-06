@@ -264,7 +264,7 @@ classDiagram
         note: "on-screen keyboard strip; injects synthesized SDL key/text events via SDL_PushEvent"
     }
     class OskState {
-        note: "visibility, page, layout table, sticky modifiers, key cursor, hold repeat"
+        note: "visibility, page, layout table, sticky modifiers, key cursor, hold repeat + the target it was armed for"
     }
     class OskLayout {
         note: "static-only hybrid layouts: fixed US base + letter permutation + AltGr accent map"
@@ -380,7 +380,10 @@ OSK types into an active prompt as well as the editor. Every held
 injecting key auto-repeats like a physical keyboard, re-emitting under the sticky mask
 captured at press, through `InputRepeater` — the delay/interval state machine extracted
 from `ControllerInput` and shared by both; `mainLoop` waits on the earliest armed deadline
-and ticks both after the poll loop.
+and ticks both after the poll loop. The OSK repeat also remembers the focus its press was
+delivered to, and disarms instead of firing once it differs: the tap may have run a command
+that closed the prompt (Enter over `open`), and the release ending the hold is polled only
+after that command returned.
 
 ---
 
