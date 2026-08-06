@@ -363,11 +363,20 @@ selected via `Platform::keyboardLayout()` and overridden by `osk layout`. While 
 the relayout in
 `mainLoop` gives the strip ~`dim_osk_height`% of the window through the normal resize path.
 `PointerInput` routes presses inside the strip to it (taps never move the input focus);
-sticky keys latch on tap, hold on long-press, and show a dot. The pad focus is acquired
-lazily: the first d-pad/A press while the OSK is visible (and the editor focused) sets
-`FocusTarget::Osk`, and from then on `ControllerInput` routes d-pad/A/B to the key cursor
-instead of the bindings — B hands the focus back, so mouse and touch users never see the
-key cursor; the physical keyboard always behaves like the editor focus. Every held
+sticky keys cycle latched -> held -> idle on each press (a long press jumps to held, which
+the pad cannot express) and show a dot, wider when held. `ControllerInput` publishes the L
+shoulder into `OskState` as a live Shift (`setLiveModifiers`), since the binding modifier
+mask never reaches a view that emits key events instead of running bindings;
+`effectiveModifierMask` ORs it with the sticky mask for both injection and label
+resolution. The pad focus is acquired
+lazily: the first d-pad/A press while the OSK is visible sets `FocusTarget::Osk` and
+records the origin focus in `CursorContext::osk_return_focus`, and from then on
+`ControllerInput` routes d-pad/A/B to the key cursor instead of the bindings — B hands the
+focus back to the origin (over an active prompt it runs `prompt cancel` instead and keeps
+the pad, so one press closes the prompt), so mouse and touch users never see the key
+cursor; while the OSK
+holds the pad, keys and text (physical or synthesized) route to the origin view, so the
+OSK types into an active prompt as well as the editor. Every held
 injecting key auto-repeats like a physical keyboard, re-emitting under the sticky mask
 captured at press, through `InputRepeater` — the delay/interval state machine extracted
 from `ControllerInput` and shared by both; `mainLoop` waits on the earliest armed deadline

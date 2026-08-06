@@ -34,13 +34,16 @@ bool ControllerInput::dispatch(const SDL_Keycode keycode, const uint16_t modifie
     if (m_osk_state.isVisible()) {
         // Lazy acquisition: the visible OSK takes the pad focus (and shows its key cursor)
         // only when a pad actually navigates it, so mouse and touch users never see the
-        // cursor. Only the editor focus is stolen — an active prompt keeps the pad.
+        // cursor. The origin focus is remembered: typing routes to it while the OSK holds
+        // the pad, and B hands the pad back to it — so the OSK types into an active
+        // prompt too, and pad prompt navigation asks for hiding the OSK first.
         const auto is_direction = keycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_DPAD_UP)
             || keycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_DPAD_DOWN)
             || keycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_DPAD_LEFT)
             || keycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_DPAD_RIGHT);
         const auto acquires = is_direction || keycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_A);
-        if (context.focus_target == FocusTarget::Editor && acquires) {
+        if (context.focus_target != FocusTarget::Osk && acquires) {
+            context.osk_return_focus = context.focus_target;
             context.focus_target = FocusTarget::Osk;
         }
 
@@ -70,8 +73,16 @@ void ControllerInput::onDeviceRemoved(const SDL_ControllerDeviceEvent &event) {
 
     // A disconnected pad never sends its releases: reset the whole live pad state.
     m_pad_modifiers = 0;
+    publishOskModifiers();
     m_repeater.disarm();
     m_axis_pressed = {};
+}
+
+void ControllerInput::publishOskModifiers() {
+    const auto shift = (m_pad_modifiers & PadInput::KMOD_PAD_L) != 0 ? KMOD_LSHIFT : 0;
+    m_osk_state.setLiveModifiers(static_cast<uint16_t>(shift));
+    // The key labels resolve under the mask, so the strip has to repaint on the change.
+    m_context_manager.active().wants_redraw = true;
 }
 
 void ControllerInput::onButtonDown(const SDL_ControllerButtonEvent &event) {
@@ -80,9 +91,11 @@ void ControllerInput::onButtonDown(const SDL_ControllerButtonEvent &event) {
         case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
             // Shoulders are modifiers; an in-flight repeat keeps its captured mask.
             m_pad_modifiers |= PadInput::KMOD_PAD_L;
+            publishOskModifiers();
         break;
         case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
             m_pad_modifiers |= PadInput::KMOD_PAD_R;
+            publishOskModifiers();
         break;
         default:
             press(PadInput::fromButton(static_cast<SDL_GameControllerButton>(event.button)));
@@ -94,9 +107,11 @@ void ControllerInput::onButtonUp(const SDL_ControllerButtonEvent &event) {
     switch (event.button) {
         case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
             m_pad_modifiers &= static_cast<uint16_t>(~PadInput::KMOD_PAD_L);
+            publishOskModifiers();
         break;
         case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
             m_pad_modifiers &= static_cast<uint16_t>(~PadInput::KMOD_PAD_R);
+            publishOskModifiers();
         break;
         default:
             release(PadInput::fromButton(static_cast<SDL_GameControllerButton>(event.button)));

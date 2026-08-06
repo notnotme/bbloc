@@ -26,6 +26,7 @@ OskState::OskState()
       m_page(0),
       p_layout(&OskLayout::defaultLayout()),
       m_sticky(),
+      m_live_modifiers(0),
       m_cursor_row(2),
       m_cursor_col(5),
       m_pressed_row(-1),
@@ -113,6 +114,14 @@ void OskState::setPage(const int32_t page) {
 
 void OskState::setLayout(const OskLayout::Layout &layout) {
     p_layout = &layout;
+}
+
+uint16_t OskState::effectiveModifierMask() const {
+    return static_cast<uint16_t>(stickyModifierMask() | m_live_modifiers);
+}
+
+void OskState::setLiveModifiers(const uint16_t modifiers) {
+    m_live_modifiers = modifiers;
 }
 
 void OskState::setSticky(const StickyModifier modifier, const StickyState state) {

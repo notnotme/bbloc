@@ -38,8 +38,9 @@ void KeyboardInput::onKeyDown(const SDL_KeyboardEvent &event) {
         // The prompt dispatches a command on Return, which can switch the active context
         // or close (and destroy) this one: re-read active() before touching it afterwards.
         auto &context = m_context_manager.active();
-        switch (context.focus_target) {
-            // The Osk focus only redirects the pad; the physical keyboard keeps editing the buffer.
+        // The Osk focus only redirects the pad: keys — physical or OSK-synthesized — go to
+        // the view the OSK took the pad from (the editor, or an active prompt).
+        switch (context.effectiveFocus()) {
             case FocusTarget::Osk:
             case FocusTarget::Editor:
                 if (m_editor.onKeyDown(context, m_editor_state, event.keysym.sym, event.keysym.mod)) {
@@ -74,8 +75,9 @@ void KeyboardInput::onTextInput(const SDL_TextInputEvent &event) {
     // Redirect to input focus. We always redraw new characters.
     auto &context = m_context_manager.active();
     context.wants_redraw = true;
-    switch (context.focus_target) {
-        // The Osk focus only redirects the pad; typed text still goes to the editor.
+    // The Osk focus only redirects the pad: text — typed or OSK-synthesized — goes to
+    // the view the OSK took the pad from (the editor, or an active prompt).
+    switch (context.effectiveFocus()) {
         case FocusTarget::Osk:
         case FocusTarget::Editor:
             m_editor.onTextInput(context, m_editor_state, event.text);

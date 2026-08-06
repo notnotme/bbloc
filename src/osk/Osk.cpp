@@ -18,6 +18,7 @@
  */
 #include "Osk.h"
 
+#include <algorithm>
 #include <cmath>
 #include <optional>
 #include <span>
@@ -199,8 +200,17 @@ namespace {
     constexpr KeyDef PAGE2_ROW3[] = {
         { SDL_SCANCODE_UNKNOWN, KeyKind::StickyShift, 2.0f, u"Shift" },
         { SDL_SCANCODE_F3, KeyKind::Special, 1.0f, u"F3" },
+        // Symbols no key combination reaches: the layout accents cover the letters, and
+        // AltGr+e is spent on €. They fill the row to the 13 keys the letters page has.
         { SDL_SCANCODE_UNKNOWN, KeyKind::Literal, 1.0f, u"€" },
-        { SDL_SCANCODE_UNKNOWN, KeyKind::Spacer, 7.0f, nullptr },
+        { SDL_SCANCODE_UNKNOWN, KeyKind::Literal, 1.0f, u"£" },
+        { SDL_SCANCODE_UNKNOWN, KeyKind::Literal, 1.0f, u"¥" },
+        { SDL_SCANCODE_UNKNOWN, KeyKind::Literal, 1.0f, u"°" },
+        { SDL_SCANCODE_UNKNOWN, KeyKind::Literal, 1.0f, u"§" },
+        { SDL_SCANCODE_UNKNOWN, KeyKind::Literal, 1.0f, u"µ" },
+        { SDL_SCANCODE_UNKNOWN, KeyKind::Literal, 1.0f, u"×" },
+        { SDL_SCANCODE_UNKNOWN, KeyKind::Literal, 1.0f, u"÷" },
+        { SDL_SCANCODE_UNKNOWN, KeyKind::Literal, 1.0f, u"…" },
         { SDL_SCANCODE_DELETE, KeyKind::Special, 1.0f, u"Del" },
         { SDL_SCANCODE_UP, KeyKind::Special, 1.0f, u"↑" }
     };
@@ -294,6 +304,26 @@ namespace {
                 return OskState::StickyModifier::AltGr;
             default:
                 return std::nullopt;
+        }
+    }
+
+    /**
+     * @brief Advances a sticky modifier one step in the Idle -> Latched -> Held -> Idle cycle.
+     *
+     * Every press path uses it, so holding a modifier is reachable by tapping alone: the pad
+     * has no press duration to measure, and a long-press on a touch screen is easy to miss.
+     *
+     * @param state The current sticky state of the modifier.
+     * @return The state the press moves it to.
+     */
+    OskState::StickyState nextStickyState(const OskState::StickyState state) {
+        switch (state) {
+            case OskState::StickyState::Idle:
+                return OskState::StickyState::Latched;
+            case OskState::StickyState::Latched:
+                return OskState::StickyState::Held;
+            default:
+                return OskState::StickyState::Idle;
         }
     }
 
@@ -505,25 +535,30 @@ void Osk::drawKeys(QuadBuffer &quadBuffer, const CursorContext &context, const O
             return;
         }
 
-        // Filled highlight behind the pad-focused key, on the full cell so it rings the key
-        if (cursor_visible && cell.row == viewState.getCursorRow() && cell.col == viewState.getCursorCol()) {
-            drawQuad(quadBuffer, cell.x, cell.y, cell.width, cell.height, cursor_color);
-        }
-
-        // The key face, inset by half the gap on every side; the held key lights up
+        // The key face, inset by the whole gap on every side so the strip background shows
+        // through evenly — a half-gap inset rounds to zero on the left and top at gap 1,
+        // leaving the contour only on the right and bottom. The held key lights up.
         const auto is_pressed = cell.row == viewState.getPressedRow() && cell.col == viewState.getPressedCol();
-        const auto key_x = cell.x + gap / 2;
-        const auto key_y = cell.y + gap / 2;
-        const auto key_width = cell.width - gap;
-        const auto key_height = cell.height - gap;
+        const auto key_x = cell.x + gap;
+        const auto key_y = cell.y + gap;
+        const auto key_width = std::max(cell.width - gap * 2, 1);
+        const auto key_height = std::max(cell.height - gap * 2, 1);
         drawQuad(quadBuffer, key_x, key_y, key_width, key_height, is_pressed ? pressed_color : key_color);
+
+        // The pad key cursor tints the face it sits on, rather than ringing the cell behind
+        // it: the ring a face painted over leaves is exactly the gap, so it vanishes at gap
+        // 0. The cursor color is translucent, so the face — the pressed color included —
+        // stays readable through it, and the label drawn next lands on top of the tint.
+        if (cursor_visible && cell.row == viewState.getCursorRow() && cell.col == viewState.getCursorCol()) {
+            drawQuad(quadBuffer, key_x, key_y, key_width, key_height, cursor_color);
+        }
 
         // Resolve the label: fixed for special keys, from the layout (under the live sticky
         // mask, so Shift/AltGr flip the labels) for character keys
         auto label = std::u16string{};
         if (cell.p_def->label != nullptr) {
             label = cell.p_def->label;
-        } else if (const auto *text = resolveText(viewState, *cell.p_def, viewState.stickyModifierMask()); text != nullptr) {
+        } else if (const auto *text = resolveText(viewState, *cell.p_def, viewState.effectiveModifierMask()); text != nullptr) {
             label = utf8::utf8to16(std::string_view(text));
         }
 
@@ -592,7 +627,7 @@ void Osk::onMouseDown(CursorContext &context, OskState &viewState, const int32_t
 
         // Regular key: inject now, consume the one-shot latches, and arm the hold repeat
         // with the mask captured at press, so the repeats keep emitting the same events
-        const auto sticky_modifiers = viewState.stickyModifierMask();
+        const auto sticky_modifiers = viewState.effectiveModifierMask();
         injectTap(viewState, *cell.p_def, sticky_modifiers);
         viewState.releaseLatched();
         viewState.getRepeater().disarm();
@@ -613,13 +648,10 @@ void Osk::onMouseUp(CursorContext &context, OskState &viewState, const int32_t x
     const auto *key = keyAt(viewState.getPage(), viewState.getPressedRow(), viewState.getPressedCol());
     if (key != nullptr) {
         if (const auto modifier = stickyModifierFor(key->kind); modifier.has_value()) {
+            // A long press jumps straight to Held; a tap steps through the cycle, so the
+            // hold is also reachable by tapping twice when the press duration is missed.
             const auto held_long = SDL_GetTicks64() - viewState.getPressTime() >= LONG_PRESS_MS;
-            if (held_long) {
-                viewState.setSticky(*modifier, OskState::StickyState::Held);
-            } else {
-                const auto sticky = viewState.getSticky(*modifier);
-                viewState.setSticky(*modifier, sticky == OskState::StickyState::Idle ? OskState::StickyState::Latched : OskState::StickyState::Idle);
-            }
+            viewState.setSticky(*modifier, held_long ? OskState::StickyState::Held : nextStickyState(viewState.getSticky(*modifier)));
         }
     }
 
@@ -667,13 +699,14 @@ bool Osk::onPadInput(CursorContext &context, OskState &viewState, const SDL_Keyc
         // Press the key under the cursor; sticky keys toggle (no long-press on a tap button)
         const auto &key = rows[row][col];
         if (const auto modifier = stickyModifierFor(key.kind); modifier.has_value()) {
-            const auto sticky = viewState.getSticky(*modifier);
-            viewState.setSticky(*modifier, sticky == OskState::StickyState::Idle ? OskState::StickyState::Latched : OskState::StickyState::Idle);
+            // A tap button has no press duration: stepping the cycle is the only way the
+            // pad can reach the Held state, so A cycles Idle -> Latched -> Held -> Idle.
+            viewState.setSticky(*modifier, nextStickyState(viewState.getSticky(*modifier)));
         } else if (key.kind == KeyKind::PageToggle) {
             viewState.setPage(1 - viewState.getPage());
             viewState.getRepeater().disarm();
         } else if (key.kind != KeyKind::Spacer) {
-            injectTap(viewState, key, viewState.stickyModifierMask());
+            injectTap(viewState, key, viewState.effectiveModifierMask());
             viewState.releaseLatched();
         }
         context.wants_redraw = true;
@@ -681,8 +714,19 @@ bool Osk::onPadInput(CursorContext &context, OskState &viewState, const SDL_Keyc
     }
 
     if (padKeycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_B)) {
-        // Hand the pad back to the bindings; the OSK stays visible for touch
-        context.focus_target = FocusTarget::Editor;
+        if (context.osk_return_focus == FocusTarget::Prompt) {
+            // B over an active prompt cancels it outright: handing the pad back first
+            // would cost a second B for what reads as one "get me out of here".
+            // The OSK keeps the pad, now over the editor, so typing can continue.
+            context.osk_return_focus = FocusTarget::Editor;
+            context.command_runner.runCommand(u"prompt cancel", false);
+            context.focus_target = FocusTarget::Osk;
+            context.wants_redraw = true;
+            return true;
+        }
+
+        // Hand the pad back to where it was taken from; the OSK stays visible for touch
+        context.focus_target = context.osk_return_focus;
         context.wants_redraw = true;
         return true;
     }

@@ -68,6 +68,9 @@ private:
     /** State of each sticky modifier, indexed by StickyModifier. */
     std::array<StickyState, STICKY_MODIFIER_COUNT> m_sticky;
 
+    /** KMOD mask held down on the hardware right now, fed by the input classes. */
+    uint16_t m_live_modifiers;
+
     /** Row of the pad-navigation key cursor. */
     int32_t m_cursor_row;
 
@@ -114,6 +117,26 @@ public:
      * @return A KMOD mask: LCTRL/LSHIFT/LALT/RALT bits for the non-idle sticky modifiers.
      */
     [[nodiscard]] uint16_t stickyModifierMask() const;
+
+    /**
+     * @brief Builds the modifier mask a key tap actually injects and labels resolve under.
+     *
+     * The sticky latches plus whatever is held on the hardware, so a pad shoulder modifies
+     * an on-screen key the way holding Shift modifies a physical one.
+     *
+     * @return The sticky mask ORed with the live mask.
+     */
+    [[nodiscard]] uint16_t effectiveModifierMask() const;
+
+    /**
+     * @brief Sets the modifier mask held on the hardware, in KMOD bits.
+     *
+     * Called by the input classes when a held modifier they map to the on-screen keyboard
+     * changes (the controller shoulders); it is not the sticky state and is never latched.
+     *
+     * @param modifiers The KMOD mask currently held, 0 for none.
+     */
+    void setLiveModifiers(uint16_t modifiers);
 
     /** @brief Gets the row of the pad-navigation key cursor. */
     [[nodiscard]] int32_t getCursorRow() const;

@@ -333,7 +333,7 @@ void Theme::registerThemeDimensionCVar(GlobalRegistry<TPayload> &commandControll
     const auto &cvar_page_up_down    = m_dimensions[static_cast<size_t>(DimensionId::PageUpDown)]     = std::make_shared<CVarInt>(10);
     const auto &cvar_scrollbar_width = m_dimensions[static_cast<size_t>(DimensionId::ScrollbarWidth)] = std::make_shared<CVarInt>(10);
     const auto &cvar_osk_height      = m_dimensions[static_cast<size_t>(DimensionId::OskHeight)]      = std::make_shared<CVarInt>(40);
-    const auto &cvar_osk_key_gap     = m_dimensions[static_cast<size_t>(DimensionId::OskKeyGap)]      = std::make_shared<CVarInt>( 4);
+    const auto &cvar_osk_key_gap     = m_dimensions[static_cast<size_t>(DimensionId::OskKeyGap)]      = std::make_shared<CVarInt>( 1);
 
     // Make dimensions accessible from the console
     commandController.registerCvar(u"dim_padding_width",    cvar_padding_width, nullptr);

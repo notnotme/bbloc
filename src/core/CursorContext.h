@@ -91,6 +91,27 @@ public:
     HighLighter highlighter;        ///< The highlighter used to highlight the text.
     FocusTarget focus_target = FocusTarget::Editor;  ///< The currently focused input target.
 
+    /**
+     * The focus the on-screen keyboard took the pad from (Editor or Prompt). While
+     * focus_target is Osk, typing — physical or OSK-synthesized — routes here, and the
+     * OSK hands the pad back to it (pad B, "osk hide"). Only meaningful while the OSK
+     * holds the focus; rewritten on every acquisition.
+     */
+    FocusTarget osk_return_focus = FocusTarget::Editor;
+
+    /**
+     * @brief Resolves the view the input effectively targets.
+     *
+     * The Osk focus only redirects the pad: for everything else — key/text routing,
+     * prompt-aware commands, the modal prompt gate — the target is the view the OSK
+     * took the pad from.
+     *
+     * @return focus_target, with Osk resolved to osk_return_focus.
+     */
+    [[nodiscard]] FocusTarget effectiveFocus() const {
+        return focus_target == FocusTarget::Osk ? osk_return_focus : focus_target;
+    }
+
     /** Dynamic variables meant to manipulate the views */
     ScrollState scroll;             ///< Scroll state of this cursor's view.
     ColumnStick stick;              ///< Column-sticking state for vertical moves.

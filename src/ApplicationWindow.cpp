@@ -514,7 +514,8 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
         // runs, without touching the prompt, the feedback or the focus. Prompt input itself
         // (fromPrompt) and the commands the prompt machinery relies on stay executable; the mouse
         // side already preserves the interaction by never moving the keyboard focus.
-        const auto prompt_is_active = context.focus_target == FocusTarget::Prompt || feedback_was_pending;
+        // effectiveFocus keeps the prompt active while the OSK holds the pad it took from it.
+        const auto prompt_is_active = context.effectiveFocus() == FocusTarget::Prompt || feedback_was_pending;
         if (!fromPrompt && prompt_is_active && !m_command_manager.isAllowedDuringPrompt(tokens[0])) {
             m_token_scratch = std::move(tokens);
             return false;

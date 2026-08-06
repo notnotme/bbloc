@@ -67,10 +67,10 @@ std::optional<std::u16string> OskCommand::run(CursorContext &payload, const std:
     m_osk_state.setVisible(show);
     if (!show) {
         // Drop the transient interaction state so the next show starts clean, and release
-        // the pad focus if the OSK held it.
+        // the pad focus if the OSK held it, back to where it was taken from.
         m_osk_state.resetInteraction();
         if (payload.focus_target == FocusTarget::Osk) {
-            payload.focus_target = FocusTarget::Editor;
+            payload.focus_target = payload.osk_return_focus;
         }
     }
     // Showing never touches the focus: the OSK acquires the pad focus lazily, on the first

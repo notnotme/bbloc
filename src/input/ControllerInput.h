@@ -122,6 +122,16 @@ private:
      */
     void updateAxisDirection(SDL_GameControllerAxis axis, bool positive, int32_t magnitude);
 
+    /**
+     * @brief Publishes the shoulder state to the on-screen keyboard as a live modifier.
+     *
+     * The shoulders are binding modifiers for pad inputs, but the on-screen keyboard emits
+     * key events rather than running bindings, so the binding mask never reaches it. L is
+     * mapped to Shift there: holding it modifies an on-screen key the way holding Shift
+     * modifies a physical one, and the key labels follow.
+     */
+    void publishOskModifiers();
+
 public:
     /** @brief Deleted copy constructor. */
     ControllerInput(const ControllerInput &) = delete;
