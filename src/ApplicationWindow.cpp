@@ -291,6 +291,7 @@ void ApplicationWindow::mainLoop() {
                 text_event.timestamp = event.user.timestamp;
                 SDL_strlcpy(text_event.text, static_cast<char *>(event.user.data1), sizeof(text_event.text));
                 SDL_free(event.user.data1);
+                dismissPromptMessage();
                 m_keyboard_input.onTextInput(text_event);
                 continue;
             }
@@ -306,6 +307,7 @@ void ApplicationWindow::mainLoop() {
                     m_controller_input.onDeviceRemoved(event.cdevice);
                 break;
                 case SDL_CONTROLLERBUTTONDOWN:
+                    dismissPromptMessage();
                     m_controller_input.onButtonDown(event.cbutton);
                 break;
                 case SDL_CONTROLLERBUTTONUP:
@@ -332,12 +334,15 @@ void ApplicationWindow::mainLoop() {
                     }
                 break;
                 case SDL_KEYDOWN:
+                    dismissPromptMessage();
                     m_keyboard_input.onKeyDown(event.key);
                 break;
                 case SDL_TEXTINPUT:
+                    dismissPromptMessage();
                     m_keyboard_input.onTextInput(event.text);
                 break;
                 case SDL_MOUSEBUTTONDOWN:
+                    dismissPromptMessage();
                     m_pointer_input.onMouseDown(event.button);
                 break;
                 case SDL_MOUSEMOTION:
@@ -350,6 +355,7 @@ void ApplicationWindow::mainLoop() {
                     m_pointer_input.onMouseWheel(event.wheel);
                 break;
                 case SDL_FINGERDOWN:
+                    dismissPromptMessage();
                     m_pointer_input.onFingerDown(event.tfinger, window_width, window_height);
                 break;
                 case SDL_FINGERMOTION:
@@ -412,12 +418,6 @@ void ApplicationWindow::mainLoop() {
             // todo: Uncomment for debug purpose.
             // std::cout << "view updated " << std::endl;
             context.wants_redraw = false;
-            if (m_prompt_state.getRunningState() == PromptState::RunningState::Message) {
-                // If the prompt show a message, reset the state now to
-                // clear it and display the PROMPT_READY message when the next frame refreshes.
-                m_prompt_state.setRunningState(PromptState::RunningState::Idle);
-                m_prompt_state.setPromptText(PromptState::PROMPT_READY);
-            }
 
             // Update max_render_time metrics before the swap, which blocks on vsync
             const auto frame_time_elapsed = static_cast<float>(SDL_GetPerformanceCounter() - current_time) / performance_query;
@@ -456,6 +456,16 @@ void ApplicationWindow::destroy() {
     m_sdl_gl_context = nullptr;
     p_sdl_window = nullptr;
     m_orthogonal = {};
+}
+
+void ApplicationWindow::dismissPromptMessage() {
+    if (m_prompt_state.getRunningState() == PromptState::RunningState::Message) {
+        m_prompt_state.setRunningState(PromptState::RunningState::Idle);
+        m_prompt_state.setPromptText(PromptState::PROMPT_READY);
+        // The dismissing event may consume no view (an unbound key): redraw so the
+        // screen cannot keep showing a message the state no longer holds.
+        m_context_manager.active().wants_redraw = true;
+    }
 }
 
 void ApplicationWindow::resetPrompt(const std::u16string_view promptText) {

@@ -227,6 +227,16 @@ private:
      */
     void openFile(std::string_view path);
 
+    /**
+     * @brief Clears a displayed prompt message back to the ready state.
+     *
+     * Called when an input event starts a new action (key, text, pointer press, pad button),
+     * which is what invalidates the message of the previous command. Cosmetic redraws (an OSK
+     * key un-lighting on release, a resize) keep the message on screen. No-op unless a message
+     * is displayed.
+     */
+    void dismissPromptMessage();
+
 public:
     /** @brief Deleted copy constructor. */
     ApplicationWindow(const ApplicationWindow &) = delete;
