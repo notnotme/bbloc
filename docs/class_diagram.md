@@ -514,7 +514,7 @@ classDiagram
         note: "gl45 (DSA) or gl43 (bind-based) source set, selected by CMake"
     }
     class Platform {
-        note: "static-only: assetPath / preferredColorScheme / keyboardLayout / addControllerMappings; Desktop or Switch impl selected by CMake"
+        note: "static-only: assetPath / userConfigDir / preferredColorScheme / keyboardLayout / addControllerMappings; Desktop or Switch impl selected by CMake"
     }
     class KeyboardInput
     class PointerInput
@@ -522,7 +522,7 @@ classDiagram
     class HighLighter
 
     ApplicationWindow --|> CommandRunner
-    ApplicationWindow ..> Platform : asset paths + startup color scheme
+    ApplicationWindow ..> Platform : asset paths, user autoexec copy + startup color scheme
     ApplicationWindow *-- KeyboardInput
     ApplicationWindow *-- PointerInput
     ApplicationWindow *-- ControllerInput

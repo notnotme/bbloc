@@ -31,6 +31,16 @@ std::string Platform::assetPath(const std::string_view relative) {
     return std::string(relative);
 }
 
+std::optional<std::string> Platform::userConfigDir(const std::string_view executablePath) {
+    // romfs:/ is read-only, so the editable autoexec goes beside the NRO, whose path hbmenu
+    // passes as argv[0] ("sdmc:/switch/bbloc.nro"). Without it there is nowhere to write.
+    const auto separator = executablePath.rfind('/');
+    if (separator == std::string_view::npos) {
+        return std::nullopt;
+    }
+    return std::string(executablePath.substr(0, separator + 1));
+}
+
 std::string_view Platform::keyboardLayout() {
     // Same source the patched SDL keyboard driver reads; the name mapping mirrors its
     // GetLayoutTable(): layouts without a table (CJK, FrenchCa, UsInternational) use qwerty.

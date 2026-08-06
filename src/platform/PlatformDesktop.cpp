@@ -24,6 +24,12 @@ std::string Platform::assetPath(const std::string_view relative) {
     return std::string(relative);
 }
 
+std::optional<std::string> Platform::userConfigDir(const std::string_view executablePath) {
+    // ./romfs is a writable directory here: the shipped scripts are the ones the user edits.
+    (void) executablePath;
+    return std::nullopt;
+}
+
 std::optional<Platform::ColorScheme> Platform::preferredColorScheme() {
     // No system-theme query wired up on desktop (SDL exposes none in 2.x).
     return std::nullopt;

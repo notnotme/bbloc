@@ -6,7 +6,7 @@ document — keep both in sync, along with the section list in the `help` comple
 
 ## Keyboard
 
-Default bindings, all set in `romfs/autoexec`.
+Default bindings, all set in `autoexec` (see Configuration for where it lives).
 
 ### Navigation
 
@@ -70,7 +70,7 @@ Default bindings, all set in `romfs/autoexec`.
 
 ## Controller
 
-Bound in `romfs/autoexec` as `pad:*` pseudo-keys. The shoulders are modifier layers.
+Bound in `autoexec` as `pad:*` pseudo-keys. The shoulders are modifier layers.
 
 | Input | No modifier | L held | R held |
 |-------|-------------|--------|--------|
@@ -151,6 +151,11 @@ cvar col_editor_background 250 250 250 255  set it (colors: r g b a, 0-255)
 
 Put the commands in `romfs/autoexec` to make them permanent; `romfs/light_theme` and
 `romfs/dark_theme` are command scripts setting the colors below.
+
+On Switch `romfs/` is packaged inside the NRO and read-only, so the editable `autoexec` is the
+copy bbloc writes next to `bbloc.nro` on the first run and runs from then on. Edit that one;
+delete it to get the shipped defaults back. The console light/dark color set is applied just
+before it, so colors set in `autoexec` override the system scheme.
 
 ### Settings
 

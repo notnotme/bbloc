@@ -53,6 +53,20 @@ public:
     [[nodiscard]] static std::string assetPath(std::string_view relative);
 
     /**
+     * @brief Resolves the directory holding the user-editable copies of the shipped scripts.
+     *
+     * On Switch the packaged assets sit on the read-only `romfs:/` device, so the autoexec the
+     * user can actually edit lives next to bbloc.nro; the directory is derived from the path
+     * hbmenu passes as argv[0]. On desktop the shipped `romfs/` is a plain writable directory,
+     * so there is no second copy and the method returns std::nullopt.
+     *
+     * @param executablePath argv[0], as given to main. UTF-8.
+     * @return The directory, trailing separator included; std::nullopt when the shipped copy is
+     *         already editable or the path cannot be derived.
+     */
+    [[nodiscard]] static std::optional<std::string> userConfigDir(std::string_view executablePath);
+
+    /**
      * @brief Queries the system-wide light/dark preference.
      *
      * @return The console color set on Switch; std::nullopt on desktop (no query wired up).

@@ -20,7 +20,9 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <fstream>
 #include <limits>
+#include <system_error>
 
 #include <memory>
 #include <stdexcept>
@@ -57,6 +59,49 @@
 #include "core/theme/DimensionId.h"
 #include "core/FocusTarget.h"
 #include "platform/Platform.h"
+
+
+namespace {
+    /**
+     * @brief Resolves which autoexec to run, seeding a user-editable copy where assets are read-only.
+     *
+     * Where the platform exposes a user config directory (Switch: next to bbloc.nro, the packaged
+     * romfs being read-only there), the script living in it wins, and the packaged one is copied
+     * over the first time so there is always a file the user can edit. Anything going wrong — no
+     * directory, an unwritable destination — falls back to the packaged script.
+     *
+     * @param packagedPath The shipped autoexec, already resolved through Platform::assetPath. UTF-8.
+     * @param userDir The directory returned by Platform::userConfigDir, if any. UTF-8.
+     * @return The path to hand to the exec command. UTF-8.
+     */
+    std::string resolveAutoexecPath(const std::string &packagedPath, const std::optional<std::string> &userDir) {
+        if (!userDir.has_value()) {
+            return packagedPath;
+        }
+
+        auto error_code = std::error_code{};
+        const auto user_path = *userDir + "autoexec";
+        if (std::filesystem::is_regular_file(user_path, error_code)) {
+            return user_path;
+        }
+
+        auto source = std::ifstream(packagedPath, std::ios::in | std::ios::binary);
+        auto destination = std::ofstream(user_path, std::ios::out | std::ios::binary | std::ios::trunc);
+        if (!source || !destination) {
+            return packagedPath;
+        }
+
+        destination << source.rdbuf();
+        const auto copied = destination.good();
+        destination.close();
+        if (!copied) {
+            // A half-written script would win over the packaged one on every later run.
+            std::filesystem::remove(user_path, error_code);
+            return packagedPath;
+        }
+        return user_path;
+    }
+}
 
 
 ApplicationWindow::ApplicationWindow()
@@ -227,15 +272,17 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     m_command_manager.registerCommand(u"osk", std::make_shared<OskCommand>(m_osk_state), false, true);
     m_command_manager.registerCommand(u"help", std::make_shared<HelpCommand>(m_context_manager), false, false);
 
-    // Don't run it "from prompt", so its not added to history
-    runCommand(std::u16string(u"exec ").append(utf8::utf8to16(path)).append(u"autoexec"), false);
-
     // Follow the system color scheme where the platform exposes one (Switch console color set);
-    // runs after autoexec so the system setting wins over any scripted default
+    // runs before autoexec so the colors set there win, the system scheme being just the default
     if (const auto color_scheme = Platform::preferredColorScheme(); color_scheme.has_value()) {
         const auto theme_script = *color_scheme == Platform::ColorScheme::Dark ? u"dark_theme" : u"light_theme";
         runCommand(std::u16string(u"exec ").append(utf8::utf8to16(path)).append(theme_script), false);
     }
+
+    // Don't run it "from prompt", so its not added to history. The path is quoted: the user copy
+    // sits wherever the executable does, which may be a directory with spaces in its name.
+    const auto autoexec_path = resolveAutoexecPath(path + "autoexec", Platform::userConfigDir(argc > 0 ? argv[0] : ""));
+    runCommand(std::u16string(u"exec \"").append(utf8::utf8to16(autoexec_path)).append(u"\""), false);
 
     if (argc > 1) {
         // Only the first path is opened; it loads into the pristine startup buffer
