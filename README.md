@@ -367,10 +367,12 @@ ApplicationWindow
 Requires:
 - devkitpro
 - devkitA64
-- SDL2 with specific patch
+- SDL2 with specific patch (`src/platform/SDL2-2.28.5.patch_usbkbd.diff`)
 - Manual compilation of utfcpp, tree-sitter, and parsers
 
 Note: Game controller and IME not yet supported. USB keyboard partially supported.
+
+On Switch, the light or dark theme is selected at startup from the console color set (system theme setting).
 
 ```bash
 mkdir nx && cd nx

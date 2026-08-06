@@ -78,7 +78,6 @@ bind Shift F3 find_prev
 # Go to a line (prompts for the line number)
 bind Ctrl g goto_line
 
-# temporary shortcut to set color theme (does not work on switch: must use romfs:/)
-# This will be removed before next switch release, as theme will adapt according to switch theme
+# Manual theme override shortcuts (at startup the theme follows the system color scheme when the platform exposes one)
 bind Ctrl+Shift l "exec romfs/light_theme"
 bind Ctrl+Shift d "exec romfs/dark_theme"

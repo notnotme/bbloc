@@ -25,6 +25,7 @@
 #include <utf8.h>
 
 #include "../core/CommandManager.h"
+#include "../platform/Platform.h"
 
 
 void ExecCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
@@ -47,8 +48,9 @@ std::optional<std::u16string> ExecCommand::run(CursorContext &payload, const std
         return u"Max exec recursion depth reached.";
     }
 
-    // Get the path of the file and tries to open the file at this location
-    const auto path = utf8::utf16to8(args[0]);
+    // Get the path of the file and tries to open the file at this location.
+    // assetPath resolves the romfs/ prefix, so scripts can say `exec romfs/...` on every platform.
+    const auto path = Platform::assetPath(utf8::utf16to8(args[0]));
     auto error_code = std::error_code{};
     const auto is_regular_file = std::filesystem::is_regular_file(path, error_code);
     auto ifs = std::ifstream(path, std::ios::in);

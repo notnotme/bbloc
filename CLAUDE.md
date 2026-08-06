@@ -12,7 +12,7 @@ Upcoming work is planned in numbered `docs/plan-*.md` files, executed in order. 
 
 ## Building
 
-Dependencies come from vcpkg; configuration requires the vcpkg toolchain file:
+One `main` branch builds both targets; the toolchain file chosen at configure time selects the target. Desktop dependencies come from vcpkg:
 
 ```bash
 cmake -B cmake-build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug \
@@ -26,9 +26,18 @@ Run from the repository root — the app loads `romfs/` (font, `autoexec`, theme
 ./cmake-build-debug/bbloc [file-to-open]
 ```
 
-Source files are listed explicitly in `CMakeLists.txt` — every new `.cpp` must be added there by hand.
+The Nintendo Switch target uses the devkitPro toolchain (`NINTENDO_SWITCH` is defined by it) and configures in `nx/`, which must be reconfigured from scratch after CMakeLists changes:
 
-The Nintendo Switch build uses the devkitPro toolchain (see README "Building"); on that platform assets come from `romfs:/` instead of `romfs/`.
+```bash
+mkdir nx && cd nx
+source $DEVKITPRO/switchvars.sh
+cmake -G"Unix Makefiles" -DCMAKE_C_FLAGS="$CFLAGS $CPPFLAGS" -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake ..
+make
+```
+
+On Switch, assets are packaged into the NRO and read from the `romfs:/` device — code and scripts still write `romfs/` paths, resolved through the platform seam (below).
+
+Source files are listed explicitly in `CMakeLists.txt` — every new `.cpp` must be added there by hand.
 
 ## Architecture
 
@@ -40,7 +49,9 @@ Single-threaded SDL event loop. `ApplicationWindow` (src/ApplicationWindow.cpp) 
 
 **Views**: three `View` subclasses — `InfoBar` (top), `Editor` (center), `Prompt` (bottom command line) — each paired with a `ViewState` (`PromptState` extends it). Input focus switches between Editor and Prompt via `FocusTarget`. All views share one `QuadBuffer`, passed as a `render()` parameter: each view stages one batch CPU-side (`beginBatch`/`insert`/`endBatch`) and draws it immediately; the GPU buffer starts at `DEFAULT_QUAD_CAPACITY` (8192) and regrows on demand, so batches are never truncated. `ApplicationWindow::mainLoop` calls `resetFrame()` once per redraw. Rendering is batched textured quads through `QuadProgram`, with glyphs from a FreeType-backed layered texture atlas (`AtlasArray`), scissor-clipped per view.
 
-**Renderer portability**: main uses OpenGL DSA calls; the `nintendo_switch` branch (one commit rebased onto main) carries bind-based GL 4.3 equivalents plus platform packaging. Keep GL calls in `QuadBuffer` confined to `create()`/`endBatch()`/`destroy()` so the Switch-side translation stays small, and never unify the two renderers.
+**Renderer backends**: `QuadBuffer`/`QuadProgram`/`QuadTexture` headers live in `src/core/renderer/`; their `.cpp` implementations exist twice, as CMake-selected source sets — `src/core/renderer/gl45/` (OpenGL 4.5 DSA, desktop) and `src/core/renderer/gl43/` (bind-based GL 4.3, Switch). Each set ships a `GlBackend.h` with the GL context version to request, supplied to `ApplicationWindow` through a per-set include path. Renderer backends are separate source sets; never merge them into one runtime-abstracted renderer. Keep GL calls in `QuadBuffer` confined to `create()`/`endBatch()`/`destroy()` so the backends stay small.
+
+**Platform seam** (src/platform/Platform.h): the few desktop/Switch behavior differences live behind free functions in `namespace platform`, with one CMake-selected implementation — `src/platform/PlatformDesktop.cpp` or `src/platform/PlatformSwitch.cpp` (the only file allowed to include `<switch.h>`). The `src/platform/` directory also holds the Switch SDL2 patch. `assetPath()` resolves the `romfs/` prefix (`romfs:/` on Switch), used by `ApplicationWindow::create` and `ExecCommand` so scripts say `exec romfs/...` everywhere; `preferredColorScheme()` returns the console color set on Switch (applied as light/dark theme after autoexec) and `nullopt` on desktop.
 
 **CVars** (src/core/cvar/): typed runtime config (int/bool/float/Color) registered with optional change callbacks; modified at runtime via the `cvar` command. Theme colors and dimensions are CVars (see `core/theme/ColorId.h`, `DimensionId.h`); `romfs/light_theme` and `romfs/dark_theme` are just command scripts setting them.
 

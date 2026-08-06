@@ -197,6 +197,11 @@ classDiagram
     AtlasArray ..> QuadTexture : writes via blit
 ```
 
+The `QuadBuffer` / `QuadProgram` / `QuadTexture` headers live in `core/renderer/`; their
+implementations exist twice, as CMake-selected source sets: `gl45/` (OpenGL 4.5 DSA, desktop)
+and `gl43/` (bind-based GL 4.3, Nintendo Switch). Each set also ships a `GlBackend.h` exposing
+the GL context version `ApplicationWindow` must request, supplied via a per-set include path.
+
 ---
 
 ## 7. Theme (`core/theme`)
@@ -303,7 +308,9 @@ classDiagram
         note: "activates the existing buffer when the file is already open, via CursorContextManager"
     }
     class SaveFileCommand
-    class ExecCommand
+    class ExecCommand {
+        note: "resolves the romfs/ prefix via Platform::assetPath"
+    }
     class QuitCommand {
         note: "confirms when any open buffer is modified, via CursorContextManager"
     }
@@ -397,10 +404,15 @@ classDiagram
     }
     class Renderer {
         <<OpenGL module>>
+        note: "gl45 (DSA) or gl43 (bind-based) source set, selected by CMake"
+    }
+    class Platform {
+        note: "static-only: assetPath / preferredColorScheme; Desktop or Switch impl selected by CMake"
     }
     class HighLighter
 
     ApplicationWindow --|> CommandRunner
+    ApplicationWindow ..> Platform : asset paths + startup color scheme
     ApplicationWindow *-- CommandManager
     ApplicationWindow *-- Theme
     ApplicationWindow *-- PromptCursor

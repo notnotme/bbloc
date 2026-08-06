@@ -29,6 +29,9 @@
 #include <glad/glad.h>
 #include <utf8.h>
 
+// Supplied by the selected renderer source set (gl45 or gl43) via the CMake include path
+#include <GlBackend.h>
+
 #include "command/ActivatePromptCommand.h"
 #include "command/AutoCompleteCommand.h"
 #include "command/BindCommand.h"
@@ -50,6 +53,7 @@
 #include "command/UndoCommand.h"
 #include "core/theme/DimensionId.h"
 #include "core/FocusTarget.h"
+#include "platform/Platform.h"
 
 
 ApplicationWindow::ApplicationWindow()
@@ -99,15 +103,16 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
 
     // Init SDL
-    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) != 0) {
         throw std::runtime_error(std::string("Failed to initialize SDL: ").append(SDL_GetError()));
     }
 
-    // Set OpenGL 4.5 Core context (the renderer uses direct state access) and double buffered RGB8 surface
+    // Set the OpenGL Core context version required by the compiled renderer backend
+    // (4.5 for the DSA set, 4.3 for the bind-based set) and double buffered RGB8 surface
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, GlBackend::CONTEXT_MAJOR_VERSION);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, GlBackend::CONTEXT_MINOR_VERSION);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
@@ -143,7 +148,7 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
     // Create the theme
-    const auto path = std::string("romfs/");
+    const auto path = Platform::assetPath("romfs/");
     m_theme.create(m_command_manager, path);
 
     // Create the quad buffer
@@ -202,6 +207,13 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     // Don't run it "from prompt", so its not added to history
     runCommand(std::u16string(u"exec ").append(utf8::utf8to16(path)).append(u"autoexec"), false);
 
+    // Follow the system color scheme where the platform exposes one (Switch console color set);
+    // runs after autoexec so the system setting wins over any scripted default
+    if (const auto color_scheme = Platform::preferredColorScheme(); color_scheme.has_value()) {
+        const auto theme_script = *color_scheme == Platform::ColorScheme::Dark ? u"dark_theme" : u"light_theme";
+        runCommand(std::u16string(u"exec ").append(utf8::utf8to16(path)).append(theme_script), false);
+    }
+
     if (argc > 1) {
         // Only the first path is opened; it loads into the pristine startup buffer
         openFile(argv[1]);
@@ -225,6 +237,9 @@ void ApplicationWindow::openFile(const std::string_view path) {
 void ApplicationWindow::mainLoop() {
     // Request performance query used to calculate dt time
     const auto performance_query = static_cast<float>(SDL_GetPerformanceFrequency());
+    // temporary until controller bindings (plan 2)
+    const auto controller = SDL_GameControllerOpen(0);
+
     auto window_width = 0;
     auto window_height = 0;
     auto is_running = true;
@@ -240,6 +255,12 @@ void ApplicationWindow::mainLoop() {
             switch (event.type) {
                 case SDL_QUIT:
                     is_running = false;
+                break;
+                case SDL_CONTROLLERBUTTONDOWN:
+                    // temporary until controller bindings (plan 2)
+                    if (event.cbutton.which == 0 && event.cbutton.button == SDL_CONTROLLER_BUTTON_START) {
+                        is_running = false;
+                    }
                 break;
                 case SDL_WINDOWEVENT:
                     switch (event.window.event) {
@@ -575,6 +596,9 @@ void ApplicationWindow::mainLoop() {
         // Reset follow_indicator if it was not held by the editor render already
         context.scroll.follow_indicator = false;
     }
+
+    // temporary until controller bindings (plan 2)
+    SDL_GameControllerClose(controller);
 }
 
 void ApplicationWindow::getCommandCompletions(const std::u16string_view input, const AutoCompleteCallback &itemCallback) {

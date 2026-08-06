@@ -11,6 +11,31 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 file(CREATE_LINK "${CMAKE_BINARY_DIR}/compile_commands.json" "${CMAKE_SOURCE_DIR}/compile_commands.json" SYMBOLIC)
 
+# Renderer backend + platform sources, selected at configure time.
+# NINTENDO_SWITCH is defined by the devkitPro toolchain: bind-based GL 4.3 renderer set and
+# the Switch platform seam; everything else gets the GL 4.5 DSA set and the desktop seam.
+# The include directory supplies the matching GlBackend.h (GL context version constants).
+# ========================================
+if(NINTENDO_SWITCH)
+    set(BBLOC_BACKEND_INCLUDE_DIR src/core/renderer/gl43)
+    set(BBLOC_BACKEND_SOURCES
+            src/core/renderer/gl43/GlBackend.h
+            src/core/renderer/gl43/QuadBuffer.cpp
+            src/core/renderer/gl43/QuadProgram.cpp
+            src/core/renderer/gl43/QuadTexture.cpp
+            src/platform/PlatformSwitch.cpp
+    )
+else()
+    set(BBLOC_BACKEND_INCLUDE_DIR src/core/renderer/gl45)
+    set(BBLOC_BACKEND_SOURCES
+            src/core/renderer/gl45/GlBackend.h
+            src/core/renderer/gl45/QuadBuffer.cpp
+            src/core/renderer/gl45/QuadProgram.cpp
+            src/core/renderer/gl45/QuadTexture.cpp
+            src/platform/PlatformDesktop.cpp
+    )
+endif()
+
 # Source files
 # ========================================
 add_executable(bbloc
@@ -29,10 +54,8 @@ add_executable(bbloc
         src/core/highlighter/Parser.cpp
         src/core/highlighter/ParserCatalog.cpp
         src/core/renderer/AtlasArray.cpp
-        src/core/renderer/QuadBuffer.cpp
-        src/core/renderer/QuadProgram.cpp
-        src/core/renderer/QuadTexture.cpp
         src/core/renderer/Shader.cpp
+        src/platform/Platform.h
         src/core/CommandManager.cpp
         src/core/CursorContextManager.cpp
         src/core/CVarCommand.cpp
@@ -64,7 +87,9 @@ add_executable(bbloc
         src/prompt/PromptState.cpp
         src/ApplicationWindow.cpp
         src/main.cpp
+        ${BBLOC_BACKEND_SOURCES}
 )
+target_include_directories(bbloc PRIVATE ${BBLOC_BACKEND_INCLUDE_DIR})
 
 
 # Dependencies
@@ -83,14 +108,6 @@ target_link_libraries(bbloc PRIVATE OpenGL::GL)
 # utfcpp
 find_package(utf8cpp REQUIRED)
 target_link_libraries(bbloc PRIVATE utf8::cpp utf8cpp::utf8cpp)
-
-# Freetype2
-find_package(Freetype REQUIRED)
-target_link_libraries(bbloc PRIVATE Freetype::Freetype)
-
-# glad
-find_package(glad CONFIG REQUIRED)
-target_link_libraries(bbloc PRIVATE glad::glad)
 
 # tree-sitter
 pkg_check_modules(TREE_SITTER REQUIRED tree-sitter)
@@ -121,6 +138,38 @@ target_link_libraries(bbloc PRIVATE ${TREE_SITTER_YAML_LIBRARIES})
 pkg_check_modules(TREE_SITTER_TOML REQUIRED tree-sitter-toml)
 target_include_directories(bbloc PRIVATE ${TREE_SITTER_TOML_INCLUDE_DIRS})
 target_link_libraries(bbloc PRIVATE ${TREE_SITTER_TOML_LIBRARIES})
+
+if(NINTENDO_SWITCH)
+    # Freetype2 (portlibs pkg-config)
+    pkg_check_modules(FREETYPE2 REQUIRED freetype2)
+    target_include_directories(bbloc PRIVATE ${FREETYPE2_INCLUDE_DIRS})
+    target_link_libraries(bbloc PRIVATE ${FREETYPE2_LIBRARIES})
+
+    # glad (portlibs pkg-config)
+    pkg_check_modules(GLAD REQUIRED libglad)
+    target_include_directories(bbloc PRIVATE ${GLAD_INCLUDE_DIRS})
+    target_link_libraries(bbloc PRIVATE ${GLAD_LIBRARIES})
+
+    # NRO config
+    nx_generate_nacp(bbloc.nacp
+        NAME ${CMAKE_PROJECT_NAME}
+        VERSION ${CMAKE_PROJECT_VERSION}
+        AUTHOR "romain337"
+    )
+    nx_create_nro(bbloc
+        NACP bbloc.nacp
+        ROMFS romfs
+        ICON misc/icon.jpg
+    )
+else()
+    # Freetype2
+    find_package(Freetype REQUIRED)
+    target_link_libraries(bbloc PRIVATE Freetype::Freetype)
+
+    # glad
+    find_package(glad CONFIG REQUIRED)
+    target_link_libraries(bbloc PRIVATE glad::glad)
+endif()
 
 # get_cmake_property(_variableNames VARIABLES)
 # list (SORT _variableNames)
