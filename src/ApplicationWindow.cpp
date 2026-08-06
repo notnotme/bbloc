@@ -43,6 +43,7 @@
 #include "command/MoveCursorCommand.h"
 #include "command/OpenFileCommand.h"
 #include "command/PasteTextCommand.h"
+#include "command/PromptCommand.h"
 #include "command/QuitCommand.h"
 #include "command/RedoCommand.h"
 #include "command/ResetCVarFloatCommand.h"
@@ -70,9 +71,10 @@ ApplicationWindow::ApplicationWindow()
       m_bind_command(std::make_shared<BindCommand>(m_command_manager)),
       m_orthogonal(),
       m_keyboard_input(*this, m_context_manager, m_editor, m_editor_state, m_prompt, m_prompt_state),
-      m_pointer_input(m_context_manager, m_theme, m_info_bar, m_info_bar_state, m_editor, m_editor_state, m_prompt, m_prompt_state) {}
+      m_pointer_input(m_context_manager, m_theme, m_info_bar, m_info_bar_state, m_editor, m_editor_state, m_prompt, m_prompt_state),
+      m_controller_input(*this) {}
 
-void ApplicationWindow::runBoundCommand(const SDL_Keycode keycode, const uint16_t modifiers) {
+bool ApplicationWindow::runBoundCommand(const SDL_Keycode keycode, const uint16_t modifiers) {
     if (const auto command = m_bind_command->getBinding(keycode, modifiers)) {
         const auto current_time = SDL_GetPerformanceCounter();
         if (runCommand(command.value(), false)) {
@@ -81,8 +83,12 @@ void ApplicationWindow::runBoundCommand(const SDL_Keycode keycode, const uint16_
             if (command_time_elapsed > m_command_time->m_value) {
                 m_command_time->m_value = command_time_elapsed;
             }
+
+            return true;
         }
     }
+
+    return false;
 }
 
 void ApplicationWindow::updateOrthogonal(const int32_t width, const int32_t height) {
@@ -194,6 +200,7 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     m_command_manager.registerCommand(u"set_hl_mode", std::make_shared<SetHighLightCommand>(), false, false);
     m_command_manager.registerCommand(u"bind", m_bind_command, false, false);
     m_command_manager.registerCommand(u"activate_prompt", std::make_shared<ActivatePromptCommand>(m_prompt_state), true, false);
+    m_command_manager.registerCommand(u"prompt", std::make_shared<PromptCommand>(m_prompt, m_prompt_state), true, true);
     m_command_manager.registerCommand(u"copy", std::make_shared<CopyTextCommand>(), false, false);
     m_command_manager.registerCommand(u"paste", std::make_shared<PasteTextCommand>(), false, false);
     m_command_manager.registerCommand(u"cut", std::make_shared<CutTextCommand>(), false, false);
@@ -242,8 +249,6 @@ void ApplicationWindow::openFile(const std::string_view path) {
 void ApplicationWindow::mainLoop() {
     // Request performance query used to calculate dt time
     const auto performance_query = static_cast<float>(SDL_GetPerformanceFrequency());
-    // temporary until controller bindings (plan 2)
-    const auto controller = SDL_GameControllerOpen(0);
 
     auto window_width = 0;
     auto window_height = 0;
@@ -254,18 +259,34 @@ void ApplicationWindow::mainLoop() {
 
     SDL_Event event;
     while (is_running) {
-        // Wait events from SDL
-        SDL_WaitEvent(nullptr);
+        // Wait events from SDL; with a controller repeat armed, wake at its deadline instead
+        // of blocking indefinitely (clamped to at least 1 ms)
+        if (m_controller_input.isRepeatArmed()) {
+            const auto remaining = static_cast<int64_t>(m_controller_input.getRepeatDeadline()) - static_cast<int64_t>(SDL_GetTicks64());
+            SDL_WaitEventTimeout(nullptr, static_cast<int32_t>(std::max<int64_t>(remaining, 1)));
+        } else {
+            SDL_WaitEvent(nullptr);
+        }
+
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
                 case SDL_QUIT:
                     is_running = false;
                 break;
+                case SDL_CONTROLLERDEVICEADDED:
+                    m_controller_input.onDeviceAdded(event.cdevice);
+                break;
+                case SDL_CONTROLLERDEVICEREMOVED:
+                    m_controller_input.onDeviceRemoved(event.cdevice);
+                break;
                 case SDL_CONTROLLERBUTTONDOWN:
-                    // temporary until controller bindings (plan 2)
-                    if (event.cbutton.which == 0 && event.cbutton.button == SDL_CONTROLLER_BUTTON_START) {
-                        is_running = false;
-                    }
+                    m_controller_input.onButtonDown(event.cbutton);
+                break;
+                case SDL_CONTROLLERBUTTONUP:
+                    m_controller_input.onButtonUp(event.cbutton);
+                break;
+                case SDL_CONTROLLERAXISMOTION:
+                    m_controller_input.onAxisMotion(event.caxis);
                 break;
                 case SDL_WINDOWEVENT:
                     switch (event.window.event) {
@@ -314,6 +335,10 @@ void ApplicationWindow::mainLoop() {
                 break;
             }
         }
+
+        // Fire the armed controller repeat after the poll loop, so fresh events (a release,
+        // a new press) disarm or replace it first
+        m_controller_input.tickRepeat();
 
         // Calculate dt time
         const auto current_time = SDL_GetPerformanceCounter();
@@ -371,9 +396,6 @@ void ApplicationWindow::mainLoop() {
         // Reset follow_indicator if it was not held by the editor render already
         context.scroll.follow_indicator = false;
     }
-
-    // temporary until controller bindings (plan 2)
-    SDL_GameControllerClose(controller);
 }
 
 void ApplicationWindow::getCommandCompletions(const std::u16string_view input, const AutoCompleteCallback &itemCallback) {

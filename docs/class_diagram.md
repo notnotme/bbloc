@@ -271,6 +271,12 @@ classDiagram
     class PointerInput {
         note: "SDL mouse/wheel/touch events; owns the MouseTarget capture and TouchMode gesture state"
     }
+    class ControllerInput {
+        note: "SDL game-controller events: hotplug, shoulder L/R modifier mask, axis hysteresis, auto-repeat"
+    }
+    class PadInput {
+        note: "static-only: negative pad pseudo-keycodes, KMOD_PAD_L/R bits, pad: name mapping"
+    }
 
     ViewState <|-- PromptState
     View~TState~ <|-- Editor
@@ -285,17 +291,18 @@ classDiagram
     Prompt ..> TabStop : uses
     KeyboardInput ..> View~TState~ : dispatches key/text to focused view
     PointerInput ..> View~TState~ : routes captured pointer events
+    ControllerInput ..> PadInput : encodes pad inputs
 ```
 
 The mouse handlers have empty default implementations; `InfoBar` and `Prompt` keep them.
-`ApplicationWindow::mainLoop` delegates every keyboard and pointer event to the two handlers
-in `src/input/`, keeping only quit, window, and the temporary gamepad events for itself.
+`ApplicationWindow::mainLoop` delegates every keyboard, pointer, and game-controller event to
+the three handlers in `src/input/`, keeping only quit and window events for itself.
 
 `KeyboardInput` sends key presses to the focused view first — unless Ctrl/Alt makes them a
 shortcut chord — then falls back to the key bindings through `CommandRunner::runBoundCommand`
-(implemented by `ApplicationWindow`), which times the run into `inf_command_time` (controller
-bindings will dispatch through it too, plan 2). Text input is routed to the focused view the
-same way, with chords blocked.
+(implemented by `ApplicationWindow`), which times the run into `inf_command_time` and returns
+whether a bound command ran. Text input is routed to the focused view the same way, with
+chords blocked.
 
 `PointerInput` routes a left `SDL_MOUSEBUTTONDOWN` to the view whose rectangle contains the
 point, then captures that view: `SDL_MOUSEMOTION` and `SDL_MOUSEBUTTONUP` keep going to it
@@ -308,6 +315,21 @@ drag and switches to a two-finger scroll of the active context (the `TouchMode` 
 `PointerInput`, like the `MouseTarget` capture state); scroll mode ends only when every finger
 has lifted.
 
+`ControllerInput` makes game controllers a first-class binding source: buttons and axis
+directions are encoded as negative pad pseudo-keycodes (the static-only `PadInput` class in
+`core/base/PadInput.h`, `pad:...` names in `bind`) and dispatched through
+`CommandRunner::runBoundCommand`, exactly like keyboard shortcuts. The two shoulders are not
+bindable: they build the live L/R modifier mask (`KMOD_PAD_L`/`KMOD_PAD_R`, the two KMOD bits
+SDL leaves free, passed through by `BindCommand::normalizeModifiers`). Sticks and triggers act
+as digital pseudo-buttons with press/release hysteresis, and a successfully dispatched press
+arms an auto-repeat (delay then fast interval) that `mainLoop` honors by waiting with
+`SDL_WaitEventTimeout` and ticking after the poll loop. Hotplug opens/closes the pads and a
+disconnect resets the whole pad state; all connected pads feed one state, like a keyboard.
+
+`Prompt` exposes its Return/Escape handling as `confirm()` / `cancel()`, which `onKeyDown`
+delegates to; the hidden `prompt` command (`PromptCommand`, §9) drives the same entry points
+from controller bindings.
+
 ---
 
 ## 9. Concrete Commands (`command/`)
@@ -317,10 +339,15 @@ classDiagram
     class Command~CursorContext~ {
         <<abstract>>
     }
-    class BindCommand
+    class BindCommand {
+        note: "keyboard keys and pad: names (via PadInput), L/R shoulder modifiers"
+    }
     class MoveCursorCommand
     class AutoCompleteCommand
     class ActivatePromptCommand
+    class PromptCommand {
+        note: "prompt confirm / cancel, driving Prompt::confirm/cancel; no-op while the prompt is idle"
+    }
     class FontSizeCommand
     class ResetCVarFloatCommand
     class OpenFileCommand {
@@ -351,6 +378,7 @@ classDiagram
     Command~CursorContext~ <|-- MoveCursorCommand
     Command~CursorContext~ <|-- AutoCompleteCommand
     Command~CursorContext~ <|-- ActivatePromptCommand
+    Command~CursorContext~ <|-- PromptCommand
     Command~CursorContext~ <|-- FontSizeCommand
     Command~CursorContext~ <|-- ResetCVarFloatCommand
     Command~CursorContext~ <|-- OpenFileCommand
@@ -430,13 +458,16 @@ classDiagram
     }
     class KeyboardInput
     class PointerInput
+    class ControllerInput
     class HighLighter
 
     ApplicationWindow --|> CommandRunner
     ApplicationWindow ..> Platform : asset paths + startup color scheme
     ApplicationWindow *-- KeyboardInput
     ApplicationWindow *-- PointerInput
+    ApplicationWindow *-- ControllerInput
     KeyboardInput ..> CommandRunner : runBoundCommand fallback
+    ControllerInput ..> CommandRunner : runBoundCommand dispatch
     KeyboardInput ..> View~TState~ : dispatches to focused view
     PointerInput ..> View~TState~ : routes captured pointer events
     ApplicationWindow *-- CommandManager

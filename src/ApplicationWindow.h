@@ -38,6 +38,7 @@
 #include "command/BindCommand.h"
 #include "editor/Editor.h"
 #include "infobar/InfoBar.h"
+#include "input/ControllerInput.h"
 #include "input/KeyboardInput.h"
 #include "input/PointerInput.h"
 #include "prompt/Prompt.h"
@@ -131,6 +132,9 @@ private:
     /** Handler dispatching SDL pointer events (mouse, wheel, touch fingers). */
     PointerInput m_pointer_input;
 
+    /** Handler dispatching SDL game-controller events (hotplug, buttons, axes). */
+    ControllerInput m_controller_input;
+
     /** Scratch vector whose capacity is reused by runCommand to tokenize command strings. */
     std::vector<std::u16string_view> m_token_scratch;
 
@@ -168,12 +172,14 @@ private:
      * @brief Looks up the key binding and runs the bound command, if any.
      *
      * The execution is timed and the maximum is tracked in the inf_command_time CVar.
-     * Part of CommandRunner; controller bindings (plan 2) will dispatch through it too.
+     * Part of CommandRunner; controller inputs, encoded as pad pseudo-keycodes, dispatch
+     * through it too.
      *
-     * @param keycode The pressed key.
+     * @param keycode The pressed key, or a pad pseudo-keycode.
      * @param modifiers The active key modifiers.
+     * @return true when a bound command ran; false when no binding matched or the command was dropped.
      */
-    void runBoundCommand(SDL_Keycode keycode, uint16_t modifiers) override;
+    bool runBoundCommand(SDL_Keycode keycode, uint16_t modifiers) override;
 
     /**
      * @brief Provides command name completions for the command prompt.

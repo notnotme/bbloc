@@ -40,6 +40,7 @@ endif()
 # ========================================
 add_executable(bbloc
         src/core/base/Command.h
+        src/core/base/PadInput.cpp
         src/core/cursor/buffer/LongestLineTracker.cpp
         src/core/cursor/buffer/LineBuffer.cpp
         src/core/cursor/Cursor.cpp
@@ -72,6 +73,7 @@ add_executable(bbloc
         src/command/BindCommand.cpp
         src/command/BufferCommand.cpp
         src/command/ActivatePromptCommand.cpp
+        src/command/PromptCommand.cpp
         src/command/CopyTextCommand.cpp
         src/command/PasteTextCommand.cpp
         src/command/CutTextCommand.cpp
@@ -83,6 +85,7 @@ add_executable(bbloc
         src/command/AutoCompleteCommand.cpp
         src/editor/Editor.cpp
         src/infobar/InfoBar.cpp
+        src/input/ControllerInput.cpp
         src/input/KeyboardInput.cpp
         src/input/PointerInput.cpp
         src/prompt/Prompt.cpp

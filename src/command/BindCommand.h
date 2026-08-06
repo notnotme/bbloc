@@ -58,6 +58,7 @@ private:
      * @brief Normalize input modifiers from raw SDL input modifiers.
      *
      * This basically converts SDL modifiers Left/Right to universal modifier position (LSHIFT -> SHIFT).
+     * The pad modifier bits (KMOD_PAD_L / KMOD_PAD_R) pass through unchanged.
      *
      * @param modifiers The raw SDL modifier flags.
      * @return Normalized modifier flags.
@@ -70,7 +71,7 @@ private:
      * This converts a SDL modifier keycode into an int32_t. This allows returning a negative value in case the mapping
      * fails, and return an error in this case.
      *
-     * Values can be "Ctrl", "Alt", "Shift", "None".
+     * Values can be "Ctrl", "Alt", "Shift", "L", "R", "None".
      * "None" is mandatory if the binding does not use key modifiers at all.
      *
      * @param modifier The string representation of the modifier to convert.

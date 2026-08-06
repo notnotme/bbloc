@@ -81,3 +81,64 @@ bind Ctrl g goto_line
 # Manual theme override shortcuts (at startup the theme follows the system color scheme when the platform exposes one)
 bind Ctrl+Shift l "exec romfs/light_theme"
 bind Ctrl+Shift d "exec romfs/dark_theme"
+
+# Game controller — the shoulders are modifier layers: no modifier acts, L selects, R jumps, L+R jumps selecting
+
+# D-pad and left stick move the cursor; L extends the selection
+bind None pad:dpup "move up"
+bind L pad:dpup "move up true"
+bind None pad:dpdown "move down"
+bind L pad:dpdown "move down true"
+bind None pad:dpleft "move left"
+bind L pad:dpleft "move left true"
+bind None pad:dpright "move right"
+bind L pad:dpright "move right true"
+bind None pad:lefty- "move up"
+bind L pad:lefty- "move up true"
+bind None pad:lefty+ "move down"
+bind L pad:lefty+ "move down true"
+bind None pad:leftx- "move left"
+bind L pad:leftx- "move left true"
+bind None pad:leftx+ "move right"
+bind L pad:leftx+ "move right true"
+
+# R + d-pad jumps to the line and file boundaries; L+R jumps extending the selection
+bind R pad:dpup "move bof"
+bind L+R pad:dpup "move bof true"
+bind R pad:dpdown "move eof"
+bind L+R pad:dpdown "move eof true"
+bind R pad:dpleft "move bol"
+bind L+R pad:dpleft "move bol true"
+bind R pad:dpright "move eol"
+bind L+R pad:dpright "move eol true"
+
+# Triggers (ZL/ZR) and the right stick page up and down
+bind None pad:lefttrigger "move page_up"
+bind L pad:lefttrigger "move page_up true"
+bind None pad:righttrigger "move page_down"
+bind L pad:righttrigger "move page_down true"
+bind None pad:righty- "move page_up"
+bind None pad:righty+ "move page_down"
+
+# A confirms and B cancels the prompt (no-ops while it is idle), X opens it, Y cycles the completions
+bind None pad:a "prompt confirm"
+bind None pad:b "prompt cancel"
+bind None pad:x activate_prompt
+bind None pad:y "auto_complete forward"
+bind L pad:y "auto_complete backward"
+
+# Face buttons with a shoulder held: clipboard, undo/redo, save, cut and search
+bind L pad:a copy
+bind R pad:a paste
+bind L pad:b undo
+bind R pad:b redo
+bind L pad:x save
+bind R pad:x cut
+bind R pad:y search
+bind None pad:rightx+ find_next
+bind None pad:rightx- find_prev
+
+# Back cycles the open buffers, Start quits
+bind None pad:back "buffer next"
+bind L pad:back "buffer prev"
+bind None pad:start quit

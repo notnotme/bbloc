@@ -76,6 +76,8 @@ public:
     /**
      * @brief Handles key events while the prompt is active.
      *
+     * Return and Escape delegate to confirm() and cancel().
+     *
      * @param context Reference to the cursor context.
      * @param viewState The prompt's view state.
      * @param keyCode SDL key code.
@@ -83,6 +85,25 @@ public:
      * @return True if input was handled.
      */
     bool onKeyDown(CursorContext &context, PromptState &viewState, SDL_Keycode keyCode, uint16_t keyModifier) const override;
+
+    /**
+     * @brief Validates the prompt line: dispatches the typed command, or answers a pending feedback.
+     *
+     * The dispatched command may close the active buffer and destroy `context`; callers must
+     * not touch it after this returns.
+     *
+     * @param context Reference to the cursor context.
+     * @param viewState The prompt's view state.
+     */
+    void confirm(CursorContext &context, PromptState &viewState) const;
+
+    /**
+     * @brief Cancels the prompt: resets the line, drops any pending feedback, and focuses the editor.
+     *
+     * @param context Reference to the cursor context.
+     * @param viewState The prompt's view state.
+     */
+    void cancel(CursorContext &context, PromptState &viewState) const;
 
     /**
      * @brief Handles raw text input for the prompt.

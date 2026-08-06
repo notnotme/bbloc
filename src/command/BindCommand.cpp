@@ -24,6 +24,7 @@
 #include <SDL_keyboard.h>
 #include <utf8.h>
 
+#include "../core/base/PadInput.h"
 #include "../core/CommandManager.h"
 
 
@@ -31,6 +32,8 @@ const U16StringMap<uint16_t> BindCommand::MODIFIER_MAP = {
     { u"Ctrl", KMOD_CTRL },
     { u"Shift", KMOD_SHIFT },
     { u"Alt", KMOD_ALT },
+    { u"L", PadInput::KMOD_PAD_L },
+    { u"R", PadInput::KMOD_PAD_R },
     { u"None", KMOD_NONE }
 };
 
@@ -69,6 +72,13 @@ void BindCommand::provideAutoComplete(const std::span<const std::u16string_view>
                 itemCallback(utf16_key_name);
             }
         }
+
+        // Pad inputs ("pad:...") complete alongside the SDL key names.
+        PadInput::forEachName([&input, &itemCallback](const std::u16string_view padName) {
+            if (padName.starts_with(input)) {
+                itemCallback(padName);
+            }
+        });
     } else if (argumentIndex == 2) {
         // Hidden commands are included: binding them to a keystroke is their intended use.
         m_command_manager.getCommandCompletions(input, true, itemCallback);
@@ -94,9 +104,14 @@ std::optional<std::u16string> BindCommand::run(CursorContext &payload, const std
         modifier |= mapped_modifier;
     }
 
-    // Check that SDL knows the key name.
-    const auto keycode_utf8 = utf8::utf16to8(args[1]);
-    const auto key = SDL_GetKeyFromName(keycode_utf8.data());
+    // Pad input names ("pad:...") resolve first, into their reserved negative keycode space;
+    // everything else must be a key name SDL knows.
+    auto key = PadInput::keycodeFromName(args[1]);
+    if (key == SDLK_UNKNOWN) {
+        const auto keycode_utf8 = utf8::utf16to8(args[1]);
+        key = SDL_GetKeyFromName(keycode_utf8.data());
+    }
+
     if (key == SDLK_UNKNOWN) {
         return std::u16string(u"Unknown key: ").append(args[1]);
     }
@@ -134,6 +149,9 @@ uint16_t BindCommand::normalizeModifiers(const uint16_t modifiers) {
     if (modifiers & (KMOD_LGUI | KMOD_RGUI)) {
         result |= KMOD_GUI;
     }
+
+    // The pad modifier bits (held shoulders) have no left/right variants: pass them through.
+    result |= modifiers & (PadInput::KMOD_PAD_L | PadInput::KMOD_PAD_R);
 
     return result;
 }

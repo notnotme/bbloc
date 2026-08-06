@@ -48,13 +48,14 @@ public:
     /**
      * @brief Looks up the key binding and runs the bound command, if any.
      *
-     * The execution is timed by implementations (inf_command_time). This is also the
-     * dispatch path for future controller bindings.
+     * The execution is timed by implementations (inf_command_time). Controller inputs,
+     * encoded as pad pseudo-keycodes, dispatch through this path too.
      *
-     * @param keycode The pressed key.
+     * @param keycode The pressed key, or a pad pseudo-keycode.
      * @param modifiers The active key modifiers.
+     * @return true when a bound command ran; false when no binding matched or the command was dropped.
      */
-    virtual void runBoundCommand(SDL_Keycode keycode, uint16_t modifiers) = 0;
+    virtual bool runBoundCommand(SDL_Keycode keycode, uint16_t modifiers) = 0;
 
     /**
      * @brief Provides auto-completion suggestions for command names.

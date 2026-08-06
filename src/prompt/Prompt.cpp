@@ -51,37 +51,11 @@ void Prompt::render(CursorContext &context, PromptState &viewState, QuadBuffer &
 
 bool Prompt::onKeyDown(CursorContext &context, PromptState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
     switch (keyCode) {
-        case SDLK_RETURN: {
-            // runCommand can also update the prompt state, set the prompt to Idle before running the command.
-            viewState.setRunningState(PromptState::RunningState::Idle);
-            viewState.setPromptText(PromptState::PROMPT_READY);
-            viewState.clearCompletions();
-            viewState.clearHistoryIndex();
-
-            // The command may close the active buffer ("buffer close"), destroying `context`.
-            // The runner and the prompt cursor are owned by ApplicationWindow, not by the context,
-            // so binding them here keeps them usable after the dispatch.
-            auto &command_runner = context.command_runner;
-            auto &prompt_cursor = context.prompt_cursor;
-
-            // The return value of runCommand can be ignored in this use case.
-            // Clearing stays after the call: ApplicationWindow::runCommand reads the pending
-            // feedback answer out of the prompt cursor.
-            const auto prompt_command = prompt_cursor.getString();
-            command_runner.runCommand(prompt_command, true);
-            prompt_cursor.clear();
-        }
+        case SDLK_RETURN:
+            confirm(context, viewState);
         return true;
         case SDLK_ESCAPE:
-            // Set the prompt state to Idle, then the command processing logic will take care of the rest.
-            // Escape also cancels a pending feedback, so the next command is not consumed as its answer.
-            viewState.setRunningState(PromptState::RunningState::Idle);
-            viewState.setPromptText(PromptState::PROMPT_READY);
-            viewState.clearCompletions();
-            viewState.clearHistoryIndex();
-            context.prompt_cursor.clear();
-            context.command_feedback.reset();
-            context.focus_target = FocusTarget::Editor;
+            cancel(context, viewState);
         return true;
         case SDLK_BACKSPACE:
             // Reset completions as soon as the user typed a new text
@@ -98,6 +72,39 @@ bool Prompt::onKeyDown(CursorContext &context, PromptState &viewState, const SDL
         default:
         return false;
     }
+}
+
+void Prompt::confirm(CursorContext &context, PromptState &viewState) const {
+    // runCommand can also update the prompt state, set the prompt to Idle before running the command.
+    viewState.setRunningState(PromptState::RunningState::Idle);
+    viewState.setPromptText(PromptState::PROMPT_READY);
+    viewState.clearCompletions();
+    viewState.clearHistoryIndex();
+
+    // The command may close the active buffer ("buffer close"), destroying `context`.
+    // The runner and the prompt cursor are owned by ApplicationWindow, not by the context,
+    // so binding them here keeps them usable after the dispatch.
+    auto &command_runner = context.command_runner;
+    auto &prompt_cursor = context.prompt_cursor;
+
+    // The return value of runCommand can be ignored in this use case.
+    // Clearing stays after the call: ApplicationWindow::runCommand reads the pending
+    // feedback answer out of the prompt cursor.
+    const auto prompt_command = prompt_cursor.getString();
+    command_runner.runCommand(prompt_command, true);
+    prompt_cursor.clear();
+}
+
+void Prompt::cancel(CursorContext &context, PromptState &viewState) const {
+    // Set the prompt state to Idle, then the command processing logic will take care of the rest.
+    // A cancel also drops a pending feedback, so the next command is not consumed as its answer.
+    viewState.setRunningState(PromptState::RunningState::Idle);
+    viewState.setPromptText(PromptState::PROMPT_READY);
+    viewState.clearCompletions();
+    viewState.clearHistoryIndex();
+    context.prompt_cursor.clear();
+    context.command_feedback.reset();
+    context.focus_target = FocusTarget::Editor;
 }
 
 void Prompt::onTextInput(CursorContext &context, PromptState &viewState, const char *text) const {
