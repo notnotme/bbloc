@@ -1,6 +1,6 @@
 # bbloc
 
-bbloc is a minimalist text editor developed in C++ using SDL2, OpenGL, glad, Freetype, utfcpp, and tree-sitter. It features a command-driven interface, syntax highlighting, and a layered UI with real-time configuration via CVars.
+bbloc is a minimalist text editor developed in C++ using SDL2, OpenGL, glad, Freetype, utfcpp, and tree-sitter, targeting Linux and the Nintendo Switch (homebrew). It features a command-driven interface, syntax highlighting, and a layered UI with real-time configuration via CVars, controllable by keyboard, mouse, touch, or game controller.
 
 ## Table of Contents
 
@@ -22,11 +22,13 @@ bbloc is a minimalist text editor developed in C++ using SDL2, OpenGL, glad, Fre
 - **Multiple Buffers**: Open several files at once and switch between them with the `buffer` command; opening an already-open file switches to its buffer instead of loading a second copy
 - **Real-Time Configuration**: Change colors, dimensions, and settings at runtime
 - **Customizable Key Bindings**: Rebind any key combination to commands
-- **Mouse Support**: Click to place the caret, drag to select text, wheel scrolling, and draggable scrollbar thumbs
+- **Mouse & Touch Support**: Click to place the caret, drag to select text, wheel scrolling, and draggable scrollbar thumbs; one finger acts as the mouse, two fingers scroll
+- **Game Controller Support**: Every pad button and axis can be bound to commands like a key, with the shoulders acting as modifier layers
+- **On-Screen Keyboard**: A built-in OSK with sticky modifiers, hold auto-repeat, and international layouts — usable by touch, mouse, or pad
 
 ## Concept
 
-The application window is divided into three distinct areas:
+The application window is divided into three distinct areas (plus an optional on-screen keyboard strip):
 
 ### Top Bar (InfoBar)
 Displays information about the active text buffer:
@@ -51,6 +53,14 @@ An interactive command-line interface serving as both:
 - Command input/output console
 - Status bar for feedback messages
 - Auto-completion interface for commands and files
+
+### On-Screen Keyboard (Osk)
+An optional keyboard strip at the bottom of the window (`osk show|hide|toggle`), designed for the Switch but available everywhere:
+- Two key pages sharing one 5-row geometry; sticky Ctrl/Shift/Alt/AltGr keys latch on tap and hold on long-press
+- Tapped keys synthesize regular key and text events, so shortcuts (e.g. sticky Ctrl + T) work exactly like a physical keyboard
+- Hold auto-repeat on repeatable keys
+- International layouts (`osk layout <name>`): qwerty, azerty, qwertz, uk, spanish, spanish_latin, italian, portuguese, russian
+- Driven by touch, mouse, or pad (d-pad/A move and press a key cursor, B hands control back to the editor)
 
 ### Command System
 Every action beyond basic text typing is implemented as a command. The prompt allows executing commands using text input. By default, the key combination `Ctrl+Shift+space` opens the prompt for command entry.
@@ -99,9 +109,15 @@ Actions can be mapped to keystrokes using the `bind` command. The editor include
 
 #### Views
 - **View Pattern**: Base class with common rendering and input handling
-- **View Subclasses**: InfoBar, Editor, and Prompt implementations
-- **Focus Management**: Handles focus switching between Editor and Prompt
+- **View Subclasses**: InfoBar, Editor, Prompt, and Osk implementations
+- **Focus Management**: Handles focus switching between Editor and Prompt; a third Osk focus redirects only the pad to the on-screen keyboard
 - **State Management**: ViewState hierarchy for view-specific state
+
+#### Input Routing
+- **KeyboardInput**: Dispatches keys to the focused view, falling back to the key bindings; Ctrl/Alt chords skip the view and go straight to the bindings
+- **PointerInput**: Mouse buttons, motion, wheel, and touch fingers — one finger emulates the left button, two fingers scroll
+- **ControllerInput**: Pad buttons and axes encoded as `pad:*` pseudo-keycodes, dispatched through the same binding table; the shoulders act as the L/R modifier layers
+- **InputRepeater**: Deadline-based hold auto-repeat, shared by the pad and the OSK
 
 #### Application Window
 - **Lifecycle Management**: SDL window creation and OpenGL context handling
@@ -111,7 +127,7 @@ Actions can be mapped to keystrokes using the `bind` command. The editor include
 
 ### Data Flow
 
-1. **User Input**: SDL events routed to focused view (Editor or Prompt)
+1. **User Input**: SDL events routed through the input classes (keyboard, pointer, controller) to the focused view or the key bindings
 2. **Command Processing**: CommandManager executes registered commands
 3. **State Updates**: CVars and theme attributes reflect changes
 4. **Rendering**: Views render based on current state and syntax highlighting
@@ -134,7 +150,8 @@ Actions can be mapped to keystrokes using the `bind` command. The editor include
 ApplicationWindow
 ├── InfoBar (InfoBarState)
 ├── Editor (EditorState)
-└── Prompt (PromptState)
+├── Prompt (PromptState)
+└── Osk (OskState)
 ```
 
 ### View Layout
@@ -142,6 +159,7 @@ ApplicationWindow
 - **InfoBar**: Top bar, occupies top portion of window
 - **Prompt**: Bottom bar, occupies bottom portion of window
 - **Editor**: Central area, fills remaining space between bars
+- **Osk**: Optional strip below the prompt while visible (`dim_osk_height` percent of the window); the editor and prompt shift up to make room
 
 ### Focus Management
 
@@ -150,6 +168,7 @@ ApplicationWindow
 - Return/Enter in prompt switches back to Editor
 - Escape in prompt switches back to Editor
 - Commands from prompt reset focus to Editor
+- The Osk focus is pad-only: acquired on the first d-pad/A press while the OSK is visible, released with B or `osk hide` — the physical keyboard keeps editing the buffer throughout
 
 ## Key Bindings
 
@@ -215,6 +234,32 @@ ApplicationWindow
 | Left drag (scrollbar thumb) | Scroll the view, vertically or horizontally |
 | Left click (scrollbar track) | Jump the scroll by one page toward the click |
 | Wheel | Scroll vertically (horizontal wheel scrolls horizontally) |
+| Left click/drag (OSK) | Tap a key; holding it auto-repeats |
+
+### Touch
+| Input | Action |
+|-------|--------|
+| One finger | Acts as the left mouse button: tap to place the caret, drag to select, tap OSK keys |
+| Two fingers | Scroll the editor; the gesture ends only when every finger lifts |
+
+### Game Controller
+
+The shoulders are modifier layers: no modifier acts, L selects, R jumps, L+R jumps while selecting. Buttons and axes are bound in `romfs/autoexec` as `pad:*` pseudo-keys, so everything below can be rebound.
+
+| Input | No modifier | L held | R held |
+|-------|-------------|--------|--------|
+| D-pad / left stick | Move the cursor | Move with selection | Jump to line/file boundaries (bol/eol/bof/eof) |
+| ZL / ZR, right stick up/down | Page up / page down | Page with selection | - |
+| A | Confirm the prompt | copy | paste |
+| B | Cancel the prompt | undo | redo |
+| X | Open the prompt | save | cut |
+| Y | Cycle completions forward | Cycle backward | search |
+| Right stick left/right | find_prev / find_next | - | - |
+| Back | Next buffer | Previous buffer | - |
+| Start | quit | - | - |
+| Left stick click | Toggle the on-screen keyboard | - | - |
+
+While the OSK is visible, the first d-pad/A press hands the pad to it: the d-pad moves a key cursor, A presses the key, and B returns the pad to the editor.
 
 ## Commands
 
@@ -262,6 +307,9 @@ ApplicationWindow
 | `undo` | - | Undo the last text modification |
 | `redo` | - | Redo the last undone modification |
 | `auto_complete <direction>` | direction | Provide command/argument completion (intended for key bindings, hidden from prompt completion) |
+| `prompt <confirm\|cancel>` | action | Confirm or cancel the prompt, like Return/Escape (intended for pad bindings, hidden from prompt completion) |
+| `osk <show\|hide\|toggle>` | action | Show, hide, or toggle the on-screen keyboard |
+| `osk layout <name>` | layout name | Select the OSK layout (qwerty, azerty, qwertz, uk, spanish, spanish_latin, italian, portuguese, russian) |
 
 ### Auto-Completion
 - Commands: Type command name and press Tab
@@ -300,6 +348,11 @@ ApplicationWindow
 | `col_cursor_indicator` | Color | Cursor indicator color |
 | `col_scrollbar` | Color | Scrollbar track color |
 | `col_scrollbar_thumb` | Color | Scrollbar thumb color |
+| `col_osk_background` | Color | On-screen keyboard strip background |
+| `col_osk_key_background` | Color | OSK key background color |
+| `col_osk_key_text` | Color | OSK key label color |
+| `col_osk_key_cursor` | Color | Highlight behind the pad-selected OSK key |
+| `col_osk_key_pressed` | Color | OSK pressed/latched key color |
 
 ### Highlight Colors
 | Variable | Type | Description |
@@ -328,6 +381,8 @@ ApplicationWindow
 | `dim_font_size` | int | Font size in pixels (runtime) |
 | `dim_max_history` | int | Prompt command-history size |
 | `dim_max_undo` | int | Undo/redo history depth (1-4096) |
+| `dim_osk_height` | int | On-screen keyboard height, in percent of the window height |
+| `dim_osk_key_gap` | int | Gap between on-screen keyboard keys, in pixels |
 
 ### Usage
 - Get value: `cvar <name>`
@@ -370,9 +425,7 @@ Requires:
 - SDL2 with specific patch (`src/platform/SDL2-2.28.5.patch_usbkbd.diff`)
 - Manual compilation of utfcpp, tree-sitter, and parsers
 
-Note: Game controller and IME not yet supported. USB keyboard partially supported.
-
-On Switch, the light or dark theme is selected at startup from the console color set (system theme setting).
+On Switch, the Joy-Cons drive the editor through the game controller bindings, text is typed on the built-in on-screen keyboard or the touchscreen, and a USB keyboard is partially supported. The light or dark theme is selected at startup from the console color set (system theme setting).
 
 ```bash
 mkdir nx && cd nx
@@ -395,7 +448,7 @@ make
 ## Technical Implementation Details
 
 ### Rendering Pipeline
-- OpenGL 4.6 (4.3 on Nintendo Switch) Core profile with double-buffered rendering
+- OpenGL 4.5 (4.3 on Nintendo Switch) Core profile with double-buffered rendering; the two backends are separate CMake-selected source sets (DSA on desktop, bind-based on Switch)
 - Batched quad rendering via QuadBuffer: batches are staged CPU-side and uploaded per view, the GPU buffer starts at 8192 quads and grows on demand (no truncation)
 - Custom QuadProgram shader for textured quad drawing
 - Orthogonal projection matrix for UI coordinates
@@ -444,6 +497,9 @@ make
 - Multiple open buffers with per-buffer scroll, search, undo, and highlight state
 - Dirty-flag tracking with close/quit confirmation on unsaved changes
 - Mouse support: caret placement, drag selection, wheel scrolling, and scrollbar interactions
+- Touch support: single-finger caret/selection/taps, two-finger scrolling
+- Game controller support with rebindable buttons/axes and shoulder modifier layers
+- On-screen keyboard with sticky modifiers, hold auto-repeat, and international layouts
 
 ### Known Limitations
 - Undoing back to the last saved state still shows the buffer as modified
