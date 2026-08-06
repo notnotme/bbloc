@@ -27,6 +27,10 @@
 #include "../core/base/AutoCompleteCallback.h"
 #include "../core/base/CommandRunner.h"
 #include "../core/base/PadInput.h"
+#include "../core/CursorContextManager.h"
+#include "../osk/Osk.h"
+#include "../osk/OskState.h"
+#include "InputRepeater.h"
 
 /**
  * @brief Handles SDL game-controller events: hotplug, buttons, and axis motions.
@@ -38,17 +42,17 @@
  * half-deflected stick cannot flutter. A successfully dispatched press arms an auto-repeat
  * (delay then fast interval) that the event loop ticks between waits.
  *
+ * While the on-screen keyboard is visible, the first d-pad/A press acquires the pad focus
+ * for it (lazily — mouse and touch users never see its key cursor), and from then on the
+ * d-pad and the A/B buttons drive the key cursor instead of running bindings — the same
+ * "focused view first, bindings as fallback" shape KeyboardInput has. Every other pad
+ * input stays on the bindings.
+ *
  * Every connected pad feeds the same state, like a keyboard: events are not filtered by
  * controller instance.
  */
 class ControllerInput final {
 private:
-    /** Milliseconds a press stays held before the first repeat fires. */
-    static constexpr uint64_t REPEAT_DELAY_MS = 400;
-
-    /** Milliseconds between repeats once the first one fired. */
-    static constexpr uint64_t REPEAT_INTERVAL_MS = 40;
-
     /** Axis magnitude (of 32767) at or above which a direction counts as pressed. */
     static constexpr int32_t AXIS_PRESS_THRESHOLD = 16000;
 
@@ -58,23 +62,36 @@ private:
     /** The command runner owning the timed bound-command execution. */
     CommandRunner &m_command_runner;
 
+    /** Open cursor contexts; the pad focus is read from the active one. */
+    CursorContextManager &m_context_manager;
+
+    /** On-screen keyboard view, receiving the pad inputs while it has the focus. */
+    Osk &m_osk;
+
+    /** State object tracking the on-screen keyboard. */
+    OskState &m_osk_state;
+
     /** Open controller handles, one per connected pad; hotplug adds and removes them. */
     std::vector<SDL_GameController *> m_controllers;
 
     /** Live pad modifier mask built from the held shoulders (KMOD_PAD_L / KMOD_PAD_R). */
     uint16_t m_pad_modifiers;
 
-    /** Pseudo-keycode of the repeating input; SDLK_UNKNOWN while the repeat is disarmed. */
-    SDL_Keycode m_repeat_keycode;
-
-    /** Modifier mask captured when the repeating input was pressed. */
-    uint16_t m_repeat_modifiers;
-
-    /** SDL_GetTicks64 time at which the armed repeat fires. */
-    uint64_t m_repeat_deadline;
+    /** Auto-repeat state of the held pad input (delay then fast interval). */
+    InputRepeater m_repeater;
 
     /** Pressed flag per (axis, direction); index 1 holds the positive direction. */
     std::array<std::array<bool, 2>, SDL_CONTROLLER_AXIS_MAX> m_axis_pressed;
+
+    /**
+     * @brief Routes a pad input: the focused on-screen keyboard first, the bindings as fallback.
+     *
+     * @param keycode The pad pseudo-keycode being dispatched.
+     * @param modifiers The pad modifier mask to dispatch with.
+     * @return true when the input should auto-repeat while held: a bound command ran, or the
+     *         on-screen keyboard consumed a d-pad direction (its key cursor repeats; A/B do not).
+     */
+    bool dispatch(SDL_Keycode keycode, uint16_t modifiers);
 
     /**
      * @brief Dispatches a pad pseudo-button press and arms the auto-repeat on success.
@@ -113,11 +130,14 @@ public:
     ControllerInput &operator=(const ControllerInput &) = delete;
 
     /**
-     * @brief Constructs the handler with the command runner it dispatches to.
+     * @brief Constructs the handler with references to the objects it dispatches to.
      *
      * @param commandRunner The command runner, used to run pad-bound commands.
+     * @param contextManager Manager providing the active cursor context (pad focus).
+     * @param osk The on-screen keyboard view.
+     * @param oskState State of the on-screen keyboard view.
      */
-    explicit ControllerInput(CommandRunner &commandRunner);
+    explicit ControllerInput(CommandRunner &commandRunner, CursorContextManager &contextManager, Osk &osk, OskState &oskState);
 
     /**
      * @brief Handles an SDL_CONTROLLERDEVICEADDED event: opens and stores the pad.

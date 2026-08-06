@@ -80,12 +80,17 @@ add_executable(bbloc
         src/command/UndoCommand.cpp
         src/command/RedoCommand.cpp
         src/command/MoveCursorCommand.cpp
+        src/command/OskCommand.cpp
         src/command/GotoLineCommand.cpp
         src/command/ExecCommand.cpp
         src/command/AutoCompleteCommand.cpp
         src/editor/Editor.cpp
         src/infobar/InfoBar.cpp
+        src/osk/Osk.cpp
+        src/osk/OskLayout.cpp
+        src/osk/OskState.cpp
         src/input/ControllerInput.cpp
+        src/input/InputRepeater.cpp
         src/input/KeyboardInput.cpp
         src/input/PointerInput.cpp
         src/prompt/Prompt.cpp

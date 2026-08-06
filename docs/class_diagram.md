@@ -259,6 +259,15 @@ classDiagram
     }
     class InfoBar
     class Prompt
+    class Osk {
+        note: "on-screen keyboard strip; injects synthesized SDL key/text events via SDL_PushEvent"
+    }
+    class OskState {
+        note: "visibility, page, layout table, sticky modifiers, key cursor, hold repeat"
+    }
+    class OskLayout {
+        note: "static-only hybrid layouts: fixed US base + letter permutation + AltGr accent map"
+    }
     class QuadBuffer {
         note: "single shared instance, passed to render()"
     }
@@ -277,14 +286,24 @@ classDiagram
     class PadInput {
         note: "static-only: negative pad pseudo-keycodes, KMOD_PAD_L/R bits, pad: name mapping"
     }
+    class InputRepeater {
+        note: "shared hold auto-repeat: delay/interval/deadline, opaque code + modifier mask"
+    }
 
     ViewState <|-- PromptState
+    ViewState <|-- OskState
     View~TState~ <|-- Editor
     View~TState~ <|-- InfoBar
     View~TState~ <|-- Prompt
+    View~TState~ <|-- Osk
     Editor ..> ViewState : TState
     InfoBar ..> ViewState : TState
     Prompt ..> PromptState : TState
+    Osk ..> OskState : TState
+    Osk ..> OskLayout : labels + TEXTINPUT payloads
+    OskState *-- InputRepeater
+    ControllerInput *-- InputRepeater
+    ControllerInput ..> Osk : d-pad/A/B while FocusTarget::Osk
     View~TState~ ..> QuadBuffer : stages one batch per render()
     Editor ..> TabStop : uses
     InfoBar ..> TabStop : uses
@@ -330,6 +349,29 @@ disconnect resets the whole pad state; all connected pads feed one state, like a
 delegates to; the hidden `prompt` command (`PromptCommand`, §9) drives the same entry points
 from controller bindings.
 
+`Osk` is the on-screen keyboard: a bottom strip of two key pages (letters/symbols) sharing
+one 5-row geometry, shown and hidden by the `osk` command (§9). Injection, not integration:
+key taps push synthesized `SDL_KEYDOWN`/`SDL_KEYUP` (scancode + keycode + the sticky
+Ctrl/Shift/Alt/AltGr mask in `keysym.mod`) and `SDL_TEXTINPUT` for printables through
+`SDL_PushEvent`, so bindings, chords, prompt, and editor input all work unchanged and
+nothing downstream knows the OSK exists (no `SDL_TEXTINPUT` while Ctrl or Alt is latched).
+Key labels and text come from the `OskLayout` hybrid layouts — one fixed US base (digits
+always plain, punctuation always US) plus a per-layout letter permutation and an AltGr
+accent column on mnemonic letters, the injected keycode following the displayed letter —
+selected via `Platform::keyboardLayout()` and overridden by `osk layout`. While visible,
+the relayout in
+`mainLoop` gives the strip ~`dim_osk_height`% of the window through the normal resize path.
+`PointerInput` routes presses inside the strip to it (taps never move the input focus);
+sticky keys latch on tap, hold on long-press, and show a dot. The pad focus is acquired
+lazily: the first d-pad/A press while the OSK is visible (and the editor focused) sets
+`FocusTarget::Osk`, and from then on `ControllerInput` routes d-pad/A/B to the key cursor
+instead of the bindings — B hands the focus back, so mouse and touch users never see the
+key cursor; the physical keyboard always behaves like the editor focus. Every held
+injecting key auto-repeats like a physical keyboard, re-emitting under the sticky mask
+captured at press, through `InputRepeater` — the delay/interval state machine extracted
+from `ControllerInput` and shared by both; `mainLoop` waits on the earliest armed deadline
+and ticks both after the poll loop.
+
 ---
 
 ## 9. Concrete Commands (`command/`)
@@ -347,6 +389,9 @@ classDiagram
     class ActivatePromptCommand
     class PromptCommand {
         note: "prompt confirm / cancel, driving Prompt::confirm/cancel; no-op while the prompt is idle"
+    }
+    class OskCommand {
+        note: "osk show / hide / toggle / layout <name>, driving OskState"
     }
     class FontSizeCommand
     class ResetCVarFloatCommand
@@ -379,6 +424,7 @@ classDiagram
     Command~CursorContext~ <|-- AutoCompleteCommand
     Command~CursorContext~ <|-- ActivatePromptCommand
     Command~CursorContext~ <|-- PromptCommand
+    Command~CursorContext~ <|-- OskCommand
     Command~CursorContext~ <|-- FontSizeCommand
     Command~CursorContext~ <|-- ResetCVarFloatCommand
     Command~CursorContext~ <|-- OpenFileCommand

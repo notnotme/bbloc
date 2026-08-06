@@ -23,7 +23,8 @@
 /** @brief Represents the currently focused input target. */
 enum class FocusTarget {
     Editor, ///< Editor view is focused.
-    Prompt  ///< Prompt view is focused.
+    Prompt, ///< Prompt view is focused.
+    Osk     ///< On-screen keyboard has the pad focus; the physical keyboard still edits the buffer.
 };
 
 

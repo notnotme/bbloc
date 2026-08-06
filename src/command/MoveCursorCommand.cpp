@@ -124,6 +124,8 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
                     return std::nullopt;
             }
         break;
+        // With the Osk focused, movement bindings (physical arrows, injected keys) still drive the editor.
+        case FocusTarget::Osk:
         case FocusTarget::Editor:
             payload.search.resetMatches();
             payload.cursor.activateSelection(select_text == Boolean::True);

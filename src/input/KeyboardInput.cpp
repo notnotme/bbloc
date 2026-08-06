@@ -39,6 +39,8 @@ void KeyboardInput::onKeyDown(const SDL_KeyboardEvent &event) {
         // or close (and destroy) this one: re-read active() before touching it afterwards.
         auto &context = m_context_manager.active();
         switch (context.focus_target) {
+            // The Osk focus only redirects the pad; the physical keyboard keeps editing the buffer.
+            case FocusTarget::Osk:
             case FocusTarget::Editor:
                 if (m_editor.onKeyDown(context, m_editor_state, event.keysym.sym, event.keysym.mod)) {
                     // If the view return true, the text changed: redraw the views
@@ -73,6 +75,8 @@ void KeyboardInput::onTextInput(const SDL_TextInputEvent &event) {
     auto &context = m_context_manager.active();
     context.wants_redraw = true;
     switch (context.focus_target) {
+        // The Osk focus only redirects the pad; typed text still goes to the editor.
+        case FocusTarget::Osk:
         case FocusTarget::Editor:
             m_editor.onTextInput(context, m_editor_state, event.text);
             context.search.resetMatches();

@@ -26,6 +26,8 @@
 #include "../core/ViewState.h"
 #include "../editor/Editor.h"
 #include "../infobar/InfoBar.h"
+#include "../osk/Osk.h"
+#include "../osk/OskState.h"
 #include "../prompt/Prompt.h"
 #include "../prompt/PromptState.h"
 
@@ -48,7 +50,8 @@ private:
         None,     ///< No press in progress.
         InfoBar,  ///< The info bar received the press.
         Editor,   ///< The editor received the press.
-        Prompt    ///< The prompt received the press.
+        Prompt,   ///< The prompt received the press.
+        Osk       ///< The on-screen keyboard received the press.
     };
 
     /**
@@ -87,6 +90,12 @@ private:
 
     /** State object tracking the prompt. */
     PromptState &m_prompt_state;
+
+    /** On-screen keyboard view. */
+    Osk &m_osk;
+
+    /** State object tracking the on-screen keyboard. */
+    OskState &m_osk_state;
 
     /** View that received the current left-button press, None outside a press. */
     MouseTarget m_mouse_target;
@@ -146,8 +155,10 @@ public:
      * @param editorState State of the editor view.
      * @param prompt The prompt view.
      * @param promptState State of the prompt view.
+     * @param osk The on-screen keyboard view.
+     * @param oskState State of the on-screen keyboard view.
      */
-    explicit PointerInput(CursorContextManager &contextManager, Theme &theme, InfoBar &infoBar, ViewState &infoBarState, Editor &editor, ViewState &editorState, Prompt &prompt, PromptState &promptState);
+    explicit PointerInput(CursorContextManager &contextManager, Theme &theme, InfoBar &infoBar, ViewState &infoBarState, Editor &editor, ViewState &editorState, Prompt &prompt, PromptState &promptState, Osk &osk, OskState &oskState);
 
     /**
      * @brief Handles an SDL_MOUSEBUTTONDOWN event; left button only.

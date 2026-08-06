@@ -266,6 +266,11 @@ void Theme::registerThemeColorCVar(GlobalRegistry<TPayload> &commandController) 
     const auto &cvar_cursor_indicator_color          = m_colors[static_cast<size_t>(ColorId::CursorIndicator)]        = std::make_shared<CVarColor>(  0,   0,   0, 255);
     const auto &cvar_scrollbar_background_color      = m_colors[static_cast<size_t>(ColorId::ScrollbarBackground)]    = std::make_shared<CVarColor>(225, 225, 225, 255);
     const auto &cvar_scrollbar_thumb_color           = m_colors[static_cast<size_t>(ColorId::ScrollbarThumb)]         = std::make_shared<CVarColor>(150, 150, 150, 255);
+    const auto &cvar_osk_background_color            = m_colors[static_cast<size_t>(ColorId::OskBackground)]          = std::make_shared<CVarColor>(210, 210, 210, 255);
+    const auto &cvar_osk_key_background_color        = m_colors[static_cast<size_t>(ColorId::OskKeyBackground)]       = std::make_shared<CVarColor>(240, 240, 240, 255);
+    const auto &cvar_osk_key_text_color              = m_colors[static_cast<size_t>(ColorId::OskKeyText)]             = std::make_shared<CVarColor>(  0,   0,   0, 220);
+    const auto &cvar_osk_key_cursor_color            = m_colors[static_cast<size_t>(ColorId::OskKeyCursor)]          = std::make_shared<CVarColor>(  0, 200, 255,  96);
+    const auto &cvar_osk_key_pressed_color           = m_colors[static_cast<size_t>(ColorId::OskKeyPressed)]         = std::make_shared<CVarColor>(200, 205, 215, 255);
 
     // Make colors accessible from the console
     commandController.registerCvar(u"col_margin_background",        cvar_margin_background_color, nullptr);
@@ -282,6 +287,11 @@ void Theme::registerThemeColorCVar(GlobalRegistry<TPayload> &commandController) 
     commandController.registerCvar(u"col_cursor_indicator",         cvar_cursor_indicator_color, nullptr);
     commandController.registerCvar(u"col_scrollbar",                cvar_scrollbar_background_color, nullptr);
     commandController.registerCvar(u"col_scrollbar_thumb",          cvar_scrollbar_thumb_color, nullptr);
+    commandController.registerCvar(u"col_osk_background",           cvar_osk_background_color, nullptr);
+    commandController.registerCvar(u"col_osk_key_background",       cvar_osk_key_background_color, nullptr);
+    commandController.registerCvar(u"col_osk_key_text",             cvar_osk_key_text_color, nullptr);
+    commandController.registerCvar(u"col_osk_key_cursor",           cvar_osk_key_cursor_color, nullptr);
+    commandController.registerCvar(u"col_osk_key_pressed",          cvar_osk_key_pressed_color, nullptr);
 }
 
 template<typename TPayload>
@@ -322,6 +332,8 @@ void Theme::registerThemeDimensionCVar(GlobalRegistry<TPayload> &commandControll
     const auto &cvar_tab_to_space    = m_dimensions[static_cast<size_t>(DimensionId::TabToSpace)]     = std::make_shared<CVarInt>( 4);
     const auto &cvar_page_up_down    = m_dimensions[static_cast<size_t>(DimensionId::PageUpDown)]     = std::make_shared<CVarInt>(10);
     const auto &cvar_scrollbar_width = m_dimensions[static_cast<size_t>(DimensionId::ScrollbarWidth)] = std::make_shared<CVarInt>(10);
+    const auto &cvar_osk_height      = m_dimensions[static_cast<size_t>(DimensionId::OskHeight)]      = std::make_shared<CVarInt>(40);
+    const auto &cvar_osk_key_gap     = m_dimensions[static_cast<size_t>(DimensionId::OskKeyGap)]      = std::make_shared<CVarInt>( 4);
 
     // Make dimensions accessible from the console
     commandController.registerCvar(u"dim_padding_width",    cvar_padding_width, nullptr);
@@ -330,6 +342,8 @@ void Theme::registerThemeDimensionCVar(GlobalRegistry<TPayload> &commandControll
     commandController.registerCvar(u"dim_tab_to_space",     cvar_tab_to_space, nullptr);
     commandController.registerCvar(u"dim_page_up_down",     cvar_page_up_down, nullptr);
     commandController.registerCvar(u"dim_scrollbar_width",  cvar_scrollbar_width, nullptr);
+    commandController.registerCvar(u"dim_osk_height",       cvar_osk_height, nullptr);
+    commandController.registerCvar(u"dim_osk_key_gap",      cvar_osk_key_gap, nullptr);
 
     // Register a cvar to change the font size. It needs a callback.
     commandController.registerCvar(u"dim_font_size", m_font_size, [&]{ setFontSize(m_font_size->m_value); });

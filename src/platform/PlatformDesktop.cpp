@@ -28,3 +28,8 @@ std::optional<Platform::ColorScheme> Platform::preferredColorScheme() {
     // No system-theme query wired up on desktop (SDL exposes none in 2.x).
     return std::nullopt;
 }
+
+std::string_view Platform::keyboardLayout() {
+    // No layout query wired up on desktop: default to qwerty, overridable via "osk layout".
+    return "qwerty";
+}

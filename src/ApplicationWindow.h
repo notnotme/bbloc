@@ -41,6 +41,8 @@
 #include "input/ControllerInput.h"
 #include "input/KeyboardInput.h"
 #include "input/PointerInput.h"
+#include "osk/Osk.h"
+#include "osk/OskState.h"
 #include "prompt/Prompt.h"
 #include "prompt/PromptState.h"
 
@@ -62,8 +64,11 @@ public:
     /** Default quad count reserved for the prompt view batch */
     static constexpr uint32_t PROMPT_DEFAULT_QUAD_COUNT = 1024;
 
+    /** Default quad count reserved for the on-screen keyboard view batch */
+    static constexpr uint32_t OSK_DEFAULT_QUAD_COUNT = 1024;
+
     /** Default quad count reserved for the editor view batch */
-    static constexpr uint32_t EDITOR_DEFAULT_QUAD_COUNT = DEFAULT_QUAD_CAPACITY - INFO_BAR_DEFAULT_QUAD_COUNT - PROMPT_DEFAULT_QUAD_COUNT;
+    static constexpr uint32_t EDITOR_DEFAULT_QUAD_COUNT = DEFAULT_QUAD_CAPACITY - INFO_BAR_DEFAULT_QUAD_COUNT - PROMPT_DEFAULT_QUAD_COUNT - OSK_DEFAULT_QUAD_COUNT;
 
 private:
     /** SDL window handle. */
@@ -102,6 +107,9 @@ private:
     /** Bottom command prompt view. */
     Prompt m_prompt;
 
+    /** On-screen keyboard view, drawn under the prompt while visible. */
+    Osk m_osk;
+
     /** State tracking the info bar. */
     ViewState m_info_bar_state;
 
@@ -110,6 +118,9 @@ private:
 
     /** State object tracking the prompt. */
     PromptState m_prompt_state;
+
+    /** State object tracking the on-screen keyboard. */
+    OskState m_osk_state;
 
     /** CVar tracking the maximum command execution time. */
     std::shared_ptr<CVarFloat> m_command_time;

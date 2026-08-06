@@ -34,11 +34,13 @@ enum class DimensionId {
     BorderSize,     ///< Thickness of borders between UI components, in pixels.
     TabToSpace,     ///< Number of spaces to display per tab character.
     PageUpDown,     ///< Number of lines to scroll on PageUp/PageDown events.
-    ScrollbarWidth  ///< Thickness of the editor scrollbars, in pixels.
+    ScrollbarWidth, ///< Thickness of the editor scrollbars, in pixels.
+    OskHeight,      ///< Height of the on-screen keyboard, in percent of the window height.
+    OskKeyGap       ///< Gap between on-screen keyboard keys, in pixels.
 };
 
 /** @brief Number of DimensionId values; must track the last enumerator of DimensionId. */
-inline constexpr std::size_t DIMENSION_ID_COUNT = static_cast<std::size_t>(DimensionId::ScrollbarWidth) + 1;
+inline constexpr std::size_t DIMENSION_ID_COUNT = static_cast<std::size_t>(DimensionId::OskKeyGap) + 1;
 
 
 #endif //DIMENSION_ID_H

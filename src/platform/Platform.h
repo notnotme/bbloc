@@ -58,6 +58,14 @@ public:
      * @return The console color set on Switch; std::nullopt on desktop (no query wired up).
      */
     [[nodiscard]] static std::optional<ColorScheme> preferredColorScheme();
+
+    /**
+     * @brief Queries the system keyboard layout, for the on-screen keyboard.
+     *
+     * @return An OskLayout table name: the console keyboard layout on Switch (the same source
+     *         the patched SDL uses); "qwerty" on desktop and for layouts without a table.
+     */
+    [[nodiscard]] static std::string_view keyboardLayout();
 };
 
 

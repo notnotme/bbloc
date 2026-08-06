@@ -41,11 +41,16 @@ enum class ColorId {
     Border,                 ///< Color used for borders (e.g. between components).
     CursorIndicator,        ///< Color of the cursor indicator.
     ScrollbarBackground,    ///< Background color of the scrollbar tracks.
-    ScrollbarThumb          ///< Color of the scrollbar thumbs.
+    ScrollbarThumb,         ///< Color of the scrollbar thumbs.
+    OskBackground,          ///< Background color of the on-screen keyboard strip.
+    OskKeyBackground,       ///< Background color of the on-screen keyboard keys.
+    OskKeyText,             ///< Label color of the on-screen keyboard keys.
+    OskKeyCursor,           ///< Filled highlight behind the pad-focused on-screen keyboard key.
+    OskKeyPressed           ///< Background of the on-screen keyboard key currently held down.
 };
 
 /** @brief Number of ColorId values; must track the last enumerator of ColorId. */
-inline constexpr std::size_t COLOR_ID_COUNT = static_cast<std::size_t>(ColorId::ScrollbarThumb) + 1;
+inline constexpr std::size_t COLOR_ID_COUNT = static_cast<std::size_t>(ColorId::OskKeyPressed) + 1;
 
 
 #endif //COLOR_ID_H

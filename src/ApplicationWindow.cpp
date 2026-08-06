@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <limits>
 
 #include <memory>
 #include <stdexcept>
@@ -42,6 +43,7 @@
 #include "command/GotoLineCommand.h"
 #include "command/MoveCursorCommand.h"
 #include "command/OpenFileCommand.h"
+#include "command/OskCommand.h"
 #include "command/PasteTextCommand.h"
 #include "command/PromptCommand.h"
 #include "command/QuitCommand.h"
@@ -64,6 +66,7 @@ ApplicationWindow::ApplicationWindow()
       m_info_bar(m_command_manager, m_theme, m_quad_program),
       m_editor(m_command_manager, m_theme, m_quad_program),
       m_prompt(m_command_manager, m_theme, m_quad_program),
+      m_osk(m_command_manager, m_theme, m_quad_program),
       m_prompt_state(m_command_manager),
       m_command_time(std::make_shared<CVarFloat>(0.0f, true)),
       m_draw_time(std::make_shared<CVarFloat>(0.0f, true)),
@@ -71,8 +74,8 @@ ApplicationWindow::ApplicationWindow()
       m_bind_command(std::make_shared<BindCommand>(m_command_manager)),
       m_orthogonal(),
       m_keyboard_input(*this, m_context_manager, m_editor, m_editor_state, m_prompt, m_prompt_state),
-      m_pointer_input(m_context_manager, m_theme, m_info_bar, m_info_bar_state, m_editor, m_editor_state, m_prompt, m_prompt_state),
-      m_controller_input(*this) {}
+      m_pointer_input(m_context_manager, m_theme, m_info_bar, m_info_bar_state, m_editor, m_editor_state, m_prompt, m_prompt_state, m_osk, m_osk_state),
+      m_controller_input(*this, m_context_manager, m_osk, m_osk_state) {}
 
 bool ApplicationWindow::runBoundCommand(const SDL_Keycode keycode, const uint16_t modifiers) {
     if (const auto command = m_bind_command->getBinding(keycode, modifiers)) {
@@ -176,6 +179,7 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     m_info_bar.resizeWindow(width, height);
     m_editor.resizeWindow(width, height);
     m_prompt.resizeWindow(width, height);
+    m_osk.resizeWindow(width, height);
 
     // Register cvars and commands then run autoexec
     m_command_manager.registerCvar(u"inf_draw_time", m_draw_time, nullptr);
@@ -215,6 +219,7 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
     m_command_manager.registerCommand(u"replace_all", std::make_shared<SearchCommand>(SearchCommand::Action::ReplaceAll, m_search_case_sensitive), false, false);
     m_command_manager.registerCommand(u"exec", std::make_shared<ExecCommand>(), false, false);
     m_command_manager.registerCommand(u"auto_complete", std::make_shared<AutoCompleteCommand>(m_prompt_state), true, true);
+    m_command_manager.registerCommand(u"osk", std::make_shared<OskCommand>(m_osk_state), false, true);
 
     // Don't run it "from prompt", so its not added to history
     runCommand(std::u16string(u"exec ").append(utf8::utf8to16(path)).append(u"autoexec"), false);
@@ -259,16 +264,37 @@ void ApplicationWindow::mainLoop() {
 
     SDL_Event event;
     while (is_running) {
-        // Wait events from SDL; with a controller repeat armed, wake at its deadline instead
-        // of blocking indefinitely (clamped to at least 1 ms)
+        // Wait events from SDL; with a repeat armed (controller input, held OSK key), wake at
+        // the earliest deadline instead of blocking indefinitely (clamped to at least 1 ms)
+        auto repeat_deadline = std::numeric_limits<uint64_t>::max();
         if (m_controller_input.isRepeatArmed()) {
-            const auto remaining = static_cast<int64_t>(m_controller_input.getRepeatDeadline()) - static_cast<int64_t>(SDL_GetTicks64());
+            repeat_deadline = m_controller_input.getRepeatDeadline();
+        }
+
+        if (m_osk_state.getRepeater().isArmed()) {
+            repeat_deadline = std::min(repeat_deadline, m_osk_state.getRepeater().getDeadline());
+        }
+
+        if (repeat_deadline != std::numeric_limits<uint64_t>::max()) {
+            const auto remaining = static_cast<int64_t>(repeat_deadline) - static_cast<int64_t>(SDL_GetTicks64());
             SDL_WaitEventTimeout(nullptr, static_cast<int32_t>(std::max<int64_t>(remaining, 1)));
         } else {
             SDL_WaitEvent(nullptr);
         }
 
         while (SDL_PollEvent(&event)) {
+            // Synthesized OSK text arrives as a user event (see Osk::textEventType): deliver
+            // it exactly like an SDL_TEXTINPUT, so everything downstream stays unaware.
+            if (event.type == Osk::textEventType()) {
+                auto text_event = SDL_TextInputEvent{};
+                text_event.type = SDL_TEXTINPUT;
+                text_event.timestamp = event.user.timestamp;
+                SDL_strlcpy(text_event.text, static_cast<char *>(event.user.data1), sizeof(text_event.text));
+                SDL_free(event.user.data1);
+                m_keyboard_input.onTextInput(text_event);
+                continue;
+            }
+
             switch (event.type) {
                 case SDL_QUIT:
                     is_running = false;
@@ -298,6 +324,7 @@ void ApplicationWindow::mainLoop() {
                             m_info_bar.resizeWindow(window_width, window_height);
                             m_editor.resizeWindow(window_width, window_height);
                             m_prompt.resizeWindow(window_width, window_height);
+                            m_osk.resizeWindow(window_width, window_height);
                             m_context_manager.active().wants_redraw = true;
                         break;
                         default:
@@ -336,9 +363,10 @@ void ApplicationWindow::mainLoop() {
             }
         }
 
-        // Fire the armed controller repeat after the poll loop, so fresh events (a release,
-        // a new press) disarm or replace it first
+        // Fire the armed repeats after the poll loop, so fresh events (a release, a new
+        // press) disarm or replace them first
         m_controller_input.tickRepeat();
+        m_osk.tickRepeat(m_context_manager.active(), m_osk_state);
 
         // Calculate dt time
         const auto current_time = SDL_GetPerformanceCounter();
@@ -347,20 +375,26 @@ void ApplicationWindow::mainLoop() {
         // The views always render the active context; fetch it after the events, which may have switched it.
         auto &context = m_context_manager.active();
         if (context.wants_redraw) {
-            // Need to redraw the whole views
+            // Need to redraw the whole views. A visible on-screen keyboard takes a bottom
+            // strip; the prompt sits above it and the editor shrinks — the same path a
+            // window resize takes, so nothing else needs to know about the OSK.
             const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
             const auto line_height = m_theme.getLineHeight();
             const auto bar_height = line_height + border_size;
             const auto bar_width = window_width;
+            const auto osk_height = m_osk_state.isVisible() ? window_height * m_theme.getDimension(DimensionId::OskHeight) / 100 : 0;
 
             m_info_bar_state.setPosition(0, 0);
             m_info_bar_state.setSize(bar_width, bar_height);
 
-            m_prompt_state.setPosition(0, window_height - bar_height);
+            m_prompt_state.setPosition(0, window_height - osk_height - bar_height);
             m_prompt_state.setSize(bar_width, bar_height);
 
             m_editor_state.setPosition(0, bar_height);
-            m_editor_state.setSize(bar_width, std::max(0, window_height - bar_height * 2));
+            m_editor_state.setSize(bar_width, std::max(0, window_height - bar_height * 2 - osk_height));
+
+            m_osk_state.setPosition(0, window_height - osk_height);
+            m_osk_state.setSize(bar_width, osk_height);
 
             glViewport(0, 0, window_width, window_height);
             glScissor(0, 0, window_width, window_height);
@@ -373,6 +407,7 @@ void ApplicationWindow::mainLoop() {
             m_info_bar.render(context, m_info_bar_state, m_quad_buffer, dt);
             m_editor.render(context, m_editor_state, m_quad_buffer, dt);
             m_prompt.render(context, m_prompt_state, m_quad_buffer, dt);
+            m_osk.render(context, m_osk_state, m_quad_buffer, dt);
 
             // todo: Uncomment for debug purpose.
             // std::cout << "view updated " << std::endl;
@@ -515,7 +550,11 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
             case PromptState::RunningState::Idle:
                 resetPrompt(PromptState::PROMPT_READY);
 
-                active_context.focus_target = FocusTarget::Editor;
+                // The Osk focus survives: "osk show" hands the pad to the on-screen keyboard,
+                // and the physical keyboard behaves like the editor focus there anyway.
+                if (active_context.focus_target != FocusTarget::Osk) {
+                    active_context.focus_target = FocusTarget::Editor;
+                }
             break;
             default:
                 // Don't change anything

@@ -142,3 +142,6 @@ bind None pad:rightx- find_prev
 bind None pad:back "buffer next"
 bind L pad:back "buffer prev"
 bind None pad:start quit
+
+# Left stick click toggles the on-screen keyboard (d-pad/A/B then drive it, B leaves)
+bind None pad:leftstick "osk toggle"

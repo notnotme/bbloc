@@ -30,6 +30,43 @@ std::string Platform::assetPath(const std::string_view relative) {
     return std::string(relative);
 }
 
+std::string_view Platform::keyboardLayout() {
+    // Same source the patched SDL keyboard driver reads; the name mapping mirrors its
+    // GetLayoutTable(): layouts without a table (CJK, FrenchCa, UsInternational) use qwerty.
+    if (R_FAILED(setsysInitialize())) {
+        return "qwerty";
+    }
+
+    auto layout = SetKeyboardLayout_EnglishUs;
+    const auto result = setsysGetKeyboardLayout(&layout);
+    setsysExit();
+
+    if (R_FAILED(result)) {
+        return "qwerty";
+    }
+
+    switch (layout) {
+        case SetKeyboardLayout_French:
+            return "azerty";
+        case SetKeyboardLayout_EnglishUk:
+            return "uk";
+        case SetKeyboardLayout_Spanish:
+            return "spanish";
+        case SetKeyboardLayout_SpanishLatin:
+            return "spanish_latin";
+        case SetKeyboardLayout_German:
+            return "qwertz";
+        case SetKeyboardLayout_Italian:
+            return "italian";
+        case SetKeyboardLayout_Portuguese:
+            return "portuguese";
+        case SetKeyboardLayout_Russian:
+            return "russian";
+        default:
+            return "qwerty";
+    }
+}
+
 std::optional<Platform::ColorScheme> Platform::preferredColorScheme() {
     // setsysInitialize is reference-counted: harmless if the patched SDL already holds it.
     if (R_FAILED(setsysInitialize())) {

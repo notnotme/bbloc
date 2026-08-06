@@ -12,6 +12,11 @@ cvar col_border                      45 50 60 255
 cvar col_cursor_indicator            255 204 102 255
 cvar col_scrollbar                   26 28 33 255
 cvar col_scrollbar_thumb             70 78 92 255
+cvar col_osk_background              22 24 28 255
+cvar col_osk_key_background          38 42 50 255
+cvar col_osk_key_text                220 225 235 255
+cvar col_osk_key_cursor              64 90 140 160
+cvar col_osk_key_pressed             75 85 105 255
 
 cvar hl_text                         220 225 235 255
 cvar hl_comment                      120 130 145 255

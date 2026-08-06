@@ -22,7 +22,7 @@
 #include <cmath>
 
 
-PointerInput::PointerInput(CursorContextManager &contextManager, Theme &theme, InfoBar &infoBar, ViewState &infoBarState, Editor &editor, ViewState &editorState, Prompt &prompt, PromptState &promptState)
+PointerInput::PointerInput(CursorContextManager &contextManager, Theme &theme, InfoBar &infoBar, ViewState &infoBarState, Editor &editor, ViewState &editorState, Prompt &prompt, PromptState &promptState, Osk &osk, OskState &oskState)
     : m_context_manager(contextManager),
       m_theme(theme),
       m_info_bar(infoBar),
@@ -31,6 +31,8 @@ PointerInput::PointerInput(CursorContextManager &contextManager, Theme &theme, I
       m_editor_state(editorState),
       m_prompt(prompt),
       m_prompt_state(promptState),
+      m_osk(osk),
+      m_osk_state(oskState),
       m_mouse_target(MouseTarget::None),
       m_touch_mode(TouchMode::None) {}
 
@@ -45,7 +47,11 @@ void PointerInput::press(const int32_t x, const int32_t y) {
     // Route the press to the view whose rectangle contains it, and capture that
     // view: motion and release keep going to it until the press ends
     auto &context = m_context_manager.active();
-    if (viewContains(m_editor_state, x, y)) {
+    if (m_osk_state.isVisible() && viewContains(m_osk_state, x, y)) {
+        // The on-screen keyboard consumes its taps; they never move the input focus
+        m_mouse_target = MouseTarget::Osk;
+        m_osk.onMouseDown(context, m_osk_state, x, y);
+    } else if (viewContains(m_editor_state, x, y)) {
         m_mouse_target = MouseTarget::Editor;
         m_editor.onMouseDown(context, m_editor_state, x, y);
     } else if (viewContains(m_prompt_state, x, y)) {
@@ -71,6 +77,9 @@ void PointerInput::drag(const int32_t x, const int32_t y) {
         case MouseTarget::InfoBar:
             m_info_bar.onMouseMotion(context, m_info_bar_state, x, y);
         break;
+        case MouseTarget::Osk:
+            m_osk.onMouseMotion(context, m_osk_state, x, y);
+        break;
         default:
         break;
     }
@@ -88,6 +97,9 @@ void PointerInput::release(const int32_t x, const int32_t y) {
         break;
         case MouseTarget::InfoBar:
             m_info_bar.onMouseUp(context, m_info_bar_state, x, y);
+        break;
+        case MouseTarget::Osk:
+            m_osk.onMouseUp(context, m_osk_state, x, y);
         break;
         default:
         break;

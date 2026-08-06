@@ -19,13 +19,39 @@
 #include "ControllerInput.h"
 
 
-ControllerInput::ControllerInput(CommandRunner &commandRunner)
+ControllerInput::ControllerInput(CommandRunner &commandRunner, CursorContextManager &contextManager, Osk &osk, OskState &oskState)
     : m_command_runner(commandRunner),
+      m_context_manager(contextManager),
+      m_osk(osk),
+      m_osk_state(oskState),
       m_pad_modifiers(0),
-      m_repeat_keycode(SDLK_UNKNOWN),
-      m_repeat_modifiers(0),
-      m_repeat_deadline(0),
       m_axis_pressed() {}
+
+bool ControllerInput::dispatch(const SDL_Keycode keycode, const uint16_t modifiers) {
+    // While the on-screen keyboard has the pad focus, d-pad/A/B drive its key cursor
+    // instead of running bindings; anything it does not handle falls through unchanged.
+    auto &context = m_context_manager.active();
+    if (m_osk_state.isVisible()) {
+        // Lazy acquisition: the visible OSK takes the pad focus (and shows its key cursor)
+        // only when a pad actually navigates it, so mouse and touch users never see the
+        // cursor. Only the editor focus is stolen — an active prompt keeps the pad.
+        const auto is_direction = keycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_DPAD_UP)
+            || keycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_DPAD_DOWN)
+            || keycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_DPAD_LEFT)
+            || keycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_DPAD_RIGHT);
+        const auto acquires = is_direction || keycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_A);
+        if (context.focus_target == FocusTarget::Editor && acquires) {
+            context.focus_target = FocusTarget::Osk;
+        }
+
+        if (context.focus_target == FocusTarget::Osk && m_osk.onPadInput(context, m_osk_state, keycode)) {
+            // Only held directions auto-repeat: A would re-tap keys, B would re-leave.
+            return is_direction;
+        }
+    }
+
+    return m_command_runner.runBoundCommand(keycode, modifiers);
+}
 
 void ControllerInput::onDeviceAdded(const SDL_ControllerDeviceEvent &event) {
     // `which` is a device index here; the open handles are kept for the matching REMOVED.
@@ -44,7 +70,7 @@ void ControllerInput::onDeviceRemoved(const SDL_ControllerDeviceEvent &event) {
 
     // A disconnected pad never sends its releases: reset the whole live pad state.
     m_pad_modifiers = 0;
-    m_repeat_keycode = SDLK_UNKNOWN;
+    m_repeater.disarm();
     m_axis_pressed = {};
 }
 
@@ -102,35 +128,32 @@ void ControllerInput::updateAxisDirection(const SDL_GameControllerAxis axis, con
 
 void ControllerInput::press(const SDL_Keycode keycode) {
     // A new press always replaces the repeating input.
-    m_repeat_keycode = SDLK_UNKNOWN;
-    if (m_command_runner.runBoundCommand(keycode, m_pad_modifiers)) {
+    m_repeater.disarm();
+    if (dispatch(keycode, m_pad_modifiers)) {
         // Arm the delay phase, capturing the modifiers held at press time.
-        m_repeat_keycode = keycode;
-        m_repeat_modifiers = m_pad_modifiers;
-        m_repeat_deadline = SDL_GetTicks64() + REPEAT_DELAY_MS;
+        m_repeater.arm(keycode, m_pad_modifiers);
     }
 }
 
 void ControllerInput::release(const SDL_Keycode keycode) {
-    if (m_repeat_keycode == keycode) {
-        m_repeat_keycode = SDLK_UNKNOWN;
-    }
+    m_repeater.disarmIf(keycode);
 }
 
 bool ControllerInput::isRepeatArmed() const {
-    return m_repeat_keycode != SDLK_UNKNOWN;
+    return m_repeater.isArmed();
 }
 
 uint64_t ControllerInput::getRepeatDeadline() const {
-    return m_repeat_deadline;
+    return m_repeater.getDeadline();
 }
 
 void ControllerInput::tickRepeat() {
-    if (m_repeat_keycode == SDLK_UNKNOWN || SDL_GetTicks64() < m_repeat_deadline) {
+    if (!m_repeater.isDue()) {
         return;
     }
 
-    // Look the binding up again on every tick: a repeated command may rebind its own input.
-    m_command_runner.runBoundCommand(m_repeat_keycode, m_repeat_modifiers);
-    m_repeat_deadline = SDL_GetTicks64() + REPEAT_INTERVAL_MS;
+    // Route again on every tick: a repeated command may rebind its own input, and the
+    // on-screen keyboard cursor repeats through the same path.
+    dispatch(m_repeater.getCode(), m_repeater.getModifiers());
+    m_repeater.rearm();
 }
