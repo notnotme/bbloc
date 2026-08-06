@@ -83,9 +83,16 @@ private:
 
     /**
      * @brief Update the payload's cursor column position to its "sticky" value, if possible. Or does not move at all.
+     *
+     * A vertical move that left the cursor on the same line ran off the top or the bottom of
+     * the buffer: Cursor::moveUp and Cursor::moveDown slide to the start and to the end of
+     * the line there. That move is kept and its column becomes the new sticky one, instead
+     * of being undone — the sticky column only applies when a line change really happened.
+     *
      * @param payload The payload with the runtime information allowing to compute the sticky state and update the cursor.
+     * @param lineBefore The line the cursor sat on before the move, to tell the two cases apart.
      */
-    static void stickToColumn(CursorContext &payload);
+    static void stickToColumn(CursorContext &payload, uint32_t lineBefore);
 
 public:
     /**

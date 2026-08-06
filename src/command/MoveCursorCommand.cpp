@@ -127,17 +127,21 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
         break;
         // effectiveFocus never yields Osk; the case only keeps the switch exhaustive.
         case FocusTarget::Osk:
-        case FocusTarget::Editor:
+        case FocusTarget::Editor: {
             payload.search.resetMatches();
             payload.cursor.activateSelection(select_text == Boolean::True);
+
+            // Captured before the move so stickToColumn can tell a real line change from a
+            // move that ran off the top or the bottom of the buffer.
+            const auto line_before = payload.cursor.getLine();
             switch (movement) {
                 case Movement::Up:
                     payload.cursor.moveUp();
-                    stickToColumn(payload);
+                    stickToColumn(payload, line_before);
                 break;
                 case Movement::Down:
                     payload.cursor.moveDown();
-                    stickToColumn(payload);
+                    stickToColumn(payload, line_before);
                 break;
                 case Movement::Left:
                     payload.cursor.moveLeft();
@@ -159,14 +163,14 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
                     // The dimension CVar is a plain int; the page size enters the buffer domain here
                     const auto line_count = static_cast<uint32_t>(payload.theme.getDimension(DimensionId::PageUpDown));
                     payload.cursor.pageUp(line_count);
-                    stickToColumn(payload);
+                    stickToColumn(payload, line_before);
                 }
                 break;
                 case Movement::PageDown: {
                     // The dimension CVar is a plain int; the page size enters the buffer domain here
                     const auto line_count = static_cast<uint32_t>(payload.theme.getDimension(DimensionId::PageUpDown));
                     payload.cursor.pageDown(line_count);
-                    stickToColumn(payload);
+                    stickToColumn(payload, line_before);
                 }
                 break;
                 case Movement::BeginFile:
@@ -183,6 +187,7 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
 
             payload.scroll.follow_indicator = true;
             payload.wants_redraw = true;
+        }
         break;
         default:
         return std::nullopt;
@@ -207,7 +212,17 @@ MoveCursorCommand::Boolean MoveCursorCommand::mapBoolean(const std::u16string_vi
     return Boolean::Unknown;
 }
 
-void MoveCursorCommand::stickToColumn(CursorContext &payload) {
+void MoveCursorCommand::stickToColumn(CursorContext &payload, const uint32_t lineBefore) {
+    if (payload.cursor.getLine() == lineBefore) {
+        // The move could not change line, so it slid to the start or the end of this one
+        // (the first and last line of the buffer). Keep that and adopt the column it landed
+        // on: restoring the sticky column here would undo the move, and would only do so
+        // from the second vertical move on, since nothing arms the stick before that.
+        payload.stick.index = payload.cursor.getColumn();
+        payload.stick.active = true;
+        return;
+    }
+
     if (payload.stick.active) {
         const auto cursor_line = payload.cursor.getLine();
         const auto string_length = static_cast<uint32_t>(payload.cursor.getString().length());
