@@ -42,6 +42,9 @@ private:
     /** Minimum scrollbar thumb size in pixels, so it stays visible and grabbable on huge contents. */
     static constexpr int64_t MIN_THUMB_SIZE = 16;
 
+    /** @brief Quads reserved in the staging vector when this view begins its batch; advisory only. */
+    static constexpr uint32_t DEFAULT_QUAD_COUNT = 5120;
+
     /**
      * @brief Mouse drag interactions the editor can be in between a press and its release.
      */

@@ -40,6 +40,9 @@
  */
 class InfoBar final : public View<> {
 private:
+    /** @brief Quads reserved in the staging vector when this view begins its batch; advisory only. */
+    static constexpr uint32_t DEFAULT_QUAD_COUNT = 1024;
+
     /**
      * @brief: Draw the background layer of the info bar.
      *

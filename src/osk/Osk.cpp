@@ -27,7 +27,6 @@
 #include <utf8.h>
 #include <utf8/unchecked.h>
 
-#include "../ApplicationWindow.h"
 #include "../core/base/PadInput.h"
 #include "../core/theme/ColorId.h"
 #include "../core/theme/DimensionId.h"
@@ -500,7 +499,7 @@ void Osk::render(CursorContext &context, OskState &viewState, QuadBuffer &quadBu
         return;
     }
 
-    const auto batch_start = quadBuffer.beginBatch(ApplicationWindow::OSK_DEFAULT_QUAD_COUNT);
+    const auto batch_start = quadBuffer.beginBatch(DEFAULT_QUAD_COUNT);
     drawKeys(quadBuffer, viewState);
     const auto batch_count = quadBuffer.endBatch();
 

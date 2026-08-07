@@ -23,7 +23,6 @@
 
 #include <utf8.h>
 
-#include "../ApplicationWindow.h"
 #include "../core/theme/ColorId.h"
 #include "../core/theme/DimensionId.h"
 #include "../core/theme/TabStop.h"
@@ -34,7 +33,7 @@ InfoBar::InfoBar(GlobalRegistry<CursorContext> &commandController, Theme &theme,
 
 void InfoBar::render(CursorContext &context, ViewState &viewState, QuadBuffer &quadBuffer, const float dt) {
     (void) dt;
-    const auto batch_start = quadBuffer.beginBatch(ApplicationWindow::INFO_BAR_DEFAULT_QUAD_COUNT);
+    const auto batch_start = quadBuffer.beginBatch(DEFAULT_QUAD_COUNT);
     drawBackground(quadBuffer, viewState);
     drawText(quadBuffer, context, viewState);
     const auto batch_count = quadBuffer.endBatch();

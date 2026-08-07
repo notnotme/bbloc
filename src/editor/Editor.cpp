@@ -25,7 +25,6 @@
 #include <ranges>
 #include <utf8.h>
 
-#include "../ApplicationWindow.h"
 #include "../core/theme/DimensionId.h"
 #include "../core/theme/TabStop.h"
 
@@ -77,7 +76,7 @@ void Editor::render(CursorContext &context, ViewState &viewState, QuadBuffer &qu
     const auto scroll_y = context.scroll.y;
 
     // Begin the editor batch, keep a variable to know how many quads we have before the cursor text
-    const auto batch_start = quadBuffer.beginBatch(ApplicationWindow::EDITOR_DEFAULT_QUAD_COUNT);
+    const auto batch_start = quadBuffer.beginBatch(DEFAULT_QUAD_COUNT);
     drawBackground(quadBuffer, viewState, margin_width);
     drawMarginText(quadBuffer, context, viewState, metrics.line_count_width, scroll_y);
     drawScrollbars(quadBuffer, context, viewState, margin_width, v_bar_width, h_bar_height, longest_line_length);

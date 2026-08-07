@@ -63,6 +63,9 @@ private:
     /** Milliseconds a sticky key must stay pressed to hold instead of latching. */
     static constexpr uint64_t LONG_PRESS_MS = 400;
 
+    /** @brief Quads reserved in the staging vector when this view begins its batch; advisory only. */
+    static constexpr uint32_t DEFAULT_QUAD_COUNT = 1024;
+
     /**
      * @brief Draws the strip background and every key of the visible page.
      *

@@ -36,6 +36,9 @@
  */
 class Prompt final : public View<PromptState> {
 private:
+    /** @brief Quads reserved in the staging vector when this view begins its batch; advisory only. */
+    static constexpr uint32_t DEFAULT_QUAD_COUNT = 1024;
+
     /**
      * @brief: Draw the background layer of the prompt.
      *

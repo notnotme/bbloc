@@ -59,18 +59,6 @@ public:
     /** Initial capacity of m_quad_buffer in quads; the buffer regrows on demand. */
     static constexpr uint32_t DEFAULT_QUAD_CAPACITY = 8192;
 
-    /** Default quad count reserved for the info bar view batch */
-    static constexpr uint32_t INFO_BAR_DEFAULT_QUAD_COUNT = 1024;
-
-    /** Default quad count reserved for the prompt view batch */
-    static constexpr uint32_t PROMPT_DEFAULT_QUAD_COUNT = 1024;
-
-    /** Default quad count reserved for the on-screen keyboard view batch */
-    static constexpr uint32_t OSK_DEFAULT_QUAD_COUNT = 1024;
-
-    /** Default quad count reserved for the editor view batch */
-    static constexpr uint32_t EDITOR_DEFAULT_QUAD_COUNT = DEFAULT_QUAD_CAPACITY - INFO_BAR_DEFAULT_QUAD_COUNT - PROMPT_DEFAULT_QUAD_COUNT - OSK_DEFAULT_QUAD_COUNT;
-
 private:
     /** SDL window handle. */
     SDL_Window *p_sdl_window;

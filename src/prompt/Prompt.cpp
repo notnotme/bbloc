@@ -23,7 +23,6 @@
 #include <iostream>
 #include <utf8.h>
 
-#include "../ApplicationWindow.h"
 #include "../core/theme/ColorId.h"
 #include "../core/theme/DimensionId.h"
 #include "../core/theme/TabStop.h"
@@ -34,7 +33,7 @@ Prompt::Prompt(GlobalRegistry<CursorContext> &commandController, Theme &theme, Q
 
 void Prompt::render(CursorContext &context, PromptState &viewState, QuadBuffer &quadBuffer, float dt) {
     (void) dt;
-    const auto batch_start = quadBuffer.beginBatch(ApplicationWindow::PROMPT_DEFAULT_QUAD_COUNT);
+    const auto batch_start = quadBuffer.beginBatch(DEFAULT_QUAD_COUNT);
     drawBackground(quadBuffer, viewState);
     drawText(quadBuffer, context, viewState);
     const auto batch_count = quadBuffer.endBatch();
