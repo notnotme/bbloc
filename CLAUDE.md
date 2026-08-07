@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-bbloc is a minimalist GPU-rendered text editor in C++20 (SDL2, OpenGL, glad, FreeType, utfcpp, tree-sitter). It targets Linux and Nintendo Switch (devkitPro). Style is checked by clang-tidy (`.clang-tidy` at the repository root, `WarningsAsErrors: '*'`) on top of the build's `-Wall -Wextra`. Automated tests cover the undo subsystem only (see Testing below); everything else is verified by running the app.
+bbloc is a minimalist GPU-rendered text editor in C++20 (SDL2, OpenGL, glad, FreeType, utfcpp, tree-sitter). It targets Linux and Nintendo Switch (devkitPro). Style is checked by clang-tidy (`.clang-tidy` at the repository root, `WarningsAsErrors: '*'`) on top of the build's `-Wall -Wextra`. Automated tests cover the text core — buffers, cursors and undo (see Testing below); the rest is verified by running the app.
 
 ## Plans
 
@@ -49,9 +49,16 @@ The `misc/pre-commit` hook runs clang-tidy on the staged sources; activate it on
 cmake --build cmake-build-debug --target bbloc_tests && ./cmake-build-debug/bbloc_tests
 ```
 
-It links `Cursor`, `UndoHistory`, `LineBuffer`, `LongestLineTracker` and `CVarInt` only — no SDL, GL, FreeType or tree-sitter — so it builds in seconds. doctest is vendored at `tests/doctest.h` (MIT, never edited); nothing comes from vcpkg. `tests/` is outside the toolchain's reach: `misc/pre-commit` globs `src/*.cpp` and `src/*.h`, and `.clang-tidy` filters headers to `.*/src/.*`, so nothing there is linted.
+It links `Cursor`, `PromptCursor`, `UndoHistory`, `LineBuffer`, `LongestLineTracker` and `CVarInt` only — no SDL, GL, FreeType or tree-sitter — so it builds in seconds. doctest is vendored at `tests/doctest.h` (MIT, never edited); nothing comes from vcpkg. `tests/` is outside the toolchain's reach: `misc/pre-commit` globs `src/*.cpp` and `src/*.h`, and `.clang-tidy` filters headers to `.*/src/.*`, so nothing there is linted.
 
-Coverage is deliberately narrow — the undo/redo contract (round-trip, group granularity, surrogate pairs, trimming, saved-state tracking). Extend it when touching that subsystem; the rest of the app is still verified by running it.
+Coverage is deliberately bounded to what is cheap to link and silent when it breaks:
+
+- `UndoTests.cpp` — the undo/redo contract: round-trip, group granularity, surrogate pairs, trimming, saved-state tracking.
+- `BufferTests.cpp` — `LineBuffer` and `LongestLineTracker` driven against an independent `std::vector<std::u16string>` model, compared on every observable after every edit. This is the shape to keep: the bugs worth catching are sequence-dependent (a detached current line never committed, a stale `m_line_data` offset), and hand-written expectations only find those if the author guessed the sequence.
+- `CursorTests.cpp` — cursor moves, selection ranges and UTF-16 stepping.
+- `PromptTests.cpp` — `PromptCursor`, the single-line prompt input.
+
+Anything needing SDL, GL, FreeType or tree-sitter stays out: the target's cheapness is why it gets run. When adding cases, check they actually bite by mutating the code under test and confirming they go red — a green suite written against shipping code proves nothing on its own. A case that fails against existing code is a finding to report, not an expectation to reshape.
 
 ## Architecture
 
