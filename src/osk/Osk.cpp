@@ -671,15 +671,20 @@ bool Osk::onPadInput(CursorContext &context, OskState &viewState, const SDL_Keyc
 
     if (padKeycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_DPAD_LEFT)
         || padKeycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_DPAD_RIGHT)) {
-        // Step within the row, skipping spacers
+        // Step within the row, skipping spacers and wrapping around its ends. The walk is
+        // bounded by the row length so a row holding nothing but spacers leaves the cursor
+        // where it is instead of looping forever.
         const auto step = padKeycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_DPAD_LEFT) ? -1 : 1;
-        auto next_col = col + step;
-        while (next_col >= 0 && next_col < static_cast<int32_t>(rows[row].size()) && rows[row][next_col].kind == KeyKind::Spacer) {
-            next_col += step;
-        }
-
-        if (next_col >= 0 && next_col < static_cast<int32_t>(rows[row].size())) {
-            viewState.setCursor(row, next_col);
+        const auto size = static_cast<int32_t>(rows[row].size());
+        auto next_col = col;
+        for (auto steps = 0; steps < size; ++steps) {
+            // Bias by the size before the modulo: C++ gives the remainder the sign of the
+            // dividend, so a left step off column zero would otherwise land out of the row.
+            next_col = (next_col + step + size) % size;
+            if (rows[row][next_col].kind != KeyKind::Spacer) {
+                viewState.setCursor(row, next_col);
+                break;
+            }
         }
         context.wants_redraw = true;
         return true;
@@ -687,12 +692,12 @@ bool Osk::onPadInput(CursorContext &context, OskState &viewState, const SDL_Keyc
 
     if (padKeycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_DPAD_UP)
         || padKeycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_DPAD_DOWN)) {
-        // Step to the neighbor row, landing on the key nearest to the current center
+        // Step to the neighbor row, wrapping past the top and the bottom, and landing on the
+        // key nearest to the current center — nearestCol skips spacers, so the wrap cannot
+        // land on one.
         const auto step = padKeycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_DPAD_UP) ? -1 : 1;
-        const auto next_row = std::clamp(row + step, 0, ROW_COUNT - 1);
-        if (next_row != row) {
-            viewState.setCursor(next_row, nearestCol(rows[next_row], unitCenter(rows[row], col)));
-        }
+        const auto next_row = (row + step + ROW_COUNT) % ROW_COUNT;
+        viewState.setCursor(next_row, nearestCol(rows[next_row], unitCenter(rows[row], col)));
         context.wants_redraw = true;
         return true;
     }
