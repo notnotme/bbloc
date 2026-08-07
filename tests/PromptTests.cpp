@@ -231,6 +231,43 @@ TEST_CASE("setPosition accepts every column up to the end and throws past it") {
     CHECK(cursor.getColumn() == 4);
 }
 
+TEST_CASE("setPosition snaps a column landing inside a surrogate pair") {
+    // The only way this cursor can be handed a column it did not compute itself: its own moves
+    // and erases step whole characters through charLengthBefore/charLengthAfter.
+    auto cursor = PromptCursor();
+    cursor.insert(std::u16string(u"a").append(EMOJI).append(u"b"));
+
+    cursor.setPosition(2);      // between the two units of the pair
+    CHECK(cursor.getColumn() == 1);
+
+    // The columns on either side of the pair are untouched
+    cursor.setPosition(1);
+    CHECK(cursor.getColumn() == 1);
+    cursor.setPosition(3);
+    CHECK(cursor.getColumn() == 3);
+}
+
+TEST_CASE("a caret placed inside a surrogate pair cannot strand half of one") {
+    // The failure this guards: erasing from a mid-pair caret used to take a single code unit,
+    // leaving a lone surrogate behind and a prompt that no longer encodes to UTF-8.
+    // The snap lands the caret on the pair's *lead* unit, so the erases then act on whole
+    // characters either side of it — "a" to the left, the emoji to the right.
+    auto cursor = PromptCursor();
+    cursor.insert(std::u16string(u"a").append(EMOJI).append(u"b"));
+
+    cursor.setPosition(2);
+    cursor.eraseLeft();
+    CHECK(text(cursor) == std::u16string(u"a").append(EMOJI).append(u"b").erase(0, 1));
+    CHECK_FALSE(hasLoneSurrogate(cursor.getString()));
+
+    cursor.clear();
+    cursor.insert(std::u16string(u"a").append(EMOJI).append(u"b"));
+    cursor.setPosition(2);
+    cursor.eraseRight();
+    CHECK(text(cursor) == std::u16string(u"ab"));
+    CHECK_FALSE(hasLoneSurrogate(cursor.getString()));
+}
+
 TEST_CASE("erasing at either end is a no-op") {
     auto cursor = PromptCursor();
     seedPrompt(cursor, u"ab");

@@ -59,7 +59,9 @@ void PromptCursor::setPosition(const uint32_t column) {
         throw std::runtime_error("Cursor::setPosition out of range.");
     }
 
-    m_column = column;
+    // A column handed in from outside is the one way this cursor can land inside a character:
+    // its own moves and erases step whole characters through the two length helpers.
+    m_column = snapToCharBoundary(m_string, column);
 }
 
 void PromptCursor::insert(const std::u16string_view characters) {

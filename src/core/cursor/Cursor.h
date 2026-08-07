@@ -104,16 +104,17 @@ private:
     [[nodiscard]] BufferEdit::Position position() const;
 
     /**
-     * @brief Pulls a column off the trailing half of a surrogate pair.
+     * @brief Pulls a column off the trailing half of a surrogate pair, on the given line.
      *
-     * Moves clamping on a line length alone can land between the two code units of a non-BMP
-     * character; editing from there would split the pair and leave the buffer unencodable.
+     * Looks the line up and defers to snapToCharBoundary in SurrogatePair.h, which holds the rule
+     * itself. Named apart from it on purpose: a member of the same name would hide the free one
+     * inside this class, leaving every call here to be disambiguated by argument type.
      *
      * @param line The line the column belongs to.
      * @param column The column to snap.
      * @return The column moved one code unit back when it splits a surrogate pair, unchanged otherwise.
      */
-    [[nodiscard]] uint32_t snapToCharBoundary(uint32_t line, uint32_t column) const;
+    [[nodiscard]] uint32_t snapColumnOnLine(uint32_t line, uint32_t column) const;
 
     /**
      * @brief Puts the caret where a history step left it and settles the state around it.

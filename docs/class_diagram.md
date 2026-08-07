@@ -100,7 +100,7 @@ classDiagram
     }
     class SurrogatePair {
         <<free functions>>
-        note: "charLengthBefore / charLengthAfter, shared surrogate-pair stepping"
+        note: "charLengthBefore / charLengthAfter / snapToCharBoundary, shared so no cursor can split a surrogate pair"
     }
     class TextBuffer {
         <<abstract>>

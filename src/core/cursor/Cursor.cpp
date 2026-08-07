@@ -76,7 +76,7 @@ void Cursor::pageUp(const uint32_t lineCount) {
     if (m_column > cursor_string_length) {
         m_column = cursor_string_length;
     }
-    m_column = snapToCharBoundary(m_line, m_column);
+    m_column = snapColumnOnLine(m_line, m_column);
 }
 
 void Cursor::pageDown(const uint32_t lineCount) {
@@ -95,7 +95,7 @@ void Cursor::pageDown(const uint32_t lineCount) {
     if (m_column > cursor_string_length) {
         m_column = cursor_string_length;
     }
-    m_column = snapToCharBoundary(m_line, m_column);
+    m_column = snapColumnOnLine(m_line, m_column);
 }
 
 void Cursor::setName(const std::string_view name) {
@@ -238,7 +238,7 @@ void Cursor::moveUp() {
         if (m_column > string_above_length) {
             m_column = string_above_length;
         }
-        m_column = snapToCharBoundary(m_line - 1, m_column);
+        m_column = snapColumnOnLine(m_line - 1, m_column);
         --m_line;
     } else {
         m_column = 0;
@@ -254,7 +254,7 @@ void Cursor::moveDown() {
             // The cursor can't stay at the same X position, put it at the end of the next line
             m_column = string_below_length;
         }
-        m_column = snapToCharBoundary(m_line + 1, m_column);
+        m_column = snapColumnOnLine(m_line + 1, m_column);
         ++m_line;
     } else {
         m_column = static_cast<uint32_t>(m_buffer->getString(m_line).length());
@@ -306,7 +306,7 @@ void Cursor::setPosition(const uint32_t line, const uint32_t column) {
         throw std::runtime_error("Cursor::setPosition out of range.");
     }
 
-    m_column = snapToCharBoundary(line, column);
+    m_column = snapColumnOnLine(line, column);
     m_line = line;
 }
 
@@ -494,14 +494,8 @@ BufferEdit::Position Cursor::position() const {
     return BufferEdit::Position{.line = m_line, .column = m_column};
 }
 
-uint32_t Cursor::snapToCharBoundary(const uint32_t line, const uint32_t column) const {
-    const auto &string = m_buffer->getString(line);
-    // The length bound is mandatory: the view must never be indexed at its own size.
-    if (column > 0 && column < string.length() && (string[column] & 0xFC00) == 0xDC00 && (string[column - 1] & 0xFC00) == 0xD800) {
-        // The column sits inside a surrogate pair, step back to its lead unit
-        return column - 1;
-    }
-    return column;
+uint32_t Cursor::snapColumnOnLine(const uint32_t line, const uint32_t column) const {
+    return snapToCharBoundary(m_buffer->getString(line), column);
 }
 
 std::vector<BufferEdit> Cursor::undo() {

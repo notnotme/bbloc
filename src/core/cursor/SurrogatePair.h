@@ -55,5 +55,25 @@
     return 1;
 }
 
+/**
+ * @brief Pulls a column off the trailing half of a surrogate pair.
+ *
+ * Stepping through text with the two lengths above can never land inside a character, but a column
+ * arriving from anywhere else can: a vertical move clamped on a line length, or a caret position
+ * handed in by a caller. Editing from there would split the pair and leave the text unencodable.
+ *
+ * @param text The line the column belongs to.
+ * @param column The column to snap.
+ * @return The column moved one code unit back when it splits a surrogate pair, unchanged otherwise.
+ */
+[[nodiscard]] inline uint32_t snapToCharBoundary(const std::u16string_view text, const uint32_t column) {
+    // The length bound is mandatory: the view must never be indexed at its own size.
+    if (column > 0 && column < text.length() && (text[column] & 0xFC00) == 0xDC00 && (text[column - 1] & 0xFC00) == 0xD800) {
+        // The column sits inside a surrogate pair, step back to its lead unit
+        return column - 1;
+    }
+    return column;
+}
+
 
 #endif //SURROGATE_PAIR_H
