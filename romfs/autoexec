@@ -102,7 +102,7 @@ bind L pad:leftx- "move left true"
 bind None pad:leftx+ "move right"
 bind L pad:leftx+ "move right true"
 
-# R + d-pad jumps to the line and file boundaries; L+R jumps extending the selection
+# R + d-pad or left stick jumps to the line and file boundaries; L+R jumps extending the selection
 bind R pad:dpup "move bof"
 bind L+R pad:dpup "move bof true"
 bind R pad:dpdown "move eof"
@@ -111,6 +111,14 @@ bind R pad:dpleft "move bol"
 bind L+R pad:dpleft "move bol true"
 bind R pad:dpright "move eol"
 bind L+R pad:dpright "move eol true"
+bind R pad:lefty- "move bof"
+bind L+R pad:lefty- "move bof true"
+bind R pad:lefty+ "move eof"
+bind L+R pad:lefty+ "move eof true"
+bind R pad:leftx- "move bol"
+bind L+R pad:leftx- "move bol true"
+bind R pad:leftx+ "move eol"
+bind L+R pad:leftx+ "move eol true"
 
 # Triggers (ZL/ZR) and the right stick page up and down
 bind None pad:lefttrigger "move page_up"
@@ -118,7 +126,9 @@ bind L pad:lefttrigger "move page_up true"
 bind None pad:righttrigger "move page_down"
 bind L pad:righttrigger "move page_down true"
 bind None pad:righty- "move page_up"
+bind L pad:righty- "move page_up true"
 bind None pad:righty+ "move page_down"
+bind L pad:righty+ "move page_down true"
 
 # A confirms and B cancels the prompt (no-ops while it is idle), X opens it, Y cycles the completions
 bind None pad:a "prompt confirm"
