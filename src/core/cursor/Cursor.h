@@ -79,6 +79,20 @@ private:
     [[nodiscard]] BufferEdit erase(uint32_t lineStart, uint32_t columnStart, uint32_t lineEnd, uint32_t columnEnd) const;
 
     /**
+     * @brief Returns a copy of the text between two positions, lines joined with line breaks.
+     *
+     * Costs the length of the range, not of the buffer. The coordinates must be ordered
+     * (start before end), the way getSelectedRange always returns them.
+     *
+     * @param lineStart The line index where the range starts.
+     * @param columnStart The column index where the range starts.
+     * @param lineEnd The line index where the range stops.
+     * @param columnEnd The column index where the range stops.
+     * @return The text the range covers, empty when the range is degenerate.
+     */
+    [[nodiscard]] std::u16string textInRange(uint32_t lineStart, uint32_t columnStart, uint32_t lineEnd, uint32_t columnEnd) const;
+
+    /**
      * @brief Pushes a snapshot of the current state when the history is at a boundary.
      *
      * The history drops the snapshot when it repeats the text it already holds on top, so a

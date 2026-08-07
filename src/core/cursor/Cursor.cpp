@@ -420,23 +420,38 @@ BufferEdit Cursor::clear() {
     return m_buffer->clear();
 }
 
-std::u16string Cursor::getText() const {
+std::u16string Cursor::textInRange(const uint32_t lineStart, const uint32_t columnStart, const uint32_t lineEnd, const uint32_t columnEnd) const {
+    if (lineStart == lineEnd) {
+        // Single line: one substring, no separator to weave in
+        return std::u16string(m_buffer->getString(lineStart).substr(columnStart, columnEnd - columnStart));
+    }
+
+    // getByteCount already counts the line separators the joined text will carry, so this is the
+    // exact size of the result: reserve it and grow the string only once.
     auto text = std::u16string{};
-    const auto line_count = m_buffer->getStringCount();
+    text.reserve(m_buffer->getByteCount(lineStart, columnStart, lineEnd, columnEnd) / sizeof(char16_t));
 
-    // The offset of the very last column already accounts for the line separators, so it is the
-    // exact size of the joined text: reserve it and grow the string only once.
-    const auto last_line = line_count - 1;
-    const auto last_column = static_cast<uint32_t>(m_buffer->getString(last_line).length());
-    text.reserve(m_buffer->getByteOffset(last_line, last_column) / sizeof(char16_t));
+    for (auto line = lineStart; line <= lineEnd; ++line) {
+        if (line == lineStart) {
+            text.append(m_buffer->getString(line).substr(columnStart));
+        } else if (line == lineEnd) {
+            text.append(m_buffer->getString(line).substr(0, columnEnd));
+        } else {
+            text.append(m_buffer->getString(line));
+        }
 
-    for (auto line = 0u; line < line_count; ++line) {
-        text.append(m_buffer->getString(line));
-        if (line < line_count - 1) {
+        if (line < lineEnd) {
             text.append(u"\n");
         }
     }
     return text;
+}
+
+std::u16string Cursor::getText() const {
+    // The whole buffer is just the widest range there is
+    const auto last_line = m_buffer->getStringCount() - 1;
+    const auto last_column = static_cast<uint32_t>(m_buffer->getString(last_line).length());
+    return textInRange(0, 0, last_line, last_column);
 }
 
 void Cursor::recordBeforeEdit() {
