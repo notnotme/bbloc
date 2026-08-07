@@ -311,7 +311,6 @@ void Editor::drawMarginText(QuadBuffer &quadBuffer, const CursorContext &context
     // the one place the 64-bit scroll re-enters the 32-bit screen space.
     const auto first_line_in_viewport = scrollY / line_height;
     const auto line_scroll_offset_y = static_cast<int32_t>(-scrollY % line_height);
-    auto pen_position_x = 0;
     auto pen_position_y = line_scroll_offset_y + position_y + line_height + font_descender;
     auto line_index = first_line_in_viewport;
 
@@ -328,7 +327,7 @@ void Editor::drawMarginText(QuadBuffer &quadBuffer, const CursorContext &context
                 ++digit_count;
             }
 
-            pen_position_x = position_x + padding_width + lineCountWidth - digit_count * font_advance;
+            auto pen_position_x = position_x + padding_width + lineCountWidth - digit_count * font_advance;
             for (auto digit_index = max_line_number_digits - digit_count; digit_index < max_line_number_digits; ++digit_index) {
                 const auto &character = m_theme.getCharacter(line_number_digits[digit_index]);
                 drawCharacter(quadBuffer, pen_position_x, pen_position_y, character, line_number_color);
@@ -372,7 +371,6 @@ void Editor::drawText(QuadBuffer &quadBuffer, const CursorContext &context, cons
     // the one place the 64-bit vertical scroll re-enters the 32-bit screen space.
     const auto first_line_in_viewport = scrollY / line_height;
     const auto line_scroll_offset_y = static_cast<int32_t>(-scrollY % line_height);
-    auto pen_position_x = 0;
     auto pen_position_y = line_scroll_offset_y + position_y + line_height + font_descender;
     auto line_index = first_line_in_viewport;
 
@@ -440,7 +438,7 @@ void Editor::drawText(QuadBuffer &quadBuffer, const CursorContext &context, cons
             // The skipped prefix is tab-free, so its width (and the cursor offset inside it) is a
             // plain multiply, and its character index doubles as its visual column
             auto cursor_position_x = projectToViewport(cursor_text_start_x - scrollX + static_cast<int64_t>(std::min(cursor_column, start_column)) * font_advance);
-            pen_position_x = projectToViewport(cursor_text_start_x - scrollX + static_cast<int64_t>(start_column) * font_advance);
+            auto pen_position_x = projectToViewport(cursor_text_start_x - scrollX + static_cast<int64_t>(start_column) * font_advance);
             uint32_t visual_column = start_column;
 
             for (auto character_column = start_column; character_column < string_length; ++character_column) {
