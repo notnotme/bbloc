@@ -264,7 +264,7 @@ classDiagram
         note: "on-screen keyboard strip; injects synthesized SDL key/text events via SDL_PushEvent"
     }
     class OskState {
-        note: "visibility, page, layout table, sticky modifiers, key cursor, hold repeat + the target it was armed for, and the pad grab (m_pad_focus)"
+        note: "visibility, page, layout table, sticky modifiers, key cursor, pressed key + its PressSource, hold repeat + the target it was armed for, and the pad grab (m_pad_focus)"
     }
     class OskLayout {
         note: "static-only hybrid layouts: fixed US base + letter permutation + AltGr accent map"
@@ -304,7 +304,7 @@ classDiagram
     Osk ..> OskLayout : labels + TEXTINPUT payloads
     OskState *-- InputRepeater
     ControllerInput *-- InputRepeater
-    ControllerInput ..> Osk : d-pad/A/B while OskState holds the pad
+    ControllerInput ..> Osk : d-pad/A/B presses and releases while OskState holds the pad
     View~TState~ ..> QuadBuffer : stages one batch per render()
     Editor ..> TabStop : uses
     InfoBar ..> TabStop : uses
@@ -363,8 +363,8 @@ selected via `Platform::keyboardLayout()` and overridden by `osk layout`. While 
 the relayout in
 `mainLoop` gives the strip ~`dim_osk_height`% of the window through the normal resize path.
 `PointerInput` routes presses inside the strip to it (taps never move the input focus);
-sticky keys cycle latched -> held -> idle on each press (a long press jumps to held, which
-the pad cannot express) and show a dot, wider when held. `ControllerInput` publishes the L
+sticky keys cycle latched -> held -> idle on each press (a long press jumps straight to
+held) and show a dot, wider when held. `ControllerInput` publishes the L
 shoulder into `OskState` as a live Shift (`setLiveModifiers`), since the binding modifier
 mask never reaches a view that emits key events instead of running bindings;
 `effectiveModifierMask` ORs it with the sticky mask for both injection and label
@@ -378,14 +378,27 @@ bindings, so mouse and touch users never see the key cursor. Pad B releases it (
 active prompt it runs `prompt cancel` instead and keeps the pad, so one press closes the
 prompt), and so does `osk hide` through `OskState::resetInteraction`. Taking the pad never
 moves the keyboard focus: keys and text (physical or synthesized) keep going to the editor
-or to an active prompt, so the OSK types into both. Every held
-injecting key auto-repeats like a physical keyboard, re-emitting under the sticky mask
-captured at press, through `InputRepeater` — the delay/interval state machine extracted
-from `ControllerInput` and shared by both; `mainLoop` waits on the earliest armed deadline
-and ticks both after the poll loop. The OSK repeat also remembers the focus its press was
-delivered to, and disarms instead of firing once it differs: the tap may have run a command
-that closed the prompt (Enter over `open`), and the release ending the hold is polled only
-after that command returned.
+or to an active prompt, so the OSK types into both.
+
+Pointer and pad share one press/release state machine — `Osk::pressKey` /
+`Osk::releaseKey`, reached from `onMouseDown`/`onMouseUp` and from `onPadDown`/`onPadUp`
+— so pad A behaves exactly like a finger: it holds the key it pressed, repeats it while
+held, and long-presses a sticky modifier straight into held. Because both can hold a key at
+once, `OskState` records the `PressSource` that started the press and only that source's
+release ends it. This is why `ControllerInput` hands releases to the OSK, which the
+bindings never needed: `release()` calls `onPadUp` while the OSK holds the pad, and so does
+`onDeviceRemoved`, since a vanished pad sends no releases of its own. Pad B does it too,
+before dropping the grab — once the pad is handed back no release is routed here anymore,
+and a key A was holding would repeat forever. Every held injecting key auto-repeats like a
+physical keyboard, re-emitting under the sticky mask captured at press, through
+`InputRepeater` — the delay/interval state machine extracted from `ControllerInput` and
+shared by both; `mainLoop` waits on the earliest armed deadline and ticks both after the
+poll loop. The two repeaters stay disjoint: `ControllerInput`'s repeats d-pad *cursor
+movement* by re-running the whole dispatch, `OskState`'s repeats *key injection* of the one
+key captured at press. The OSK repeat also remembers the focus its press was delivered to,
+and disarms instead of firing once it differs: the tap may have run a command that closed
+the prompt (Enter over `open`), and the release ending the hold is polled only after that
+command returned.
 
 ---
 

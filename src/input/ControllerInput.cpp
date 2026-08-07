@@ -45,8 +45,12 @@ bool ControllerInput::dispatch(const SDL_Keycode keycode, const uint16_t modifie
             m_osk_state.setPadFocus(true);
         }
 
-        if (m_osk_state.hasPadFocus() && m_osk.onPadInput(context, m_osk_state, keycode)) {
-            // Only held directions auto-repeat: A would re-tap keys, B would re-leave.
+        if (m_osk_state.hasPadFocus() && m_osk.onPadDown(context, m_osk_state, keycode)) {
+            // Only held directions auto-repeat through this repeater, which re-runs the whole
+            // dispatch on every tick: A would re-enter the press path — re-toggling stickies
+            // and pages, and re-injecting under the current mask instead of the captured one
+            // — and B would re-leave. A does repeat while held, but through the on-screen
+            // keyboard's own repeater, armed by the press it just made.
             return is_direction;
         }
     }
@@ -69,7 +73,13 @@ void ControllerInput::onDeviceRemoved(const SDL_ControllerDeviceEvent &event) {
         std::erase(m_controllers, controller);
     }
 
-    // A disconnected pad never sends its releases: reset the whole live pad state.
+    // A disconnected pad never sends its releases: reset the whole live pad state, the key
+    // the on-screen keyboard may be holding for the A button included — nothing else would
+    // ever stop the repeat it armed.
+    if (m_osk_state.hasPadFocus()) {
+        m_osk.onPadUp(m_context_manager.active(), m_osk_state, PadInput::fromButton(SDL_CONTROLLER_BUTTON_A));
+    }
+
     m_pad_modifiers = 0;
     publishOskModifiers();
     m_repeater.disarm();
@@ -160,6 +170,12 @@ void ControllerInput::press(const SDL_Keycode keycode) {
 }
 
 void ControllerInput::release(const SDL_Keycode keycode) {
+    // The on-screen keyboard needs the release the bindings never wanted: a key held with A
+    // repeats through its own repeater, and only the release can stop it.
+    if (m_osk_state.hasPadFocus()) {
+        m_osk.onPadUp(m_context_manager.active(), m_osk_state, keycode);
+    }
+
     m_repeater.disarmIf(keycode);
 }
 

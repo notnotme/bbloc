@@ -41,9 +41,11 @@
  * tap (dot shown), hold on long-press, and every latched modifier releases after the next
  * key. Every held injecting key auto-repeats — like a physical keyboard — through the
  * InputRepeater in OskState, re-emitting under the sticky mask captured at press time.
- * The pad drives a key cursor via onPadInput once the OSK acquired the pad (lazily, on the
- * first pad press ControllerInput routes to it, and tracked by OskState); taps never move
- * the keyboard focus, so the OSK types into an active prompt as well as into the editor.
+ * The pad drives a key cursor via onPadDown/onPadUp once the OSK acquired the pad (lazily, on
+ * the first pad press ControllerInput routes to it, and tracked by OskState). Pointer and pad
+ * share one press/release state machine (pressKey/releaseKey, told apart by OskState's press
+ * source), so A holds and repeats a key just like a finger does; taps never move the keyboard
+ * focus, so the OSK types into an active prompt as well as into the editor.
  */
 class Osk final : public View<OskState> {
 public:
@@ -68,6 +70,37 @@ private:
      * @param viewState A reference to the OSK view state (its pad focus shows the key cursor).
      */
     void drawKeys(QuadBuffer &quadBuffer, const OskState &viewState);
+
+    /**
+     * @brief Presses the key at a grid position: injects it and arms the hold repeat.
+     *
+     * The one press path every source takes, so a pad A press behaves exactly like a finger
+     * on the same key. Sticky keys only record the press and return — they settle on release,
+     * where a long press can be told from a tap; the page toggle flips the page; every other
+     * key injects immediately under the effective modifier mask, releases the one-shot
+     * latches, then arms the auto-repeat with that same mask, captured so the repeats keep
+     * emitting the events the press did even after the latches went away.
+     *
+     * @param context Reference to the cursor context.
+     * @param viewState The OSK view state.
+     * @param row Row of the key to press.
+     * @param col Column of the key to press within its row.
+     * @param source The input source holding the key down, matched by the release.
+     */
+    void pressKey(CursorContext &context, OskState &viewState, int32_t row, int32_t col, OskState::PressSource source) const;
+
+    /**
+     * @brief Releases the key a press is holding: settles a sticky key and disarms the repeat.
+     *
+     * Does nothing unless the source asking matches the one that started the press: a pointer
+     * and the pad A button can hold a key at the same time, and one release must not end the
+     * other's press.
+     *
+     * @param context Reference to the cursor context.
+     * @param viewState The OSK view state.
+     * @param source The input source releasing the key.
+     */
+    void releaseKey(CursorContext &context, OskState &viewState, OskState::PressSource source) const;
 
 public:
     /**
@@ -134,19 +167,33 @@ public:
     void onMouseUp(CursorContext &context, OskState &viewState, int32_t x, int32_t y) override;
 
     /**
-     * @brief Handles a pad input routed to the OSK while it has the pad focus.
+     * @brief Handles a pad press routed to the OSK while it has the pad focus.
      *
-     * D-pad directions move the key cursor, A presses the key under it, B hands the pad back
-     * to the bindings — or, over an active prompt, cancels it and keeps the pad, so one press
-     * reads as one "get me out of here". Any other pad input is not handled and falls back to
-     * the bindings.
+     * D-pad directions move the key cursor, A presses the key under it — the very press a
+     * finger makes, so holding A repeats the key and holding it on a sticky modifier holds
+     * that modifier — and B hands the pad back to the bindings — or, over an active prompt,
+     * cancels it and keeps the pad, so one press reads as one "get me out of here". Any other
+     * pad input is not handled and falls back to the bindings.
      *
      * @param context Reference to the cursor context.
      * @param viewState The OSK view state.
      * @param padKeycode The pad pseudo-keycode (PadInput encoding) of the pressed input.
      * @return true when the input was handled by the OSK.
      */
-    [[nodiscard]] bool onPadInput(CursorContext &context, OskState &viewState, SDL_Keycode padKeycode) const;
+    [[nodiscard]] bool onPadDown(CursorContext &context, OskState &viewState, SDL_Keycode padKeycode) const;
+
+    /**
+     * @brief Handles a pad release routed to the OSK while it holds the pad.
+     *
+     * Only A matters: it ends the key press it started, exactly like lifting a finger, so a
+     * sticky key settles and the hold auto-repeat stops. Every other release is ignored — the
+     * key cursor has nothing to end, and the bindings never wanted releases.
+     *
+     * @param context Reference to the cursor context.
+     * @param viewState The OSK view state.
+     * @param padKeycode The pad pseudo-keycode (PadInput encoding) of the released input.
+     */
+    void onPadUp(CursorContext &context, OskState &viewState, SDL_Keycode padKeycode) const;
 
     /**
      * @brief Fires the held-key auto-repeat once its deadline passed, then re-arms it.

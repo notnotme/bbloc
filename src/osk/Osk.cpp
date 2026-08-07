@@ -310,8 +310,8 @@ namespace {
     /**
      * @brief Advances a sticky modifier one step in the Idle -> Latched -> Held -> Idle cycle.
      *
-     * Every press path uses it, so holding a modifier is reachable by tapping alone: the pad
-     * has no press duration to measure, and a long-press on a touch screen is easy to miss.
+     * Holding a modifier stays reachable by tapping alone, which matters because a long press
+     * is easy to miss — on a touch screen as much as on the A button.
      *
      * @param state The current sticky state of the modifier.
      * @return The state the press moves it to.
@@ -599,51 +599,45 @@ void Osk::onTextInput(CursorContext &context, OskState &viewState, const char *t
     // No-op
 }
 
-void Osk::onMouseDown(CursorContext &context, OskState &viewState, const int32_t x, const int32_t y) {
-    if (!viewState.isVisible()) {
+void Osk::pressKey(CursorContext &context, OskState &viewState, const int32_t row, const int32_t col, const OskState::PressSource source) const {
+    const auto *key = keyAt(viewState.getPage(), row, col);
+    if (key == nullptr || key->kind == KeyKind::Spacer) {
         return;
     }
 
-    forEachKey(viewState, [&](const KeyCell &cell) {
-        if (cell.p_def->kind == KeyKind::Spacer
-            || x < cell.x || x >= cell.x + cell.width
-            || y < cell.y || y >= cell.y + cell.height) {
-            return;
-        }
+    // Remember the press so the release can match it (sticky settle, repeat disarm), along
+    // with what holds it, so the other source's release cannot end it
+    viewState.setPressed(row, col, SDL_GetTicks64(), source);
+    context.wants_redraw = true;
 
-        // Remember the press so the release can match it (sticky settle, repeat disarm)
-        viewState.setPressed(cell.row, cell.col, SDL_GetTicks64());
-        context.wants_redraw = true;
+    if (stickyModifierFor(key->kind).has_value()) {
+        // Sticky keys settle on release: a tap latches, a long-press holds
+        return;
+    }
 
-        if (stickyModifierFor(cell.p_def->kind).has_value()) {
-            // Sticky keys settle on release: a tap latches, a long-press holds
-            return;
-        }
-
-        if (cell.p_def->kind == KeyKind::PageToggle) {
-            viewState.setPage(1 - viewState.getPage());
-            viewState.getRepeater().disarm();
-            return;
-        }
-
-        // Regular key: inject now, consume the one-shot latches, and arm the hold repeat
-        // with the mask captured at press, so the repeats keep emitting the same events
-        const auto sticky_modifiers = viewState.effectiveModifierMask();
-        injectTap(viewState, *cell.p_def, sticky_modifiers);
-        viewState.releaseLatched();
+    if (key->kind == KeyKind::PageToggle) {
+        viewState.setPage(1 - viewState.getPage());
         viewState.getRepeater().disarm();
-        if (isRepeatable(cell.p_def->kind)) {
-            viewState.getRepeater().arm(encodeKey(viewState.getPage(), cell.row, cell.col), sticky_modifiers);
-            // Remember what this tap typed into: the repeats must not follow the focus elsewhere
-            viewState.setRepeatTarget(context.focus_target);
-        }
-    });
+        return;
+    }
+
+    // Regular key: inject now, consume the one-shot latches, and arm the hold repeat
+    // with the mask captured at press, so the repeats keep emitting the same events
+    const auto sticky_modifiers = viewState.effectiveModifierMask();
+    injectTap(viewState, *key, sticky_modifiers);
+    viewState.releaseLatched();
+    viewState.getRepeater().disarm();
+    if (isRepeatable(key->kind)) {
+        viewState.getRepeater().arm(encodeKey(viewState.getPage(), row, col), sticky_modifiers);
+        // Remember what this tap typed into: the repeats must not follow the focus elsewhere
+        viewState.setRepeatTarget(context.focus_target);
+    }
 }
 
-void Osk::onMouseUp(CursorContext &context, OskState &viewState, const int32_t x, const int32_t y) {
-    (void) x;
-    (void) y;
-    if (viewState.getPressedRow() < 0) {
+void Osk::releaseKey(CursorContext &context, OskState &viewState, const OskState::PressSource source) const {
+    // Only the source that started the press may end it: a finger lifting must not settle the
+    // key the pad A button is holding, nor the other way around.
+    if (viewState.getPressedRow() < 0 || viewState.getPressSource() != source) {
         return;
     }
 
@@ -664,7 +658,29 @@ void Osk::onMouseUp(CursorContext &context, OskState &viewState, const int32_t x
     context.wants_redraw = true;
 }
 
-bool Osk::onPadInput(CursorContext &context, OskState &viewState, const SDL_Keycode padKeycode) const {
+void Osk::onMouseDown(CursorContext &context, OskState &viewState, const int32_t x, const int32_t y) {
+    if (!viewState.isVisible()) {
+        return;
+    }
+
+    forEachKey(viewState, [&](const KeyCell &cell) {
+        if (cell.p_def->kind == KeyKind::Spacer
+            || x < cell.x || x >= cell.x + cell.width
+            || y < cell.y || y >= cell.y + cell.height) {
+            return;
+        }
+
+        pressKey(context, viewState, cell.row, cell.col, OskState::PressSource::Pointer);
+    });
+}
+
+void Osk::onMouseUp(CursorContext &context, OskState &viewState, const int32_t x, const int32_t y) {
+    (void) x;
+    (void) y;
+    releaseKey(context, viewState, OskState::PressSource::Pointer);
+}
+
+bool Osk::onPadDown(CursorContext &context, OskState &viewState, const SDL_Keycode padKeycode) const {
     clampCursor(viewState);
     const auto rows = pageRows(viewState.getPage());
     const auto row = viewState.getCursorRow();
@@ -704,20 +720,10 @@ bool Osk::onPadInput(CursorContext &context, OskState &viewState, const SDL_Keyc
     }
 
     if (padKeycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_A)) {
-        // Press the key under the cursor; sticky keys toggle (no long-press on a tap button)
-        const auto &key = rows[row][col];
-        if (const auto modifier = stickyModifierFor(key.kind); modifier.has_value()) {
-            // A tap button has no press duration: stepping the cycle is the only way the
-            // pad can reach the Held state, so A cycles Idle -> Latched -> Held -> Idle.
-            viewState.setSticky(*modifier, nextStickyState(viewState.getSticky(*modifier)));
-        } else if (key.kind == KeyKind::PageToggle) {
-            viewState.setPage(1 - viewState.getPage());
-            viewState.getRepeater().disarm();
-        } else if (key.kind != KeyKind::Spacer) {
-            injectTap(viewState, key, viewState.effectiveModifierMask());
-            viewState.releaseLatched();
-        }
-        context.wants_redraw = true;
+        // A is a real press, held until its release comes back through onPadUp: it takes the
+        // same path a finger does, so it repeats while held and long-presses a sticky modifier
+        // into the Held state instead of having to cycle through it.
+        pressKey(context, viewState, row, col, OskState::PressSource::Pad);
         return true;
     }
 
@@ -732,6 +738,11 @@ bool Osk::onPadInput(CursorContext &context, OskState &viewState, const SDL_Keyc
             return true;
         }
 
+        // End a key A may be holding first: once the pad is handed back, ControllerInput stops
+        // routing releases here (it gates them on the pad focus), so the repeat A armed would
+        // never be told to stop and would keep typing on its own.
+        releaseKey(context, viewState, OskState::PressSource::Pad);
+
         // Hand the pad back to the bindings; the OSK stays visible for touch
         viewState.setPadFocus(false);
         context.wants_redraw = true;
@@ -739,6 +750,14 @@ bool Osk::onPadInput(CursorContext &context, OskState &viewState, const SDL_Keyc
     }
 
     return false;
+}
+
+void Osk::onPadUp(CursorContext &context, OskState &viewState, const SDL_Keycode padKeycode) const {
+    if (padKeycode != PadInput::fromButton(SDL_CONTROLLER_BUTTON_A)) {
+        return;
+    }
+
+    releaseKey(context, viewState, OskState::PressSource::Pad);
 }
 
 void Osk::tickRepeat(CursorContext &context, OskState &viewState) const {

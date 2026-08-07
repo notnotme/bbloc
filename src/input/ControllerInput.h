@@ -45,9 +45,11 @@
  * While the on-screen keyboard is visible, the first d-pad/A press hands it the pad
  * (lazily — mouse and touch users never see its key cursor), and from then on the d-pad
  * and the A/B buttons drive the key cursor instead of running bindings — the same
- * "focused view first, bindings as fallback" shape KeyboardInput has. Every other pad
- * input stays on the bindings. The grab lives in OskState, and only concerns the pad:
- * the keyboard focus is untouched, so typing keeps going where it went.
+ * "focused view first, bindings as fallback" shape KeyboardInput has. Releases go to it
+ * too, which the bindings never needed: A holds the key it pressed, so the on-screen
+ * keyboard repeats it until A comes back up. Every other pad input stays on the bindings.
+ * The grab lives in OskState, and only concerns the pad: the keyboard focus is untouched,
+ * so typing keeps going where it went.
  *
  * Every connected pad feeds the same state, like a keyboard: events are not filtered by
  * controller instance.
@@ -89,8 +91,9 @@ private:
      *
      * @param keycode The pad pseudo-keycode being dispatched.
      * @param modifiers The pad modifier mask to dispatch with.
-     * @return true when the input should auto-repeat while held: a bound command ran, or the
-     *         on-screen keyboard consumed a d-pad direction (its key cursor repeats; A/B do not).
+     * @return true when the input should auto-repeat through this repeater while held: a bound
+     *         command ran, or the on-screen keyboard consumed a d-pad direction. A held on a
+     *         key does repeat, but through the on-screen keyboard's own repeater.
      */
     bool dispatch(SDL_Keycode keycode, uint16_t modifiers);
 
@@ -107,7 +110,12 @@ private:
     void press(SDL_Keycode keycode);
 
     /**
-     * @brief Handles a pad pseudo-button release: disarms the repeat when it is the held input.
+     * @brief Handles a pad pseudo-button release: hands it to the on-screen keyboard, then
+     *        disarms the repeat when it is the held input.
+     *
+     * Releases are useless to the bindings but not to the on-screen keyboard while it holds
+     * the pad: a key pressed with A is held until A comes back up, and only that release
+     * settles a sticky key and stops the repeat the press armed.
      *
      * @param keycode The pad pseudo-keycode being released.
      */

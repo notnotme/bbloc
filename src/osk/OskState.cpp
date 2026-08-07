@@ -32,6 +32,7 @@ OskState::OskState()
       m_pressed_row(-1),
       m_pressed_col(0),
       m_press_time(0),
+      m_press_source(PressSource::None),
       m_repeat_focus(FocusTarget::Editor),
       m_pad_focus(false) {
     // Follow the system keyboard layout where the platform exposes one (Switch console
@@ -98,6 +99,10 @@ uint64_t OskState::getPressTime() const {
     return m_press_time;
 }
 
+OskState::PressSource OskState::getPressSource() const {
+    return m_press_source;
+}
+
 InputRepeater &OskState::getRepeater() {
     return m_repeater;
 }
@@ -159,16 +164,18 @@ void OskState::setCursor(const int32_t row, const int32_t col) {
     m_cursor_col = col;
 }
 
-void OskState::setPressed(const int32_t row, const int32_t col, const uint64_t pressTime) {
+void OskState::setPressed(const int32_t row, const int32_t col, const uint64_t pressTime, const PressSource source) {
     m_pressed_row = row;
     m_pressed_col = col;
     m_press_time = pressTime;
+    m_press_source = source;
 }
 
 void OskState::clearPressed() {
     m_pressed_row = -1;
     m_pressed_col = 0;
     m_press_time = 0;
+    m_press_source = PressSource::None;
 }
 
 void OskState::resetInteraction() {

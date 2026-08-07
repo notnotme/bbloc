@@ -34,9 +34,10 @@
  * @brief Stores the layout, visibility, and interaction state of the on-screen keyboard view.
  *
  * Tracks the visible page, the active layout table, the sticky modifier states, the
- * pad-navigation key cursor, the currently pressed key, the hold auto-repeat, and whether
- * the on-screen keyboard currently owns the game pad. The pad grab lives here, and not in
- * a CursorContext, because the on-screen keyboard is one object shared by every buffer.
+ * pad-navigation key cursor, the currently pressed key and the source holding it, the hold
+ * auto-repeat, and whether the on-screen keyboard currently owns the game pad. The pad grab
+ * lives here, and not in a CursorContext, because the on-screen keyboard is one object shared
+ * by every buffer.
  */
 class OskState final : public ViewState {
 public:
@@ -53,6 +54,19 @@ public:
         Idle,     ///< Not active.
         Latched,  ///< Active for the next key only (tap).
         Held      ///< Active until tapped again (long-press).
+    };
+
+    /**
+     * @brief The input source holding the currently pressed key.
+     *
+     * A pointer and the pad A button can hold a key at the same time; the source tells their
+     * releases apart, so lifting a finger never settles the press the pad started, nor the
+     * other way around.
+     */
+    enum class PressSource : uint8_t {
+        None,     ///< No key is pressed.
+        Pointer,  ///< A mouse button or a finger holds it.
+        Pad       ///< The game pad A button holds it.
     };
 
     /** @brief Number of StickyModifier values; must track the last enumerator. */
@@ -80,14 +94,17 @@ private:
     /** Column of the pad-navigation key cursor within its row. */
     int32_t m_cursor_col;
 
-    /** Row of the key currently pressed by the pointer, -1 when none. */
+    /** Row of the key currently pressed, -1 when none. */
     int32_t m_pressed_row;
 
-    /** Column of the key currently pressed by the pointer. */
+    /** Column of the key currently pressed. */
     int32_t m_pressed_col;
 
     /** SDL_GetTicks64 time of the current press, to tell taps from long-presses. */
     uint64_t m_press_time;
+
+    /** Input source holding the current press, PressSource::None when none. */
+    PressSource m_press_source;
 
     /** Auto-repeat state of the held key (arrows, Backspace, Delete). */
     InputRepeater m_repeater;
@@ -153,14 +170,17 @@ public:
     /** @brief Gets the column of the pad-navigation key cursor. */
     [[nodiscard]] int32_t getCursorCol() const;
 
-    /** @brief Gets the row of the pointer-pressed key, -1 when none. */
+    /** @brief Gets the row of the pressed key, -1 when none. */
     [[nodiscard]] int32_t getPressedRow() const;
 
-    /** @brief Gets the column of the pointer-pressed key. */
+    /** @brief Gets the column of the pressed key. */
     [[nodiscard]] int32_t getPressedCol() const;
 
     /** @brief Gets the SDL_GetTicks64 time of the current press. */
     [[nodiscard]] uint64_t getPressTime() const;
+
+    /** @brief Gets the input source holding the current press, PressSource::None when none. */
+    [[nodiscard]] PressSource getPressSource() const;
 
     /** @brief Gets the hold auto-repeat state. */
     [[nodiscard]] InputRepeater &getRepeater();
@@ -237,15 +257,19 @@ public:
     void setCursor(int32_t row, int32_t col);
 
     /**
-     * @brief Records the key the pointer pressed, to match it on release.
+     * @brief Records the pressed key and what holds it, to match them on release.
+     *
+     * The source matters because a pointer and the pad A button can hold a key at the same
+     * time: the release only ends the press when it comes from the source that started it.
      *
      * @param row Row of the pressed key.
      * @param col Column of the pressed key.
      * @param pressTime SDL_GetTicks64 time of the press.
+     * @param source The input source holding the key down.
      */
-    void setPressed(int32_t row, int32_t col, uint64_t pressTime);
+    void setPressed(int32_t row, int32_t col, uint64_t pressTime, PressSource source);
 
-    /** @brief Forgets the pointer-pressed key. */
+    /** @brief Forgets the pressed key and its source. */
     void clearPressed();
 
     /**
