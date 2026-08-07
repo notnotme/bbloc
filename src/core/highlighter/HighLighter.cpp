@@ -35,7 +35,10 @@ HighLighter::HighLighter(Cursor &cursor)
       p_ts_tree(nullptr),
       p_ts_query_cursor(ts_query_cursor_new()),
       m_cache_start_line(0),
-      m_input(this, inputCallback, TSInputEncodingUTF16LE),
+      // TSInput is third-party and carries no in-class initializers: its trailing `decode` member
+      // is spelled out. It only applies to TSInputEncodingCustom, so a UTF-16LE input has no
+      // custom decoder and passes nullptr.
+      m_input(this, inputCallback, TSInputEncodingUTF16LE, nullptr),
       m_high_light(HighLightId::None),
       m_is_dirty(false),
       m_edit_lines_shifted(false),

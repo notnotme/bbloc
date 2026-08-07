@@ -33,6 +33,7 @@ InfoBar::InfoBar(GlobalRegistry<CursorContext> &commandController, Theme &theme,
     : View(commandController, theme, quadProgram) {}
 
 void InfoBar::render(CursorContext &context, ViewState &viewState, QuadBuffer &quadBuffer, const float dt) {
+    (void) dt;
     const auto batch_start = quadBuffer.beginBatch(ApplicationWindow::INFO_BAR_DEFAULT_QUAD_COUNT);
     drawBackground(quadBuffer, viewState);
     drawText(quadBuffer, context, viewState);

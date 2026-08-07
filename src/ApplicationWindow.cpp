@@ -158,7 +158,7 @@ void ApplicationWindow::updateOrthogonal(const int32_t width, const int32_t heig
     m_orthogonal[15] = 1.0f;
 }
 
-void ApplicationWindow::create(const std::string_view title, const int32_t width, const int32_t height, const int32_t argc, const char *argv[]) {
+void ApplicationWindow::create(const std::string &title, const int32_t width, const int32_t height, const int32_t argc, const char *argv[]) {
     // Touch is handled explicitly in mainLoop; stop SDL from synthesizing mouse events from fingers
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
 
@@ -187,7 +187,7 @@ void ApplicationWindow::create(const std::string_view title, const int32_t width
 
     constexpr auto window_position = SDL_WINDOWPOS_CENTERED;
     constexpr auto window_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN | SDL_WINDOW_RESIZABLE;
-    p_sdl_window = SDL_CreateWindow(title.data(), window_position, window_position, width, height, window_flags);
+    p_sdl_window = SDL_CreateWindow(title.c_str(), window_position, window_position, width, height, window_flags);
 
     if (p_sdl_window == nullptr) {
         throw std::runtime_error(std::string("Failed to create SDL window: ").append(SDL_GetError()));

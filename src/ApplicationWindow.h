@@ -21,6 +21,7 @@
 
 #include <array>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -257,13 +258,14 @@ public:
      * After command registration and the autoexec run, opens the file given as first
      * program argument, if any.
      *
-     * @param title The window title.
+     * @param title The window title. A string rather than a view: SDL_CreateWindow needs a
+     *              NUL-terminated string, which a view does not promise.
      * @param width Initial window width in pixels.
      * @param height Initial window height in pixels.
      * @param argc Program argument count, as received by main().
      * @param argv Program argument values, as received by main().
      */
-    void create(std::string_view title, int32_t width, int32_t height, int32_t argc, const char *argv[]);
+    void create(const std::string &title, int32_t width, int32_t height, int32_t argc, const char *argv[]);
 
     /** @brief Cleans up all allocated resources and destroys the window. */
     void destroy();

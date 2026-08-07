@@ -55,8 +55,10 @@ void BindCommand::provideAutoComplete(const std::span<const std::u16string_view>
         }
     } else if (argumentIndex == 1) {
         // Enumerate every key name known to SDL, skipping unnamed keys and duplicates.
+        // The walk starts at the first real scancode: 1 to 3 are not SDL_Scancode values at all,
+        // and SDL maps them to SDLK_UNKNOWN, so they were already skipped below.
         auto seen_names = std::unordered_set<std::string>{};
-        for (auto scancode = 1; scancode < SDL_NUM_SCANCODES; ++scancode) {
+        for (int32_t scancode = SDL_SCANCODE_A; scancode < SDL_NUM_SCANCODES; ++scancode) {
             const auto key = SDL_GetKeyFromScancode(static_cast<SDL_Scancode>(scancode));
             if (key == SDLK_UNKNOWN) {
                 continue;

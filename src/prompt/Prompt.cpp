@@ -33,6 +33,7 @@ Prompt::Prompt(GlobalRegistry<CursorContext> &commandController, Theme &theme, Q
     : View(commandController, theme, quadProgram) {}
 
 void Prompt::render(CursorContext &context, PromptState &viewState, QuadBuffer &quadBuffer, float dt) {
+    (void) dt;
     const auto batch_start = quadBuffer.beginBatch(ApplicationWindow::PROMPT_DEFAULT_QUAD_COUNT);
     drawBackground(quadBuffer, viewState);
     drawText(quadBuffer, context, viewState);
@@ -50,6 +51,7 @@ void Prompt::render(CursorContext &context, PromptState &viewState, QuadBuffer &
 }
 
 bool Prompt::onKeyDown(CursorContext &context, PromptState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
+    (void) keyModifier;
     switch (keyCode) {
         case SDLK_RETURN:
             confirm(context, viewState);

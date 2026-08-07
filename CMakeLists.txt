@@ -102,6 +102,9 @@ add_executable(bbloc
 )
 target_include_directories(bbloc PRIVATE ${BBLOC_BACKEND_INCLUDE_DIR})
 
+# Both toolchains are GCC-compatible (desktop GCC, devkitPro GCC), so the flags need no condition.
+target_compile_options(bbloc PRIVATE -Wall -Wextra)
+
 
 # Dependencies
 # ========================================

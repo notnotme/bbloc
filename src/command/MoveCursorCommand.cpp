@@ -43,6 +43,8 @@ MoveCursorCommand::MoveCursorCommand(PromptState &promptState)
     : m_prompt_state(promptState) {}
 
 void MoveCursorCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
+    (void) previousArgs;
+    (void) input;
     if (argumentIndex == 0) {
         for (const auto &item : std::views::keys(MOVEMENT_MAP)) {
             itemCallback(item);

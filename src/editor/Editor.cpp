@@ -58,6 +58,7 @@ Editor::Editor(GlobalRegistry<CursorContext> &commandController, Theme &theme, Q
 }
 
 void Editor::render(CursorContext &context, ViewState &viewState, QuadBuffer &quadBuffer, const float dt) {
+    (void) dt;
     // The margin width, the longest line and the scrollbar sizes are invariant for the whole
     // frame, and measuring the longest line rescans every line metric when it is dirty: resolve
     // everything once and pass it down. The mouse handlers resolve the same metrics.
@@ -111,6 +112,8 @@ void Editor::render(CursorContext &context, ViewState &viewState, QuadBuffer &qu
 }
 
 bool Editor::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_Keycode keyCode, const uint16_t keyModifier) const {
+    (void) viewState;
+    (void) keyModifier;
     switch (keyCode) {
         case SDLK_RETURN: {
             context.scroll.follow_indicator = true;
@@ -182,6 +185,7 @@ bool Editor::onKeyDown(CursorContext &context, ViewState &viewState, const SDL_K
 }
 
 void Editor::onTextInput(CursorContext &context, ViewState &viewState, const char *text) const {
+    (void) viewState;
     auto utf8_text = std::string(text);
     if (!utf8::is_valid(utf8_text)) {
         // throw std::runtime_error("Invalid UTF-8 text: " + utf8_text);
@@ -504,7 +508,6 @@ void Editor::computeScrollbarSizes(const CursorContext &context, const ViewState
     // Need some variables
     const auto bar_size = m_theme.getDimension(DimensionId::ScrollbarWidth);
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
-    const auto line_height = m_theme.getLineHeight();
 
     const auto height = viewState.getHeight();
     const auto text_width = viewState.getWidth() - marginWidth - border_size;
@@ -520,10 +523,11 @@ void Editor::computeScrollbarSizes(const CursorContext &context, const ViewState
 
     // Each bar consumes space on the other axis, so a bar becoming visible can make the other one
     // necessary. Two rounds are enough: first decide with the full sizes, then with the reduced ones.
-    auto v_visible = v_fits && content_height > height;
-    auto h_visible = h_fits && content_width > text_width;
-    v_visible = v_fits && content_height > height - (h_visible ? bar_size : 0);
-    h_visible = h_fits && content_width > text_width - (v_visible ? bar_size : 0);
+    // Only the horizontal first-round decision feeds the second round: the vertical one would be
+    // recomputed before ever being read.
+    const auto h_visible_first_round = h_fits && content_width > text_width;
+    const auto v_visible = v_fits && content_height > height - (h_visible_first_round ? bar_size : 0);
+    const auto h_visible = h_fits && content_width > text_width - (v_visible ? bar_size : 0);
 
     vBarWidth = v_visible ? bar_size : 0;
     hBarHeight = h_visible ? bar_size : 0;
@@ -537,8 +541,6 @@ void Editor::drawScrollbars(QuadBuffer &quadBuffer, const CursorContext &context
 
     // Need some variables
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
-    const auto line_height = m_theme.getLineHeight();
-    const auto font_advance = m_theme.getFontAdvance();
 
     const auto &track_color = m_theme.getColor(ColorId::ScrollbarBackground);
     const auto &thumb_color = m_theme.getColor(ColorId::ScrollbarThumb);
@@ -708,8 +710,6 @@ void Editor::onMouseDown(CursorContext &context, ViewState &viewState, const int
     // the buffer before answering.
     const auto metrics = computeFrameMetrics(context, viewState);
     const auto border_size = m_theme.getDimension(DimensionId::BorderSize);
-    const auto line_height = m_theme.getLineHeight();
-    const auto font_advance = m_theme.getFontAdvance();
 
     // Get the vew geometry
     const auto position_x = viewState.getPositionX();
