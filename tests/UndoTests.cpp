@@ -464,3 +464,30 @@ TEST_CASE("lowering the entry cap at runtime trims the history immediately") {
     CHECK(undoAll(cursor) == 2);
     CHECK(cursor.getText() == std::u16string(u"abc"));
 }
+
+TEST_CASE("loading content leaves nothing to undo") {
+    auto cursor = Cursor(std::make_unique<LineBuffer>());
+
+    // Edit first, so there is a history that loading has to discard
+    type(cursor, u"scratch");
+    REQUIRE(undoAll(cursor) == 1);
+
+    (void) cursor.loadContent(u"one\ntwo\nthree");
+    CHECK(cursor.getText() == std::u16string(u"one\ntwo\nthree"));
+    CHECK(cursor.getLineCount() == 3);
+    CHECK(cursor.getLine() == 0);
+    CHECK(cursor.getColumn() == 0);
+
+    // The file is not an edit: undoing must not peel it back off, and redo must not reach the
+    // buffer that was replaced
+    CHECK_FALSE(undoStep(cursor));
+    CHECK_FALSE(redoStep(cursor));
+    CHECK(cursor.getText() == std::u16string(u"one\ntwo\nthree"));
+
+    // Editing the loaded buffer still works, and undoes back to the loaded state
+    cursor.moveToEndOfFile();
+    type(cursor, u"!");
+    REQUIRE(cursor.getText() == std::u16string(u"one\ntwo\nthree!"));
+    REQUIRE(undoAll(cursor) == 1);
+    CHECK(cursor.getText() == std::u16string(u"one\ntwo\nthree"));
+}

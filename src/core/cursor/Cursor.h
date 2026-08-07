@@ -293,6 +293,19 @@ public:
     [[nodiscard]] std::optional<BufferEdit> eraseSelection();
 
     /**
+     * @brief Replaces the whole buffer with freshly loaded content, without recording it.
+     *
+     * Installing a file is not an undoable edit: it replaces everything, and there is no earlier
+     * state worth returning to. Going through insert() would retain a copy of the entire file in
+     * the history only to drop it again, which is the one place an edit log would cost as much as
+     * a snapshot. The caret lands at the origin and the history starts empty.
+     *
+     * @param content The text to install, already validated by the caller.
+     * @return The edits describing the replacement, for the incremental re-parse.
+     */
+    [[nodiscard]] std::vector<BufferEdit> loadContent(std::u16string_view content);
+
+    /**
      * @brief Clears the entire buffer and resets the cursor to the beginning.
      *
      * After this call, the buffer will be empty and the cursor will be at (0, 0).

@@ -427,6 +427,21 @@ std::optional<BufferEdit> Cursor::eraseSelection() {
     return edit;
 }
 
+std::vector<BufferEdit> Cursor::loadContent(const std::u16string_view content) {
+    auto edits = std::vector<BufferEdit>{};
+    edits.reserve(2);
+
+    // clear() already keeps itself out of the history; the insert goes straight to the buffer for
+    // the same reason, so the file is never copied into a group
+    edits.emplace_back(clear());
+    edits.emplace_back(m_buffer->insert(0, 0, content));
+
+    m_line = 0;
+    m_column = 0;
+    m_history.clear();
+    return edits;
+}
+
 BufferEdit Cursor::clear() {
     // Close the current undo group; the wipe itself is intentionally not snapshotted,
     // callers replace the whole content afterwards and clear the history themselves.

@@ -179,22 +179,20 @@ std::optional<std::u16string> OpenFileCommand::readFile(const std::string &path,
 }
 
 void OpenFileCommand::loadInto(CursorContext &target, const std::string &path, const std::u16string_view content) {
-    // The whole content is validated: it is now safe to replace the buffer and switch the highlight mode.
-    const auto &edit_clear = target.cursor.clear();
-    target.highlighter.edit(edit_clear);
-
+    // The whole content is validated: it is now safe to replace the buffer and switch the highlight
+    // mode. The mode goes first because it drops the syntax tree, so the edits installing the file
+    // reach a highlighter that parses them from scratch either way.
     const auto file_extension = std::filesystem::path(path).extension().string();
     target.highlighter.setMode(file_extension);
 
-    // Insert all text at once.
-    const auto &edit_insert = target.cursor.insert(content);
-    target.highlighter.edit(edit_insert);
+    // Replace the buffer whole. loadContent keeps it out of the undo history, which also discards
+    // the history of the previous buffer, and puts the caret back at the origin.
+    for (const auto &edit : target.cursor.loadContent(content)) {
+        target.highlighter.edit(edit);
+    }
 
-    // Set cursor name, reset position and discard the undo history of the previous buffer.
-    // A freshly loaded buffer matches the disk, so it starts clean.
+    // Set cursor name. A freshly loaded buffer matches the disk, so it starts clean.
     target.cursor.setName(path);
-    target.cursor.setPosition(0, 0);
-    target.cursor.clearHistory();
     target.cursor.setModified(false);
     target.scroll.follow_indicator = true;
     target.stick.active = false;
