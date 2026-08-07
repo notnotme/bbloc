@@ -34,6 +34,35 @@ Theme::Theme()
       m_font_advance(0),
       m_font_descender(0) {}
 
+void Theme::create(CVarRegistry &registry, const std::string_view path) {
+    // Create the atlas and texture
+    m_atlas_array.create();
+    m_quad_texture.create(0);
+
+    // Set up the FT library and load theme text font
+    if (FT_Init_FreeType(&m_ft_library) != FT_Err_Ok) {
+        throw std::runtime_error("Theme::create: FT_Init_FreeType failed.");
+    }
+
+    const auto font_file_path = std::string(path).append(FONT_FILE);
+    if (FT_New_Face(m_ft_library, font_file_path.data(), 0, &m_font) != 0) {
+        throw std::runtime_error(std::string("Theme::create: FT_New_Face failed: ").append(FONT_FILE));
+    }
+
+    if (!FT_IS_FIXED_WIDTH(m_font)) {
+        // We need a fixed width font
+        throw std::runtime_error("Theme::create: Font is not fixed width.");
+    }
+
+    // The size ceiling depends on the face, derive it before requesting any size.
+    computeMaxFontSize();
+
+    setFontSize(DEFAULT_FONT_SIZE);
+    registerThemeColorCVar(registry);
+    registerHighLightColorCVar(registry);
+    registerThemeDimensionCVar(registry);
+}
+
 void Theme::destroy() {
     // Destroy texture and font
     m_quad_texture.destroy();
@@ -81,6 +110,103 @@ void Theme::computeMaxFontSize() {
     // A font shipping an oversized bbox must not push the cap below the minimum size,
     // std::clamp requires a valid interval. The per-glyph fallback covers what is left.
     m_max_font_size = std::max(max_size, MIN_FONT_SIZE);
+}
+
+void Theme::registerThemeColorCVar(CVarRegistry &registry) {
+    // Create default colors for the theme
+    const auto &cvar_margin_background_color         = m_colors[static_cast<size_t>(ColorId::MarginBackground)]       = std::make_shared<CVarColor>(220, 220, 220, 255);
+    const auto &cvar_info_bar_background_color       = m_colors[static_cast<size_t>(ColorId::InfoBarBackground)]      = std::make_shared<CVarColor>(210, 210, 210, 255);
+    const auto &cvar_editor_background_color         = m_colors[static_cast<size_t>(ColorId::EditorBackground)]       = std::make_shared<CVarColor>(250, 250, 250, 255);
+    const auto &cvar_prompt_background_color         = m_colors[static_cast<size_t>(ColorId::PromptBackground)]       = std::make_shared<CVarColor>(210, 210, 210, 255);
+    const auto &cvar_current_line_background_color   = m_colors[static_cast<size_t>(ColorId::LineBackground)]         = std::make_shared<CVarColor>(  0,   0,   0,  12);
+    const auto &cvar_selected_text_background_color  = m_colors[static_cast<size_t>(ColorId::SelectedTextBackground)] = std::make_shared<CVarColor>(  0, 200, 255,  32);
+    const auto &cvar_line_number_color               = m_colors[static_cast<size_t>(ColorId::LineNumber)]             = std::make_shared<CVarColor>(  0,   0,   0, 220);
+    const auto &cvar_info_bar_text_color             = m_colors[static_cast<size_t>(ColorId::InfoBarText)]            = std::make_shared<CVarColor>(  0,   0,   0, 220);
+    const auto &cvar_prompt_text_color               = m_colors[static_cast<size_t>(ColorId::PromptText)]             = std::make_shared<CVarColor>(  0,   0,   0, 220);
+    const auto &cvar_prompt_input_text_color         = m_colors[static_cast<size_t>(ColorId::PromptInputText)]        = std::make_shared<CVarColor>(  0,   0,   0, 220);
+    const auto &cvar_border_color                    = m_colors[static_cast<size_t>(ColorId::Border)]                 = std::make_shared<CVarColor>(150, 150, 150, 255);
+    const auto &cvar_cursor_indicator_color          = m_colors[static_cast<size_t>(ColorId::CursorIndicator)]        = std::make_shared<CVarColor>(  0,   0,   0, 255);
+    const auto &cvar_scrollbar_background_color      = m_colors[static_cast<size_t>(ColorId::ScrollbarBackground)]    = std::make_shared<CVarColor>(225, 225, 225, 255);
+    const auto &cvar_scrollbar_thumb_color           = m_colors[static_cast<size_t>(ColorId::ScrollbarThumb)]         = std::make_shared<CVarColor>(150, 150, 150, 255);
+    const auto &cvar_osk_background_color            = m_colors[static_cast<size_t>(ColorId::OskBackground)]          = std::make_shared<CVarColor>(210, 210, 210, 255);
+    const auto &cvar_osk_key_background_color        = m_colors[static_cast<size_t>(ColorId::OskKeyBackground)]       = std::make_shared<CVarColor>(240, 240, 240, 255);
+    const auto &cvar_osk_key_text_color              = m_colors[static_cast<size_t>(ColorId::OskKeyText)]             = std::make_shared<CVarColor>(  0,   0,   0, 220);
+    const auto &cvar_osk_key_cursor_color            = m_colors[static_cast<size_t>(ColorId::OskKeyCursor)]          = std::make_shared<CVarColor>(  0, 200, 255,  96);
+    const auto &cvar_osk_key_pressed_color           = m_colors[static_cast<size_t>(ColorId::OskKeyPressed)]         = std::make_shared<CVarColor>(200, 205, 215, 255);
+
+    // Make colors accessible from the console
+    registry.registerCvar(u"col_margin_background",        cvar_margin_background_color, nullptr);
+    registry.registerCvar(u"col_info_bar_background",      cvar_info_bar_background_color, nullptr);
+    registry.registerCvar(u"col_editor_background",        cvar_editor_background_color, nullptr);
+    registry.registerCvar(u"col_prompt_background",        cvar_prompt_background_color, nullptr);
+    registry.registerCvar(u"col_current_line_background",  cvar_current_line_background_color, nullptr);
+    registry.registerCvar(u"col_selected_text_background", cvar_selected_text_background_color, nullptr);
+    registry.registerCvar(u"col_line_number",              cvar_line_number_color, nullptr);
+    registry.registerCvar(u"col_info_bar_text",            cvar_info_bar_text_color, nullptr);
+    registry.registerCvar(u"col_prompt_text",              cvar_prompt_text_color, nullptr);
+    registry.registerCvar(u"col_prompt_input_text",        cvar_prompt_input_text_color, nullptr);
+    registry.registerCvar(u"col_border",                   cvar_border_color, nullptr);
+    registry.registerCvar(u"col_cursor_indicator",         cvar_cursor_indicator_color, nullptr);
+    registry.registerCvar(u"col_scrollbar",                cvar_scrollbar_background_color, nullptr);
+    registry.registerCvar(u"col_scrollbar_thumb",          cvar_scrollbar_thumb_color, nullptr);
+    registry.registerCvar(u"col_osk_background",           cvar_osk_background_color, nullptr);
+    registry.registerCvar(u"col_osk_key_background",       cvar_osk_key_background_color, nullptr);
+    registry.registerCvar(u"col_osk_key_text",             cvar_osk_key_text_color, nullptr);
+    registry.registerCvar(u"col_osk_key_cursor",           cvar_osk_key_cursor_color, nullptr);
+    registry.registerCvar(u"col_osk_key_pressed",          cvar_osk_key_pressed_color, nullptr);
+}
+
+void Theme::registerHighLightColorCVar(CVarRegistry &registry) {
+    // Create default highlight colors
+    const auto &cvar_hl_text_color           = m_highlight_colors[static_cast<size_t>(TokenId::None)]         = std::make_shared<CVarColor>( 64,  64,  64, 255);
+    const auto &cvar_hl_comment_color        = m_highlight_colors[static_cast<size_t>(TokenId::Comment)]      = std::make_shared<CVarColor>(160, 160, 160, 200);
+    const auto &cvar_hl_string_color         = m_highlight_colors[static_cast<size_t>(TokenId::String)]       = std::make_shared<CVarColor>(  0, 150,   0, 255);
+    const auto &cvar_hl_preprocessor_color   = m_highlight_colors[static_cast<size_t>(TokenId::Preprocessor)] = std::make_shared<CVarColor>(150, 150,  64, 255);
+    const auto &cvar_hl_number_color         = m_highlight_colors[static_cast<size_t>(TokenId::Number)]       = std::make_shared<CVarColor>(  0, 200, 200, 255);
+    const auto &cvar_hl_keyword_color        = m_highlight_colors[static_cast<size_t>(TokenId::Keyword)]      = std::make_shared<CVarColor>(  0,   0, 200, 255);
+    const auto &cvar_hl_statement_color      = m_highlight_colors[static_cast<size_t>(TokenId::Statement)]    = std::make_shared<CVarColor>(200,   0, 200, 255);
+    const auto &cvar_hl_type_color           = m_highlight_colors[static_cast<size_t>(TokenId::Type)]         = std::make_shared<CVarColor>(  0, 128, 128, 255);
+    const auto &cvar_hl_constant_color       = m_highlight_colors[static_cast<size_t>(TokenId::Constant)]     = std::make_shared<CVarColor>(128,  64,   0, 255);
+    const auto &cvar_hl_function_color       = m_highlight_colors[static_cast<size_t>(TokenId::Function)]     = std::make_shared<CVarColor>(150, 100,  40, 255);
+    const auto &cvar_hl_variable_color       = m_highlight_colors[static_cast<size_t>(TokenId::Variable)]     = std::make_shared<CVarColor>( 90,  90, 110, 255);
+
+    // Make highlight colors accessible from the console
+    registry.registerCvar(u"hl_text",          cvar_hl_text_color, nullptr);
+    registry.registerCvar(u"hl_comment",       cvar_hl_comment_color, nullptr);
+    registry.registerCvar(u"hl_string",        cvar_hl_string_color, nullptr);
+    registry.registerCvar(u"hl_preprocessor",  cvar_hl_preprocessor_color, nullptr);
+    registry.registerCvar(u"hl_number",        cvar_hl_number_color, nullptr);
+    registry.registerCvar(u"hl_keyword",       cvar_hl_keyword_color, nullptr);
+    registry.registerCvar(u"hl_statement",     cvar_hl_statement_color, nullptr);
+    registry.registerCvar(u"hl_type",          cvar_hl_type_color, nullptr);
+    registry.registerCvar(u"hl_constant",      cvar_hl_constant_color, nullptr);
+    registry.registerCvar(u"hl_function",      cvar_hl_function_color, nullptr);
+    registry.registerCvar(u"hl_variable",      cvar_hl_variable_color, nullptr);
+}
+
+void Theme::registerThemeDimensionCVar(CVarRegistry &registry) {
+    // Create default dimensions for the theme
+    const auto &cvar_padding_width   = m_dimensions[static_cast<size_t>(DimensionId::PaddingWidth)]   = std::make_shared<CVarInt>( 8);
+    const auto &cvar_indicator_width = m_dimensions[static_cast<size_t>(DimensionId::IndicatorWidth)] = std::make_shared<CVarInt>( 2);
+    const auto &cvar_border_size     = m_dimensions[static_cast<size_t>(DimensionId::BorderSize)]     = std::make_shared<CVarInt>( 1);
+    const auto &cvar_tab_to_space    = m_dimensions[static_cast<size_t>(DimensionId::TabToSpace)]     = std::make_shared<CVarInt>( 4);
+    const auto &cvar_page_up_down    = m_dimensions[static_cast<size_t>(DimensionId::PageUpDown)]     = std::make_shared<CVarInt>(10);
+    const auto &cvar_scrollbar_width = m_dimensions[static_cast<size_t>(DimensionId::ScrollbarWidth)] = std::make_shared<CVarInt>(10);
+    const auto &cvar_osk_height      = m_dimensions[static_cast<size_t>(DimensionId::OskHeight)]      = std::make_shared<CVarInt>(40);
+    const auto &cvar_osk_key_gap     = m_dimensions[static_cast<size_t>(DimensionId::OskKeyGap)]      = std::make_shared<CVarInt>( 1);
+
+    // Make dimensions accessible from the console
+    registry.registerCvar(u"dim_padding_width",    cvar_padding_width, nullptr);
+    registry.registerCvar(u"dim_indicator_width",  cvar_indicator_width, nullptr);
+    registry.registerCvar(u"dim_border_size",      cvar_border_size, nullptr);
+    registry.registerCvar(u"dim_tab_to_space",     cvar_tab_to_space, nullptr);
+    registry.registerCvar(u"dim_page_up_down",     cvar_page_up_down, nullptr);
+    registry.registerCvar(u"dim_scrollbar_width",  cvar_scrollbar_width, nullptr);
+    registry.registerCvar(u"dim_osk_height",       cvar_osk_height, nullptr);
+    registry.registerCvar(u"dim_osk_key_gap",      cvar_osk_key_gap, nullptr);
+
+    // Register a cvar to change the font size. It needs a callback.
+    registry.registerCvar(u"dim_font_size", m_font_size, [&]{ setFontSize(m_font_size->m_value); });
 }
 
 void Theme::setFontSize(int32_t size) {

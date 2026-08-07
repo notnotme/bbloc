@@ -226,6 +226,9 @@ classDiagram
     class DimensionId {
         <<enum>>
     }
+    class CVarRegistry {
+        <<interface>>
+    }
     class AtlasArray
     class QuadTexture
     class CVarColor
@@ -237,6 +240,7 @@ classDiagram
     Theme o-- CVarInt : DimensionId + font size map
     Theme --> ColorId
     Theme --> DimensionId
+    Theme ..> CVarRegistry : create() registers its color and dimension CVars
 ```
 
 ---

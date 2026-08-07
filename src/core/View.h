@@ -24,6 +24,7 @@
 
 #include <SDL.h>
 
+#include "base/GlobalRegistry.h"
 #include "renderer/QuadProgram.h"
 #include "renderer/QuadBuffer.h"
 #include "theme/Theme.h"
