@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-bbloc is a minimalist GPU-rendered text editor in C++20 (SDL2, OpenGL, glad, FreeType, utfcpp, tree-sitter). It targets Linux and Nintendo Switch (devkitPro). No test suite exists; style is checked by clang-tidy (`.clang-tidy` at the repository root, `WarningsAsErrors: '*'`) on top of the build's `-Wall -Wextra`.
+bbloc is a minimalist GPU-rendered text editor in C++20 (SDL2, OpenGL, glad, FreeType, utfcpp, tree-sitter). It targets Linux and Nintendo Switch (devkitPro). Style is checked by clang-tidy (`.clang-tidy` at the repository root, `WarningsAsErrors: '*'`) on top of the build's `-Wall -Wextra`. Automated tests cover the undo subsystem only (see Testing below); everything else is verified by running the app.
 
 ## Plans
 
@@ -40,6 +40,18 @@ On Switch, assets are packaged into the NRO and read from the `romfs:/` device �
 Source files are listed explicitly in `CMakeLists.txt` — every new `.cpp` must be added there by hand.
 
 The `misc/pre-commit` hook runs clang-tidy on the staged sources; activate it once per clone with `git config core.hooksPath misc`.
+
+## Testing
+
+`tests/` holds a doctest-based target, `bbloc_tests`, built by the desktop configure only (`if(NOT NINTENDO_SWITCH)`) and run directly:
+
+```bash
+cmake --build cmake-build-debug --target bbloc_tests && ./cmake-build-debug/bbloc_tests
+```
+
+It links `Cursor`, `UndoHistory`, `LineBuffer`, `LongestLineTracker` and `CVarInt` only — no SDL, GL, FreeType or tree-sitter — so it builds in seconds. doctest is vendored at `tests/doctest.h` (MIT, never edited); nothing comes from vcpkg. `tests/` is outside the toolchain's reach: `misc/pre-commit` globs `src/*.cpp` and `src/*.h`, and `.clang-tidy` filters headers to `.*/src/.*`, so nothing there is linted.
+
+Coverage is deliberately narrow — the undo/redo contract (round-trip, group granularity, surrogate pairs, trimming, saved-state tracking). Extend it when touching that subsystem; the rest of the app is still verified by running it.
 
 ## Architecture
 
