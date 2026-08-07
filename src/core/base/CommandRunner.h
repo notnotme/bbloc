@@ -58,6 +58,16 @@ public:
     virtual bool runBoundCommand(SDL_Keycode keycode, uint16_t modifiers) = 0;
 
     /**
+     * @brief Clears a displayed prompt message back to the ready state.
+     *
+     * Input handlers call it when a new input action begins — the new action is what
+     * invalidates the message the previous command left on screen. It must run before the
+     * input is dispatched, otherwise it would erase the message that dispatch just produced.
+     * Implementations do nothing unless a message is currently displayed.
+     */
+    virtual void dismissMessage() = 0;
+
+    /**
      * @brief Provides auto-completion suggestions for command names.
      *
      * @param input The current (partial) user input string.

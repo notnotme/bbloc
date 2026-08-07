@@ -80,9 +80,14 @@ void ControllerInput::onDeviceRemoved(const SDL_ControllerDeviceEvent &event) {
 
 void ControllerInput::publishOskModifiers() {
     const auto shift = (m_pad_modifiers & PadInput::KMOD_PAD_L) != 0 ? KMOD_LSHIFT : 0;
+    // The state write is unconditional so the mask stays truthful: showing the on-screen
+    // keyboard while a shoulder is already held must find the Shift layer already set. The
+    // repaint is not: the key labels resolve under the mask, so only a visible strip has
+    // anything to redraw — otherwise every shoulder press would force a frame for nothing.
     m_osk_state.setLiveModifiers(static_cast<uint16_t>(shift));
-    // The key labels resolve under the mask, so the strip has to repaint on the change.
-    m_context_manager.active().wants_redraw = true;
+    if (m_osk_state.isVisible()) {
+        m_context_manager.active().wants_redraw = true;
+    }
 }
 
 void ControllerInput::onButtonDown(const SDL_ControllerButtonEvent &event) {
@@ -142,6 +147,12 @@ void ControllerInput::updateAxisDirection(const SDL_GameControllerAxis axis, con
 }
 
 void ControllerInput::press(const SDL_Keycode keycode) {
+    // The single choke point every pad press flows through, buttons and axis directions
+    // alike, and it runs before the dispatch — so the message a bound command produces
+    // survives the press that ran it. Repeat ticks go straight to dispatch, so a held
+    // input never dismisses again.
+    m_command_runner.dismissMessage();
+
     // A new press always replaces the repeating input.
     m_repeater.disarm();
     if (dispatch(keycode, m_pad_modifiers)) {

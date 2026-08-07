@@ -530,7 +530,7 @@ classDiagram
     ApplicationWindow *-- PointerInput
     ApplicationWindow *-- ControllerInput
     KeyboardInput ..> CommandRunner : runBoundCommand fallback
-    ControllerInput ..> CommandRunner : runBoundCommand dispatch
+    ControllerInput ..> CommandRunner : runBoundCommand dispatch, dismissMessage on press
     KeyboardInput ..> View~TState~ : dispatches to focused view
     PointerInput ..> View~TState~ : routes captured pointer events
     ApplicationWindow *-- CommandManager

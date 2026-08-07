@@ -230,12 +230,13 @@ private:
     /**
      * @brief Clears a displayed prompt message back to the ready state.
      *
-     * Called when an input event starts a new action (key, text, pointer press, pad button),
+     * Called when an input event starts a new action (key, text, pointer press, pad press),
      * which is what invalidates the message of the previous command. Cosmetic redraws (an OSK
      * key un-lighting on release, a resize) keep the message on screen. No-op unless a message
-     * is displayed.
+     * is displayed. Part of CommandRunner, so the input handlers reach it through the runner
+     * they already hold.
      */
-    void dismissPromptMessage();
+    void dismissMessage() override;
 
 public:
     /** @brief Deleted copy constructor. */

@@ -344,7 +344,7 @@ void ApplicationWindow::mainLoop() {
                 text_event.timestamp = event.user.timestamp;
                 SDL_strlcpy(text_event.text, static_cast<char *>(event.user.data1), sizeof(text_event.text));
                 SDL_free(event.user.data1);
-                dismissPromptMessage();
+                dismissMessage();
                 m_keyboard_input.onTextInput(text_event);
                 continue;
             }
@@ -360,7 +360,8 @@ void ApplicationWindow::mainLoop() {
                     m_controller_input.onDeviceRemoved(event.cdevice);
                 break;
                 case SDL_CONTROLLERBUTTONDOWN:
-                    dismissPromptMessage();
+                    // No dismissal here: ControllerInput::press does it, so the axis-derived
+                    // presses (sticks, triggers) dismiss too.
                     m_controller_input.onButtonDown(event.cbutton);
                 break;
                 case SDL_CONTROLLERBUTTONUP:
@@ -387,15 +388,15 @@ void ApplicationWindow::mainLoop() {
                     }
                 break;
                 case SDL_KEYDOWN:
-                    dismissPromptMessage();
+                    dismissMessage();
                     m_keyboard_input.onKeyDown(event.key);
                 break;
                 case SDL_TEXTINPUT:
-                    dismissPromptMessage();
+                    dismissMessage();
                     m_keyboard_input.onTextInput(event.text);
                 break;
                 case SDL_MOUSEBUTTONDOWN:
-                    dismissPromptMessage();
+                    dismissMessage();
                     m_pointer_input.onMouseDown(event.button);
                 break;
                 case SDL_MOUSEMOTION:
@@ -408,7 +409,7 @@ void ApplicationWindow::mainLoop() {
                     m_pointer_input.onMouseWheel(event.wheel);
                 break;
                 case SDL_FINGERDOWN:
-                    dismissPromptMessage();
+                    dismissMessage();
                     m_pointer_input.onFingerDown(event.tfinger, window_width, window_height);
                 break;
                 case SDL_FINGERMOTION:
@@ -511,7 +512,7 @@ void ApplicationWindow::destroy() {
     m_orthogonal = {};
 }
 
-void ApplicationWindow::dismissPromptMessage() {
+void ApplicationWindow::dismissMessage() {
     if (m_prompt_state.getRunningState() == PromptState::RunningState::Message) {
         m_prompt_state.setRunningState(PromptState::RunningState::Idle);
         m_prompt_state.setPromptText(PromptState::PROMPT_READY);

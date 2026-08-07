@@ -97,7 +97,9 @@ private:
      * @brief Dispatches a pad pseudo-button press and arms the auto-repeat on success.
      *
      * A new press always disarms the previous repeat first; the repeat only arms when a
-     * bound command actually ran, capturing the modifiers held at press time.
+     * bound command actually ran, capturing the modifiers held at press time. Being the
+     * choke point of every pad press, it also dismisses a displayed prompt message before
+     * dispatching — the held shoulders never reach it, so they leave the message alone.
      *
      * @param keycode The pad pseudo-keycode being pressed.
      */
@@ -129,6 +131,10 @@ private:
      * key events rather than running bindings, so the binding mask never reaches it. L is
      * mapped to Shift there: holding it modifies an on-screen key the way holding Shift
      * modifies a physical one, and the key labels follow.
+     *
+     * The mask is published even while the keyboard is hidden, so showing it later with a
+     * shoulder already held finds the right layer; only the repaint is conditional on it
+     * being visible.
      */
     void publishOskModifiers();
 
