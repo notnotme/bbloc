@@ -119,6 +119,51 @@ void appendAsNewGroup(Cursor &cursor, const std::u16string_view text) {
     (void) cursor.insert(text);
 }
 
+/**
+ * @brief Types text one character at a time, the way Editor::onTextInput feeds it.
+ *
+ * A run of single-character inserts with no cursor move between them stays inside one undo group,
+ * which is what makes typing undo as a run rather than character by character.
+ *
+ * @param cursor The cursor to type into.
+ * @param text The characters to insert in order.
+ */
+void type(Cursor &cursor, const std::u16string_view text) {
+    for (const auto character : text) {
+        (void) cursor.insert(std::u16string_view(&character, 1));
+    }
+}
+
+/**
+ * @brief Selects a range by anchoring at one point and moving the caret to the other.
+ *
+ * @param cursor The cursor to select on.
+ * @param lineStart The line the selection is anchored at.
+ * @param columnStart The column the selection is anchored at.
+ * @param lineEnd The line the caret moves to.
+ * @param columnEnd The column the caret moves to.
+ */
+void select(Cursor &cursor, const uint32_t lineStart, const uint32_t columnStart, const uint32_t lineEnd, const uint32_t columnEnd) {
+    cursor.activateSelection(false);
+    cursor.setPosition(lineStart, columnStart);
+    cursor.activateSelection(true);
+    cursor.setPosition(lineEnd, columnEnd);
+}
+
+/**
+ * @brief Undoes until the history is spent and reports how many steps that took.
+ *
+ * @param cursor The cursor to walk back.
+ * @return The number of undo steps the history held.
+ */
+uint32_t undoAll(Cursor &cursor) {
+    auto steps = 0u;
+    while (undoStep(cursor)) {
+        ++steps;
+    }
+    return steps;
+}
+
 }
 
 
@@ -224,4 +269,93 @@ TEST_CASE("an edit after an undo drops the redo stack") {
     CHECK(cursor.getText() == std::u16string(u"aaa"));
     REQUIRE(undoStep(cursor));
     CHECK(cursor.getText() == std::u16string(u""));
+}
+
+TEST_CASE("a typed run is a single undo step") {
+    auto cursor = Cursor(std::make_unique<LineBuffer>());
+    seed(cursor, u"");
+
+    type(cursor, u"hello world");
+    REQUIRE(cursor.getText() == std::u16string(u"hello world"));
+
+    CHECK(undoAll(cursor) == 1);
+    CHECK(cursor.getText() == std::u16string(u""));
+}
+
+TEST_CASE("a caret move splits a typed run") {
+    auto cursor = Cursor(std::make_unique<LineBuffer>());
+    seed(cursor, u"");
+
+    type(cursor, u"abc");
+    cursor.moveLeft();
+    type(cursor, u"d");
+    REQUIRE(cursor.getText() == std::u16string(u"abdc"));
+
+    // The move closed the first run, so the two typed spans undo separately
+    CHECK(undoAll(cursor) == 2);
+    CHECK(cursor.getText() == std::u16string(u""));
+}
+
+TEST_CASE("a new line closes its group rather than opening one") {
+    auto cursor = Cursor(std::make_unique<LineBuffer>());
+    seed(cursor, u"");
+
+    type(cursor, u"abc");
+    (void) cursor.newLine();
+    type(cursor, u"def");
+    REQUIRE(cursor.getText() == std::u16string(u"abc\ndef"));
+
+    // The line break belongs to the run it ends, so the first undo drops "def"
+    // and leaves the empty second line behind
+    REQUIRE(undoStep(cursor));
+    CHECK(cursor.getText() == std::u16string(u"abc\n"));
+    CHECK(cursor.getLine() == 1);
+    CHECK(cursor.getColumn() == 0);
+
+    REQUIRE(undoStep(cursor));
+    CHECK(cursor.getText() == std::u16string(u""));
+    CHECK_FALSE(undoStep(cursor));
+}
+
+TEST_CASE("a multi-line insert is a single undo step") {
+    auto cursor = Cursor(std::make_unique<LineBuffer>());
+    seed(cursor, u"");
+
+    // One insert carrying newlines, the shape PasteTextCommand produces
+    (void) cursor.insert(u"one\ntwo\nthree");
+    REQUIRE(cursor.getText() == std::u16string(u"one\ntwo\nthree"));
+    REQUIRE(cursor.getLineCount() == 3);
+
+    CHECK(undoAll(cursor) == 1);
+    CHECK(cursor.getText() == std::u16string(u""));
+    CHECK(cursor.getLineCount() == 1);
+}
+
+TEST_CASE("a multi-line selection erase is a single undo step") {
+    auto cursor = Cursor(std::make_unique<LineBuffer>());
+    seed(cursor, u"one\ntwo\nthree");
+
+    select(cursor, 0, 1, 2, 2);
+    (void) cursor.eraseSelection();
+    cursor.activateSelection(false);
+    REQUIRE(cursor.getText() == std::u16string(u"oree"));
+    REQUIRE(cursor.getLineCount() == 1);
+
+    CHECK(undoAll(cursor) == 1);
+    CHECK(cursor.getText() == std::u16string(u"one\ntwo\nthree"));
+    CHECK(cursor.getLineCount() == 3);
+}
+
+TEST_CASE("a backspace run inside one line is a single undo step") {
+    auto cursor = Cursor(std::make_unique<LineBuffer>());
+    seed(cursor, u"abcdef");
+
+    cursor.moveToEndOfLine();
+    for (auto i = 0; i < 3; ++i) {
+        (void) cursor.eraseLeft();
+    }
+    REQUIRE(cursor.getText() == std::u16string(u"abc"));
+
+    CHECK(undoAll(cursor) == 1);
+    CHECK(cursor.getText() == std::u16string(u"abcdef"));
 }
