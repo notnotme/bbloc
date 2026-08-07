@@ -205,6 +205,7 @@ if(NOT NINTENDO_SWITCH)
             src/core/cvar/CVarInt.cpp
             tests/TestMain.cpp
             tests/BufferTests.cpp
+            tests/CursorTests.cpp
             tests/UndoTests.cpp
     )
     target_include_directories(bbloc_tests PRIVATE src)
