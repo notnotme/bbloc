@@ -202,10 +202,12 @@ if(NOT NINTENDO_SWITCH)
             src/core/cursor/UndoHistory.cpp
             src/core/cursor/buffer/LineBuffer.cpp
             src/core/cursor/buffer/LongestLineTracker.cpp
+            src/core/cursor/PromptCursor.cpp
             src/core/cvar/CVarInt.cpp
             tests/TestMain.cpp
             tests/BufferTests.cpp
             tests/CursorTests.cpp
+            tests/PromptTests.cpp
             tests/UndoTests.cpp
     )
     target_include_directories(bbloc_tests PRIVATE src)
