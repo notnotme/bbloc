@@ -59,6 +59,7 @@ public:
         std::vector<Edit> edits;            ///< Edits in the order they were applied.
         BufferEdit::Position cursor_before; ///< Caret at the group's start, restored by undo.
         BufferEdit::Position cursor_after;  ///< Caret after the last edit, restored by redo.
+        uint64_t id;                        ///< Identity of the state this group produces.
     };
 
 private:
@@ -83,6 +84,18 @@ private:
     /** Flag indicating that the next edit must open a new group. */
     bool m_at_boundary;
 
+    /** Identity handed to the next group; 0 is reserved for the state below the oldest one. */
+    uint64_t m_next_id;
+
+    /** Identity of the state below the oldest retained group, 0 until one is trimmed away. */
+    uint64_t m_floor_id;
+
+    /** Identity of the state the buffer was last saved at. */
+    uint64_t m_saved_id;
+
+    /** False once the saved state has been trimmed out of reach. */
+    bool m_saved_reachable;
+
 private:
     /**
      * @brief Returns the live group cap read from the shared CVar.
@@ -102,6 +115,25 @@ private:
      * @param stack The stack to drop the front of; must not be empty.
      */
     void dropOldest(std::deque<Group> &stack);
+
+    /**
+     * @brief Drops the oldest undo group and moves the floor up past it.
+     *
+     * The state that disappears is the one below the dropped group, which is exactly the floor:
+     * if the buffer was saved there, it can no longer be undone back to.
+     */
+    void dropOldestUndo();
+
+    /**
+     * @brief Drops the oldest redo group.
+     *
+     * The front of the redo stack is the furthest-forward state, so dropping it is what puts a
+     * saved state out of reach on the redo side.
+     */
+    void dropOldestRedo();
+
+    /** @return The identity of the state the buffer is currently in. */
+    [[nodiscard]] uint64_t currentState() const;
 
     /**
      * @brief Enforces both caps, dropping the oldest groups first.
@@ -184,7 +216,22 @@ public:
      */
     [[nodiscard]] const Group *redo();
 
-    /** @brief Wipes both stacks and resets the history to a boundary. */
+    /** @brief Records the current state as the saved one. */
+    void markSaved();
+
+    /** @brief Forgets where the saved state was, so the buffer reads as modified until saved again. */
+    void markUnsaved();
+
+    /**
+     * @brief Tells whether the buffer is in the state it was last saved at.
+     *
+     * Undoing back to that state answers true again, which a one-way flag could not do. Once the
+     * saved state has been trimmed out of the history it can never be returned to, so this answers
+     * false from then on.
+     */
+    [[nodiscard]] bool isSaved() const;
+
+    /** @brief Wipes both stacks and resets the history to a boundary and to a saved state. */
     void clear();
 };
 

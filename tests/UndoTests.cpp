@@ -491,3 +491,94 @@ TEST_CASE("loading content leaves nothing to undo") {
     REQUIRE(undoAll(cursor) == 1);
     CHECK(cursor.getText() == std::u16string(u"one\ntwo\nthree"));
 }
+
+TEST_CASE("undoing back to the saved state reports unmodified") {
+    auto cursor = Cursor(std::make_unique<LineBuffer>());
+    seed(cursor, u"hello");
+    REQUIRE_FALSE(cursor.isModified());
+
+    appendAsNewGroup(cursor, u" world");
+    CHECK(cursor.isModified());
+
+    // Back at the state the buffer was saved in, so it matches the disk again
+    REQUIRE(undoStep(cursor));
+    CHECK_FALSE(cursor.isModified());
+
+    // And forward off it again
+    REQUIRE(redoStep(cursor));
+    CHECK(cursor.isModified());
+}
+
+TEST_CASE("the saved state can sit in the middle of the history") {
+    auto cursor = Cursor(std::make_unique<LineBuffer>());
+    seed(cursor, u"");
+
+    appendAsNewGroup(cursor, u"aaa");
+    cursor.setModified(false);              // saved here, with history on both sides
+    appendAsNewGroup(cursor, u"bbb");
+    CHECK(cursor.isModified());
+
+    REQUIRE(undoStep(cursor));
+    CHECK(cursor.getText() == std::u16string(u"aaa"));
+    CHECK_FALSE(cursor.isModified());
+
+    // Undoing past the saved point is a difference from disk just as much as editing forward is
+    REQUIRE(undoStep(cursor));
+    CHECK(cursor.getText() == std::u16string(u""));
+    CHECK(cursor.isModified());
+
+    REQUIRE(redoStep(cursor));
+    CHECK_FALSE(cursor.isModified());
+}
+
+TEST_CASE("an edit after undoing past the saved state strands it") {
+    auto cursor = Cursor(std::make_unique<LineBuffer>());
+    seed(cursor, u"");
+
+    appendAsNewGroup(cursor, u"aaa");
+    cursor.setModified(false);
+    appendAsNewGroup(cursor, u"bbb");
+    REQUIRE(undoStep(cursor));
+    REQUIRE(undoStep(cursor));
+    REQUIRE(cursor.isModified());                  // below the saved state now
+
+    // The new branch drops the redo stack, so the saved state is no longer reachable forward
+    appendAsNewGroup(cursor, u"ccc");
+    CHECK(cursor.isModified());
+    CHECK(undoAll(cursor) == 1);
+    CHECK(cursor.isModified());
+}
+
+TEST_CASE("a saved state trimmed out of the history stays modified") {
+    auto cursor = Cursor(std::make_unique<LineBuffer>());
+    seed(cursor, u"");
+    REQUIRE_FALSE(cursor.isModified());
+
+    auto max_undo = std::make_shared<CVarInt>(2);
+    cursor.shareMaxHistoryDepth(max_undo);
+
+    // Four groups through a two-deep history: the state the buffer was saved in falls off the end
+    for (const auto *const text : {u"a", u"b", u"c", u"d"}) {
+        appendAsNewGroup(cursor, text);
+    }
+    CHECK(cursor.isModified());
+
+    // Undoing everything still reachable cannot get back to it, so it must not claim to be saved
+    CHECK(undoAll(cursor) == 2);
+    CHECK(cursor.getText() == std::u16string(u"ab"));
+    CHECK(cursor.isModified());
+}
+
+TEST_CASE("loading content starts the buffer clean") {
+    auto cursor = Cursor(std::make_unique<LineBuffer>());
+    type(cursor, u"scratch");
+    REQUIRE(cursor.isModified());
+
+    (void) cursor.loadContent(u"one\ntwo");
+    CHECK_FALSE(cursor.isModified());
+
+    type(cursor, u"x");
+    CHECK(cursor.isModified());
+    REQUIRE(undoAll(cursor) == 1);
+    CHECK_FALSE(cursor.isModified());
+}

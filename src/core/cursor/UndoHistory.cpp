@@ -24,7 +24,11 @@
 
 UndoHistory::UndoHistory()
     : m_retained_characters(0),
-      m_at_boundary(true) {}
+      m_at_boundary(true),
+      m_next_id(1),
+      m_floor_id(0),
+      m_saved_id(0),
+      m_saved_reachable(true) {}
 
 void UndoHistory::markBoundary() {
     m_at_boundary = true;
@@ -56,6 +60,41 @@ void UndoHistory::dropOldest(std::deque<Group> &stack) {
     stack.pop_front();
 }
 
+void UndoHistory::dropOldestUndo() {
+    // The floor is the state below the oldest group, so it is the one this drop puts out of reach
+    if (m_saved_id == m_floor_id) {
+        m_saved_reachable = false;
+    }
+
+    m_floor_id = m_undo_stack.front().id;
+    dropOldest(m_undo_stack);
+}
+
+void UndoHistory::dropOldestRedo() {
+    if (m_saved_id == m_redo_stack.front().id) {
+        m_saved_reachable = false;
+    }
+
+    dropOldest(m_redo_stack);
+}
+
+uint64_t UndoHistory::currentState() const {
+    return m_undo_stack.empty() ? m_floor_id : m_undo_stack.back().id;
+}
+
+void UndoHistory::markSaved() {
+    m_saved_id = currentState();
+    m_saved_reachable = true;
+}
+
+void UndoHistory::markUnsaved() {
+    m_saved_reachable = false;
+}
+
+bool UndoHistory::isSaved() const {
+    return m_saved_reachable && currentState() == m_saved_id;
+}
+
 void UndoHistory::clearRedo() {
     for (const auto &group : m_redo_stack) {
         m_retained_characters -= weigh(group);
@@ -66,11 +105,11 @@ void UndoHistory::clearRedo() {
 void UndoHistory::trim() {
     // Count cap: each stack keeps at most the live capacity, oldest first out
     while (m_undo_stack.size() > capacity()) {
-        dropOldest(m_undo_stack);
+        dropOldestUndo();
     }
 
     while (m_redo_stack.size() > capacity()) {
-        dropOldest(m_redo_stack);
+        dropOldestRedo();
     }
 
     // Character cap: an edit weighs what it replaced, so this is now reached by a genuinely long
@@ -79,9 +118,9 @@ void UndoHistory::trim() {
     // one of them and this runs while that pointer is still live.
     while (m_retained_characters > MAX_HISTORY_CHARACTERS) {
         if (m_undo_stack.size() > 1) {
-            dropOldest(m_undo_stack);
+            dropOldestUndo();
         } else if (m_redo_stack.size() > 1) {
-            dropOldest(m_redo_stack);
+            dropOldestRedo();
         } else {
             // One group per stack left and still over budget: keep them, undo must stay usable
             break;
@@ -98,8 +137,8 @@ bool UndoHistory::coalesce(Group &group, const Edit &edit) {
 
     if (previous.removed.empty() && edit.removed.empty()) {
         // Typing: the new text starts exactly where the previous insert ended
-        if (advancePosition(previous.start, previous.inserted).line == edit.start.line
-            && advancePosition(previous.start, previous.inserted).column == edit.start.column) {
+        const auto previous_end = advancePosition(previous.start, previous.inserted);
+        if (previous_end.line == edit.start.line && previous_end.column == edit.start.column) {
             previous.inserted.append(edit.inserted);
             return true;
         }
@@ -138,7 +177,8 @@ void UndoHistory::record(Edit edit, const BufferEdit::Position &cursorBefore, co
     }
 
     if (m_at_boundary || m_undo_stack.empty()) {
-        m_undo_stack.emplace_back(Group{.edits = {}, .cursor_before = cursorBefore, .cursor_after = cursorAfter});
+        m_undo_stack.emplace_back(Group{.edits = {}, .cursor_before = cursorBefore, .cursor_after = cursorAfter, .id = m_next_id});
+        ++m_next_id;
         m_at_boundary = false;
     }
 
@@ -182,4 +222,11 @@ void UndoHistory::clear() {
     m_redo_stack.clear();
     m_retained_characters = 0;
     m_at_boundary = true;
+
+    // A wiped history describes a buffer that was just installed from disk, so the state it sits
+    // in is the saved one until an edit says otherwise
+    m_next_id = 1;
+    m_floor_id = 0;
+    m_saved_id = 0;
+    m_saved_reachable = true;
 }

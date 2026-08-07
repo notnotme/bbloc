@@ -60,11 +60,8 @@ private:
     /** Holds the index of the column where the selection starts. */
     uint32_t m_selected_column_start;
 
-    /** Undo/redo history, holding the text each edit replaced. */
+    /** Undo/redo history, holding the text each edit replaced and where the saved state sits. */
     UndoHistory m_history;
-
-    /** True when the buffer text changed since it was last saved or loaded. */
-    bool m_is_modified;
 
 private:
     /**
@@ -92,6 +89,17 @@ private:
      */
     [[nodiscard]] std::u16string textInRange(uint32_t lineStart, uint32_t columnStart, uint32_t lineEnd, uint32_t columnEnd) const;
 
+    /**
+     * @brief Clears the entire buffer and resets the cursor to the beginning.
+     *
+     * Private: it wipes the text without recording anything, so on its own it would leave the
+     * buffer looking unmodified. loadContent is the only caller, and it resets the history around
+     * this call.
+     *
+     * @return The resulting BufferEdit describing the change.
+     */
+    [[nodiscard]] BufferEdit clear();
+
     /** @return The caret's current position, packaged for the undo history. */
     [[nodiscard]] BufferEdit::Position position() const;
 
@@ -110,8 +118,9 @@ private:
     /**
      * @brief Puts the caret where a history step left it and settles the state around it.
      *
-     * Shared by undo and redo: both deactivate the selection, mark a boundary so the next edit
-     * opens its own group, and raise the modified flag.
+     * Shared by undo and redo: both deactivate the selection and mark a boundary so the next edit
+     * opens its own group. Neither touches the modified state — moving between history states is
+     * exactly what isModified() reads.
      *
      * @param caret The position the step restores.
      */
@@ -146,20 +155,21 @@ public:
     [[nodiscard]] std::string_view getName() const;
 
     /**
-     * @brief Tells whether the buffer text changed since it was last saved or loaded.
+     * @brief Tells whether the buffer text differs from what was last saved or loaded.
      *
-     * Undoing back to the exact saved state still reads as modified: the flag is a
-     * plain boolean, not a comparison against the saved content.
+     * Answered by comparing the state the history sits in against the one marked saved, so
+     * undoing back to the saved state reads as unmodified again. A saved state that has been
+     * trimmed out of the history can never be returned to, and reads as modified from then on.
      */
     [[nodiscard]] bool isModified() const;
 
     /**
-     * @brief Sets the modified flag.
+     * @brief Marks the current state as saved, or forgets where the saved state was.
      *
-     * Every text mutation raises the flag itself; callers only lower it, after a
-     * successful save or right after loading a file into the buffer.
+     * Text mutations need no call: they move the history to a state that is not the saved one on
+     * their own. Callers lower the flag after a successful save or right after loading a file.
      *
-     * @param modified The new value of the flag.
+     * @param modified false to mark the current state saved, true to declare the buffer dirty.
      */
     void setModified(bool modified);
 
@@ -304,15 +314,6 @@ public:
      * @return The edits describing the replacement, for the incremental re-parse.
      */
     [[nodiscard]] std::vector<BufferEdit> loadContent(std::u16string_view content);
-
-    /**
-     * @brief Clears the entire buffer and resets the cursor to the beginning.
-     *
-     * After this call, the buffer will be empty and the cursor will be at (0, 0).
-     *
-     * @return The resulting CursorEdit describing the change.
-     */
-    [[nodiscard]] BufferEdit clear();
 
     /**
      * @brief Restores the buffer to its state before the last recorded group of edits.

@@ -109,11 +109,11 @@ classDiagram
         <<struct>>
     }
     class UndoHistory {
-        note: "linear stacks of inverse edits, cvar-capped depth and retained characters"
+        note: "linear stacks of inverse edits, cvar-capped depth and retained characters; also holds which state was saved, so Cursor::isModified is derived rather than latched"
     }
     class Group {
         <<struct>>
-        note: "one undo step: the edits of a run, plus the caret before and after"
+        note: "one undo step: the edits of a run, the caret before and after, and the id naming the state it produces"
     }
     class Edit {
         <<struct>>

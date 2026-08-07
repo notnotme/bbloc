@@ -60,8 +60,7 @@ Cursor::Cursor(std::unique_ptr<TextBuffer> buffer)
       m_line(0),
       m_is_selection_active(false),
       m_selected_line_start(0),
-      m_selected_column_start(0),
-      m_is_modified(false) {}
+      m_selected_column_start(0) {}
 
 void Cursor::pageUp(const uint32_t lineCount) {
     m_history.markBoundary();
@@ -108,11 +107,16 @@ std::string_view Cursor::getName() const {
 }
 
 bool Cursor::isModified() const {
-    return m_is_modified;
+    // Derived rather than latched: undoing back to the saved state answers false again
+    return !m_history.isSaved();
 }
 
 void Cursor::setModified(const bool modified) {
-    m_is_modified = modified;
+    if (modified) {
+        m_history.markUnsaved();
+    } else {
+        m_history.markSaved();
+    }
 }
 
 uint32_t Cursor::getColumn() const {
@@ -308,7 +312,6 @@ void Cursor::setPosition(const uint32_t line, const uint32_t column) {
 
 BufferEdit Cursor::insert(const std::u16string_view characters) {
     const auto cursor_before = position();
-    m_is_modified = true;
     const auto previous_line = m_line;
     const auto &edit = m_buffer->insert(m_line, m_column, characters);
     m_line = edit.new_end.line;
@@ -328,7 +331,6 @@ BufferEdit Cursor::erase(const uint32_t lineStart, const uint32_t columnStart, c
 
 BufferEdit Cursor::newLine() {
     const auto cursor_before = position();
-    m_is_modified = true;
     const auto &edit = m_buffer->insert(m_line, m_column, u"\n");
     m_line = edit.new_end.line;
     m_column = edit.new_end.column;
@@ -344,8 +346,7 @@ std::optional<BufferEdit> Cursor::eraseLeft() {
     if (m_column > 0) {
         // We can erase on the left since column > 0
         const auto cursor_before = position();
-        m_is_modified = true;
-        const auto erased_column = m_column - charLengthBefore(m_buffer->getString(m_line), m_column);
+            const auto erased_column = m_column - charLengthBefore(m_buffer->getString(m_line), m_column);
         auto removed = textInRange(m_line, erased_column, m_line, m_column);
         const auto &edit = m_buffer->erase(m_line, m_column, m_line, erased_column);
         m_column = edit.new_end.column;
@@ -357,8 +358,7 @@ std::optional<BufferEdit> Cursor::eraseLeft() {
     if (m_line > 0) {
         // We can't erase left because column = 0, so we move the remainder of this line to the end of the line above
         const auto cursor_before = position();
-        m_is_modified = true;
-        const auto string_above_length = static_cast<uint32_t>(m_buffer->getString(m_line - 1).length());
+            const auto string_above_length = static_cast<uint32_t>(m_buffer->getString(m_line - 1).length());
         auto removed = textInRange(m_line - 1, string_above_length, m_line, m_column);
         const auto &edit =  m_buffer->erase(m_line, m_column, m_line - 1, string_above_length);
         m_line = edit.new_end.line;
@@ -378,8 +378,7 @@ std::optional<BufferEdit> Cursor::eraseRight() {
     if (m_column < m_buffer->getString(m_line).length()) {
         // We can erase on the right since column < string_length
         const auto cursor_before = position();
-        m_is_modified = true;
-        const auto erased_column = m_column + charLengthAfter(m_buffer->getString(m_line), m_column);
+            const auto erased_column = m_column + charLengthAfter(m_buffer->getString(m_line), m_column);
         auto removed = textInRange(m_line, m_column, m_line, erased_column);
         const auto &edit = m_buffer->erase(m_line, m_column, m_line, erased_column);
 
@@ -390,8 +389,7 @@ std::optional<BufferEdit> Cursor::eraseRight() {
     if (m_line < m_buffer->getStringCount() - 1) {
         // We can't erase right because column >= string_length, so we move the line below and append it to this line
         const auto cursor_before = position();
-        m_is_modified = true;
-        auto removed = textInRange(m_line, m_column, m_line + 1, 0);
+            auto removed = textInRange(m_line, m_column, m_line + 1, 0);
         const auto &edit = m_buffer->erase(m_line, m_column, m_line + 1, 0);
 
         m_history.record(UndoHistory::Edit{.start = edit.start, .removed = std::move(removed), .inserted = {}}, cursor_before, position());
@@ -412,7 +410,6 @@ std::optional<BufferEdit> Cursor::eraseSelection() {
     }
 
     const auto cursor_before = position();
-    m_is_modified = true;
     const auto previous_line = m_line;
     auto removed = textInRange(range->line_start, range->column_start, range->line_end, range->column_end);
     const auto &edit = m_buffer->erase(range->line_start, range->column_start, range->line_end, range->column_end);
@@ -455,7 +452,6 @@ BufferEdit Cursor::clear() {
     m_is_selection_active = false;
     m_selected_line_start = 0;
     m_selected_column_start = 0;
-    m_is_modified = true;
 
     return m_buffer->clear();
 }
@@ -551,7 +547,6 @@ void Cursor::settleAfterHistoryStep(const BufferEdit::Position &caret) {
 
     // An undo/redo rewrites the text: it may well restore the very saved state, but the flag is a
     // plain boolean, so the restore conservatively counts as a modification (accepted simplification).
-    m_is_modified = true;
 }
 
 void Cursor::clearHistory() {
