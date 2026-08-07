@@ -163,9 +163,9 @@ classDiagram
     class Cursor
 
     HighLighter o-- Cursor : const ref
-    HighLighter *-- Parser : map by HighLightId
+    HighLighter o-- Parser : const ref to the catalog map
     Parser --> ParserDescriptor : const ref
-    ParserCatalog ..> Parser : creates
+    ParserCatalog *-- Parser : owns, process-wide (compiled once)
     HighLighter --> HighLightId
     HighLighter ..> TokenId : produces
 ```
@@ -202,6 +202,10 @@ The `QuadBuffer` / `QuadProgram` / `QuadTexture` headers live in `core/renderer/
 implementations exist twice, as CMake-selected source sets: `gl45/` (OpenGL 4.5 DSA, desktop)
 and `gl43/` (bind-based GL 4.3, Nintendo Switch). Each set also ships a `GlBackend.h` exposing
 the GL context version `ApplicationWindow` must request, supplied via a per-set include path.
+
+Only the *version-dependent* GL lives in those sets. Calls identical in both core profiles are made
+outside them: `glScissor` in the four views, the state setup and frame clear in `ApplicationWindow`,
+and the shader helpers in `core/renderer/Shader.cpp`.
 
 ---
 
@@ -558,6 +562,7 @@ classDiagram
     CursorContext *-- Cursor
     CursorContext o-- PromptCursor : shared ref
     CursorContext o-- Theme : shared ref
+    CursorContext o-- CommandRunner : shared ref
     Cursor *-- TextBuffer
     CursorContext *-- HighLighter
     CursorContext *-- ScrollState
@@ -565,7 +570,8 @@ classDiagram
     CursorContext *-- SearchState
     CursorContext *-- CommandFeedback : optional
     Theme o-- CVar
-    View~TState~ o-- Renderer
+    View~TState~ o-- Renderer : QuadProgram ref member
+    View~TState~ ..> Renderer : stages one QuadBuffer batch per render()
     View~TState~ ..> CursorContext : receives as parameter
     Command~T~ ..> CursorContext : execution payload
 ```

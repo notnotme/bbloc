@@ -69,7 +69,8 @@ public:
     /**
      * @brief Sets the cursor column position.
      *
-     * @param column Desired column position (will be clamped to bounds).
+     * @param column New column index.
+     * @throw std::runtime_error If the column is out of bounds.
      */
     void setPosition(uint32_t column);
 

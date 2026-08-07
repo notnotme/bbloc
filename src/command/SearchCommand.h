@@ -149,10 +149,10 @@ private:
     /**
      * @brief Scans forward for the first match at or after a position, without wrapping.
      * @param cursor The cursor whose buffer is scanned.
-     * @param term The term to look for.
+     * @param scanner The scanner holding the term and the case-sensitivity mode; stateful, its setLine is
+     *                called on every line walked.
      * @param startLine The line to start scanning from.
      * @param startColumn The column to start scanning from on the first line.
-     * @param caseSensitive Whether the comparison is case-sensitive.
      * @return The match location, or std::nullopt when none is found.
      */
     [[nodiscard]] static std::optional<MatchLocation> searchForward(const Cursor &cursor, LineScanner &scanner, uint32_t startLine, uint32_t startColumn);
@@ -160,10 +160,10 @@ private:
     /**
      * @brief Scans backward for the last match starting before a position, without wrapping.
      * @param cursor The cursor whose buffer is scanned.
-     * @param term The term to look for.
+     * @param scanner The scanner holding the term and the case-sensitivity mode; stateful, its setLine is
+     *                called on every line walked.
      * @param beforeLine The line to start scanning from.
      * @param beforeColumn The exclusive column bound on the first line.
-     * @param caseSensitive Whether the comparison is case-sensitive.
      * @return The match location, or std::nullopt when none is found.
      */
     [[nodiscard]] static std::optional<MatchLocation> searchBackward(const Cursor &cursor, LineScanner &scanner, uint32_t beforeLine, uint32_t beforeColumn);
@@ -174,9 +174,9 @@ private:
      * Counts the total number of occurrences and records the ordinal of the one matching @p current.
      *
      * @param cursor The cursor whose buffer is scanned.
-     * @param term The term to look for.
+     * @param scanner The scanner holding the term and the case-sensitivity mode; stateful, its setLine is
+     *                called on every line walked.
      * @param current The match whose ordinal is looked up.
-     * @param caseSensitive Whether the comparison is case-sensitive.
      * @return The ordinal of @p current (or -1 when absent) and the total occurrence count.
      */
     [[nodiscard]] static MatchStats scanMatches(const Cursor &cursor, LineScanner &scanner, const MatchLocation &current);

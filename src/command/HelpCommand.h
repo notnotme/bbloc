@@ -41,7 +41,7 @@
 class HelpCommand final : public Command<CursorContext> {
 private:
     /** @brief One jump target: the argument name and the manual heading it matches. */
-    struct Section {
+    struct Section final {
         const char16_t *argument; ///< Section name as typed by the user.
         const char16_t *heading;  ///< Exact heading line in the manual.
     };
