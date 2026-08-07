@@ -275,7 +275,7 @@ classDiagram
     class InfoBar
     class Prompt
     class Osk {
-        note: "on-screen keyboard strip; injects synthesized SDL key/text events via SDL_PushEvent"
+        note: "on-screen keyboard strip; injects synthesized SDL key/text events via SDL_PushEvent; overrides the down/up mouse handlers to catch key taps"
     }
     class OskState {
         note: "visibility, page, layout table, sticky modifiers, key cursor, pressed key + its PressSource, hold repeat + the target it was armed for, and the pad grab (m_pad_focus)"
@@ -328,7 +328,9 @@ classDiagram
     ControllerInput ..> PadInput : encodes pad inputs
 ```
 
-The mouse handlers have empty default implementations; `InfoBar` and `Prompt` keep them.
+The mouse handlers have empty default implementations, and each view keeps or overrides them
+independently: `Editor` overrides all three, `Osk` overrides `onMouseDown` and `onMouseUp` only
+(a key press needs a down and an up, never a drag), and `InfoBar` and `Prompt` keep all three.
 `ApplicationWindow::mainLoop` delegates every keyboard, pointer, and game-controller event to
 the three handlers in `src/input/`, keeping only quit and window events for itself.
 
