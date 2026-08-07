@@ -80,6 +80,45 @@ void seed(Cursor &cursor, const std::u16string_view text) {
     cursor.setModified(false);
 }
 
+/**
+ * @brief Undoes one step and reports whether anything was undone.
+ *
+ * The two step helpers are the only place these tests touch the shape of Cursor::undo/redo's
+ * return value. Everything else asserts on the buffer text and the caret, which is the behaviour
+ * that must survive a change of undo representation.
+ *
+ * @param cursor The cursor to undo on.
+ * @return true when a step was undone, false when the history was exhausted.
+ */
+bool undoStep(Cursor &cursor) {
+    return cursor.undo().has_value();
+}
+
+/**
+ * @brief Redoes one step and reports whether anything was redone.
+ *
+ * @param cursor The cursor to redo on.
+ * @return true when a step was redone, false when there was nothing to replay.
+ */
+bool redoStep(Cursor &cursor) {
+    return cursor.redo().has_value();
+}
+
+/**
+ * @brief Closes the current undo group and puts the caret at the end of its line.
+ *
+ * A group runs until the next boundary, and a cursor move is what marks one. Appending through
+ * this helper therefore produces one undo step per call, which is what the multi-step cases below
+ * need.
+ *
+ * @param cursor The cursor to append with.
+ * @param text The text to append at the end of the current line.
+ */
+void appendAsNewGroup(Cursor &cursor, const std::u16string_view text) {
+    cursor.moveToEndOfLine();
+    (void) cursor.insert(text);
+}
+
 }
 
 
@@ -93,5 +132,96 @@ TEST_CASE("a seeded buffer holds its text and an empty history") {
     CHECK(cursor.getColumn() == 0);
 
     // Nothing to undo: the seeding edit was wiped with the history
-    CHECK_FALSE(cursor.undo().has_value());
+    CHECK_FALSE(undoStep(cursor));
+}
+
+TEST_CASE("undo and redo are no-ops on an empty history") {
+    auto cursor = Cursor(std::make_unique<LineBuffer>());
+    seed(cursor, u"hello");
+
+    CHECK_FALSE(undoStep(cursor));
+    CHECK_FALSE(redoStep(cursor));
+
+    // A refused step must leave the buffer exactly as it was
+    CHECK(cursor.getText() == std::u16string(u"hello"));
+    CHECK(cursor.getLine() == 0);
+    CHECK(cursor.getColumn() == 0);
+}
+
+TEST_CASE("a sequence of edits undoes back to the original text and caret") {
+    auto cursor = Cursor(std::make_unique<LineBuffer>());
+    seed(cursor, u"");
+
+    appendAsNewGroup(cursor, u"aaa");
+    appendAsNewGroup(cursor, u"bbb");
+    appendAsNewGroup(cursor, u"ccc");
+    REQUIRE(cursor.getText() == std::u16string(u"aaabbbccc"));
+
+    // Each undo restores the text as it stood when its group opened, and the caret with it
+    REQUIRE(undoStep(cursor));
+    CHECK(cursor.getText() == std::u16string(u"aaabbb"));
+    CHECK(cursor.getColumn() == 6);
+
+    REQUIRE(undoStep(cursor));
+    CHECK(cursor.getText() == std::u16string(u"aaa"));
+    CHECK(cursor.getColumn() == 3);
+
+    REQUIRE(undoStep(cursor));
+    CHECK(cursor.getText() == std::u16string(u""));
+    CHECK(cursor.getColumn() == 0);
+
+    // The history is spent, and the buffer stays at the original state
+    CHECK_FALSE(undoStep(cursor));
+    CHECK(cursor.getText() == std::u16string(u""));
+}
+
+TEST_CASE("redo replays the undone edits in order") {
+    auto cursor = Cursor(std::make_unique<LineBuffer>());
+    seed(cursor, u"");
+
+    appendAsNewGroup(cursor, u"aaa");
+    appendAsNewGroup(cursor, u"bbb");
+    appendAsNewGroup(cursor, u"ccc");
+
+    REQUIRE(undoStep(cursor));
+    REQUIRE(undoStep(cursor));
+    REQUIRE(undoStep(cursor));
+    REQUIRE(cursor.getText() == std::u16string(u""));
+
+    REQUIRE(redoStep(cursor));
+    CHECK(cursor.getText() == std::u16string(u"aaa"));
+
+    REQUIRE(redoStep(cursor));
+    CHECK(cursor.getText() == std::u16string(u"aaabbb"));
+
+    REQUIRE(redoStep(cursor));
+    CHECK(cursor.getText() == std::u16string(u"aaabbbccc"));
+
+    // Fully replayed: the caret is back where the last edit left it
+    CHECK(cursor.getColumn() == 9);
+    CHECK_FALSE(redoStep(cursor));
+}
+
+TEST_CASE("an edit after an undo drops the redo stack") {
+    auto cursor = Cursor(std::make_unique<LineBuffer>());
+    seed(cursor, u"");
+
+    appendAsNewGroup(cursor, u"aaa");
+    appendAsNewGroup(cursor, u"bbb");
+
+    REQUIRE(undoStep(cursor));
+    REQUIRE(cursor.getText() == std::u16string(u"aaa"));
+
+    // The branch that was undone is now unreachable
+    appendAsNewGroup(cursor, u"ccc");
+    REQUIRE(cursor.getText() == std::u16string(u"aaaccc"));
+
+    CHECK_FALSE(redoStep(cursor));
+    CHECK(cursor.getText() == std::u16string(u"aaaccc"));
+
+    // The surviving history still walks back through the new branch
+    REQUIRE(undoStep(cursor));
+    CHECK(cursor.getText() == std::u16string(u"aaa"));
+    REQUIRE(undoStep(cursor));
+    CHECK(cursor.getText() == std::u16string(u""));
 }
