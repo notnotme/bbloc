@@ -20,11 +20,16 @@
 #define FOCUS_TARGET_H
 
 
-/** @brief Represents the currently focused input target. */
+/**
+ * @brief Represents the view the keyboard focus is on.
+ *
+ * Only the keyboard: which typing — physical or on-screen-keyboard-synthesized — edits
+ * the buffer and which edits the command line. Who owns the game pad is a separate fact,
+ * tracked by OskState::hasPadFocus().
+ */
 enum class FocusTarget {
     Editor, ///< Editor view is focused.
-    Prompt, ///< Prompt view is focused.
-    Osk     ///< On-screen keyboard has the pad focus; the physical keyboard still edits the buffer.
+    Prompt  ///< Prompt view is focused.
 };
 
 

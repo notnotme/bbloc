@@ -34,7 +34,9 @@
  * @brief Stores the layout, visibility, and interaction state of the on-screen keyboard view.
  *
  * Tracks the visible page, the active layout table, the sticky modifier states, the
- * pad-navigation key cursor, the currently pressed key, and the hold auto-repeat.
+ * pad-navigation key cursor, the currently pressed key, the hold auto-repeat, and whether
+ * the on-screen keyboard currently owns the game pad. The pad grab lives here, and not in
+ * a CursorContext, because the on-screen keyboard is one object shared by every buffer.
  */
 class OskState final : public ViewState {
 public:
@@ -90,8 +92,11 @@ private:
     /** Auto-repeat state of the held key (arrows, Backspace, Delete). */
     InputRepeater m_repeater;
 
-    /** Effective focus the press that armed the repeat was delivered to. */
+    /** Keyboard focus the press that armed the repeat was delivered to. */
     FocusTarget m_repeat_focus;
+
+    /** True while the on-screen keyboard owns the game pad (its key cursor is shown and driven). */
+    bool m_pad_focus;
 
 public:
     /** @brief Deleted copy constructor. */
@@ -173,10 +178,23 @@ public:
     /**
      * @brief Tells whether a repeat would still land where its press did.
      *
-     * @param focus The effective focus a repeat would be delivered to.
+     * @param focus The keyboard focus a repeat would be delivered to.
      * @return true when it matches the one captured at press time.
      */
     [[nodiscard]] bool isRepeatTarget(FocusTarget focus) const;
+
+    /** @brief Tells whether the on-screen keyboard owns the game pad. */
+    [[nodiscard]] bool hasPadFocus() const;
+
+    /**
+     * @brief Grabs or releases the game pad.
+     *
+     * Taken lazily, on the first pad input routed to a visible on-screen keyboard, so mouse
+     * and touch users never see the key cursor; released by pad B and by hiding the keyboard.
+     *
+     * @param owned True when the on-screen keyboard owns the pad.
+     */
+    void setPadFocus(bool owned);
 
     /**
      * @brief Shows or hides the on-screen keyboard.
@@ -230,7 +248,10 @@ public:
     /** @brief Forgets the pointer-pressed key. */
     void clearPressed();
 
-    /** @brief Resets the transient interaction state: stickies, page, press, and repeat. Used on hide. */
+    /**
+     * @brief Resets the transient interaction state: stickies, page, press, repeat, and the
+     *        pad focus. Used on hide.
+     */
     void resetInteraction();
 };
 

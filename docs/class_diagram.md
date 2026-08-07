@@ -264,7 +264,7 @@ classDiagram
         note: "on-screen keyboard strip; injects synthesized SDL key/text events via SDL_PushEvent"
     }
     class OskState {
-        note: "visibility, page, layout table, sticky modifiers, key cursor, hold repeat + the target it was armed for"
+        note: "visibility, page, layout table, sticky modifiers, key cursor, hold repeat + the target it was armed for, and the pad grab (m_pad_focus)"
     }
     class OskLayout {
         note: "static-only hybrid layouts: fixed US base + letter permutation + AltGr accent map"
@@ -304,7 +304,7 @@ classDiagram
     Osk ..> OskLayout : labels + TEXTINPUT payloads
     OskState *-- InputRepeater
     ControllerInput *-- InputRepeater
-    ControllerInput ..> Osk : d-pad/A/B while FocusTarget::Osk
+    ControllerInput ..> Osk : d-pad/A/B while OskState holds the pad
     View~TState~ ..> QuadBuffer : stages one batch per render()
     Editor ..> TabStop : uses
     InfoBar ..> TabStop : uses
@@ -368,15 +368,17 @@ the pad cannot express) and show a dot, wider when held. `ControllerInput` publi
 shoulder into `OskState` as a live Shift (`setLiveModifiers`), since the binding modifier
 mask never reaches a view that emits key events instead of running bindings;
 `effectiveModifierMask` ORs it with the sticky mask for both injection and label
-resolution. The pad focus is acquired
-lazily: the first d-pad/A press while the OSK is visible sets `FocusTarget::Osk` and
-records the origin focus in `CursorContext::osk_return_focus`, and from then on
-`ControllerInput` routes d-pad/A/B to the key cursor instead of the bindings — B hands the
-focus back to the origin (over an active prompt it runs `prompt cancel` instead and keeps
-the pad, so one press closes the prompt), so mouse and touch users never see the key
-cursor; while the OSK
-holds the pad, keys and text (physical or synthesized) route to the origin view, so the
-OSK types into an active prompt as well as the editor. Every held
+resolution. The keyboard focus and the pad focus are two independent facts:
+`CursorContext::focus_target` (`FocusTarget::Editor` or `FocusTarget::Prompt`) says where
+typing goes, while `OskState::m_pad_focus` says whether the on-screen keyboard owns the
+game pad — the grab belongs to the OSK, one object shared by every buffer, so it survives
+a `buffer next`. It is taken lazily: the first d-pad/A press while the OSK is visible sets
+it, and from then on `ControllerInput` routes d-pad/A/B to the key cursor instead of the
+bindings, so mouse and touch users never see the key cursor. Pad B releases it (over an
+active prompt it runs `prompt cancel` instead and keeps the pad, so one press closes the
+prompt), and so does `osk hide` through `OskState::resetInteraction`. Taking the pad never
+moves the keyboard focus: keys and text (physical or synthesized) keep going to the editor
+or to an active prompt, so the OSK types into both. Every held
 injecting key auto-repeats like a physical keyboard, re-emitting under the sticky mask
 captured at press, through `InputRepeater` — the delay/interval state machine extracted
 from `ControllerInput` and shared by both; `mainLoop` waits on the earliest armed deadline

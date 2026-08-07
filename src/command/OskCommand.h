@@ -32,10 +32,10 @@
  * @brief Command controlling the on-screen keyboard: visibility and layout.
  *
  * "osk show|hide|toggle" changes the visibility — the views relayout through the resize
- * path, and follow_indicator keeps the caret in view. Showing never touches the input
- * focus (the OSK acquires the pad focus lazily, on the first pad press routed to it);
- * hiding releases the pad focus if the OSK held it. "osk layout <name>" switches the key
- * layout at runtime, overriding the platform default.
+ * path, and follow_indicator keeps the caret in view. Showing never grabs anything (the
+ * OSK takes the pad lazily, on the first pad press routed to it); hiding releases the pad
+ * focus if the OSK held it. "osk layout <name>" switches the key layout at runtime,
+ * overriding the platform default.
  */
 class OskCommand final : public Command<CursorContext> {
 private:
@@ -67,7 +67,7 @@ public:
      *
      * Expects "show", "hide", "toggle", or "layout <name>".
      *
-     * @param payload The cursor context; visibility changes touch its focus and redraw state.
+     * @param payload The cursor context; visibility changes touch its scroll and redraw state.
      * @param args Command arguments.
      * @return An optional message indicating the result of the operation.
      */

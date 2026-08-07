@@ -42,11 +42,12 @@
  * half-deflected stick cannot flutter. A successfully dispatched press arms an auto-repeat
  * (delay then fast interval) that the event loop ticks between waits.
  *
- * While the on-screen keyboard is visible, the first d-pad/A press acquires the pad focus
- * for it (lazily — mouse and touch users never see its key cursor), and from then on the
- * d-pad and the A/B buttons drive the key cursor instead of running bindings — the same
+ * While the on-screen keyboard is visible, the first d-pad/A press hands it the pad
+ * (lazily — mouse and touch users never see its key cursor), and from then on the d-pad
+ * and the A/B buttons drive the key cursor instead of running bindings — the same
  * "focused view first, bindings as fallback" shape KeyboardInput has. Every other pad
- * input stays on the bindings.
+ * input stays on the bindings. The grab lives in OskState, and only concerns the pad:
+ * the keyboard focus is untouched, so typing keeps going where it went.
  *
  * Every connected pad feeds the same state, like a keyboard: events are not filtered by
  * controller instance.
@@ -62,10 +63,10 @@ private:
     /** The command runner owning the timed bound-command execution. */
     CommandRunner &m_command_runner;
 
-    /** Open cursor contexts; the pad focus is read from the active one. */
+    /** Open cursor contexts; the active one is what the pad inputs act on. */
     CursorContextManager &m_context_manager;
 
-    /** On-screen keyboard view, receiving the pad inputs while it has the focus. */
+    /** On-screen keyboard view, receiving the pad inputs while it holds the pad. */
     Osk &m_osk;
 
     /** State object tracking the on-screen keyboard. */
@@ -149,7 +150,7 @@ public:
      * @brief Constructs the handler with references to the objects it dispatches to.
      *
      * @param commandRunner The command runner, used to run pad-bound commands.
-     * @param contextManager Manager providing the active cursor context (pad focus).
+     * @param contextManager Manager providing the active cursor context.
      * @param osk The on-screen keyboard view.
      * @param oskState State of the on-screen keyboard view.
      */

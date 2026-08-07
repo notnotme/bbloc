@@ -80,10 +80,10 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
         return std::u16string(u"Selected argument expect a boolean value: ").append(args[1]);
     }
 
-    // Move cursor according to the effective focus target: an OSK arrow key tapped over
-    // an active prompt must drive the prompt, exactly like a physical arrow would.
+    // Move cursor according to the keyboard focus: an OSK arrow key tapped over an active
+    // prompt must drive the prompt, exactly like a physical arrow would.
     // If any movement happens, then the view must be redrawn.
-    switch (payload.effectiveFocus()) {
+    switch (payload.focus_target) {
         case FocusTarget::Prompt:
             switch (movement) {
                 // History is not navigable while a feedback expects an answer.
@@ -127,8 +127,6 @@ std::optional<std::u16string> MoveCursorCommand::run(CursorContext &payload, con
                     return std::nullopt;
             }
         break;
-        // effectiveFocus never yields Osk; the case only keeps the switch exhaustive.
-        case FocusTarget::Osk:
         case FocusTarget::Editor: {
             payload.search.resetMatches();
             payload.cursor.activateSelection(select_text == Boolean::True);

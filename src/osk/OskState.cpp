@@ -32,7 +32,8 @@ OskState::OskState()
       m_pressed_row(-1),
       m_pressed_col(0),
       m_press_time(0),
-      m_repeat_focus(FocusTarget::Editor) {
+      m_repeat_focus(FocusTarget::Editor),
+      m_pad_focus(false) {
     // Follow the system keyboard layout where the platform exposes one (Switch console
     // setting); "osk layout" overrides it at runtime.
     if (const auto *layout = OskLayout::findLayout(Platform::keyboardLayout()); layout != nullptr) {
@@ -113,6 +114,14 @@ bool OskState::isRepeatTarget(const FocusTarget focus) const {
     return focus == m_repeat_focus;
 }
 
+bool OskState::hasPadFocus() const {
+    return m_pad_focus;
+}
+
+void OskState::setPadFocus(const bool owned) {
+    m_pad_focus = owned;
+}
+
 void OskState::setVisible(const bool visible) {
     m_visible = visible;
 }
@@ -167,4 +176,5 @@ void OskState::resetInteraction() {
     m_page = 0;
     clearPressed();
     m_repeater.disarm();
+    m_pad_focus = false;
 }

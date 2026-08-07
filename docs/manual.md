@@ -97,7 +97,7 @@ Shown by `osk toggle` (pad: left stick click); takes `dim_osk_height` percent of
 | Sticky keys | Ctrl/Shift/Alt/AltGr cycle idle → latched (dot, next key only) → held (wider dot, until pressed again). A long press by touch or mouse goes straight to held |
 | L as Shift | While the OSK is visible, holding the controller's L shoulder shifts its keys |
 | Auto-repeat | Holding a repeatable key re-emits it |
-| Pad keys | D-pad moves the key cursor, A presses, B hands the pad back (and cancels the prompt when the OSK was opened over it) |
+| Pad keys | D-pad moves the key cursor, A presses, B hands the pad back (or cancels the prompt instead, while one is active) |
 | Layouts | `osk layout <name>`: qwerty, azerty, qwertz, uk, spanish, spanish_latin, italian, portuguese, russian |
 
 ## Commands

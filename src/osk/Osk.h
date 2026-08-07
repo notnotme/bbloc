@@ -41,8 +41,9 @@
  * tap (dot shown), hold on long-press, and every latched modifier releases after the next
  * key. Every held injecting key auto-repeats — like a physical keyboard — through the
  * InputRepeater in OskState, re-emitting under the sticky mask captured at press time.
- * The pad drives a key cursor via onPadInput once the OSK acquired the pad focus (lazily,
- * on the first pad press ControllerInput routes to it); taps never move the input focus.
+ * The pad drives a key cursor via onPadInput once the OSK acquired the pad (lazily, on the
+ * first pad press ControllerInput routes to it, and tracked by OskState); taps never move
+ * the keyboard focus, so the OSK types into an active prompt as well as into the editor.
  */
 class Osk final : public View<OskState> {
 public:
@@ -64,10 +65,9 @@ private:
      * @brief Draws the strip background and every key of the visible page.
      *
      * @param quadBuffer A reference to the quad buffer receiving the quads.
-     * @param context A reference to the cursor context (pad focus shows the key cursor).
-     * @param viewState A reference to the OSK view state.
+     * @param viewState A reference to the OSK view state (its pad focus shows the key cursor).
      */
-    void drawKeys(QuadBuffer &quadBuffer, const CursorContext &context, const OskState &viewState);
+    void drawKeys(QuadBuffer &quadBuffer, const OskState &viewState);
 
 public:
     /**
@@ -136,8 +136,10 @@ public:
     /**
      * @brief Handles a pad input routed to the OSK while it has the pad focus.
      *
-     * D-pad directions move the key cursor, A presses the key under it, B hands the focus
-     * back to the editor. Any other pad input is not handled and falls back to the bindings.
+     * D-pad directions move the key cursor, A presses the key under it, B hands the pad back
+     * to the bindings — or, over an active prompt, cancels it and keeps the pad, so one press
+     * reads as one "get me out of here". Any other pad input is not handled and falls back to
+     * the bindings.
      *
      * @param context Reference to the cursor context.
      * @param viewState The OSK view state.

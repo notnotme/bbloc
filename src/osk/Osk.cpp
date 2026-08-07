@@ -490,13 +490,14 @@ uint32_t Osk::textEventType() {
 }
 
 void Osk::render(CursorContext &context, OskState &viewState, QuadBuffer &quadBuffer, float dt) {
+    (void) context;
     (void) dt;
     if (!viewState.isVisible()) {
         return;
     }
 
     const auto batch_start = quadBuffer.beginBatch(ApplicationWindow::OSK_DEFAULT_QUAD_COUNT);
-    drawKeys(quadBuffer, context, viewState);
+    drawKeys(quadBuffer, viewState);
     const auto batch_count = quadBuffer.endBatch();
 
     // Get the view geometry
@@ -510,7 +511,7 @@ void Osk::render(CursorContext &context, OskState &viewState, QuadBuffer &quadBu
     m_quad_program.draw(batch_start, batch_count);
 }
 
-void Osk::drawKeys(QuadBuffer &quadBuffer, const CursorContext &context, const OskState &viewState) {
+void Osk::drawKeys(QuadBuffer &quadBuffer, const OskState &viewState) {
     // The strip background, under everything
     const auto &background_color = m_theme.getColor(ColorId::OskBackground);
     drawQuad(quadBuffer, viewState.getPositionX(), viewState.getPositionY(), viewState.getWidth(), viewState.getHeight(), background_color);
@@ -528,7 +529,7 @@ void Osk::drawKeys(QuadBuffer &quadBuffer, const CursorContext &context, const O
     const auto font_descender = m_theme.getFontDescender();
 
     // The pad key cursor only shows while the OSK has the pad focus
-    const auto cursor_visible = context.focus_target == FocusTarget::Osk;
+    const auto cursor_visible = viewState.hasPadFocus();
 
     forEachKey(viewState, [&](const KeyCell &cell) {
         if (cell.p_def->kind == KeyKind::Spacer) {
@@ -634,7 +635,7 @@ void Osk::onMouseDown(CursorContext &context, OskState &viewState, const int32_t
         if (isRepeatable(cell.p_def->kind)) {
             viewState.getRepeater().arm(encodeKey(viewState.getPage(), cell.row, cell.col), sticky_modifiers);
             // Remember what this tap typed into: the repeats must not follow the focus elsewhere
-            viewState.setRepeatTarget(context.effectiveFocus());
+            viewState.setRepeatTarget(context.focus_target);
         }
     });
 }
@@ -721,19 +722,18 @@ bool Osk::onPadInput(CursorContext &context, OskState &viewState, const SDL_Keyc
     }
 
     if (padKeycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_B)) {
-        if (context.osk_return_focus == FocusTarget::Prompt) {
-            // B over an active prompt cancels it outright: handing the pad back first
-            // would cost a second B for what reads as one "get me out of here".
-            // The OSK keeps the pad, now over the editor, so typing can continue.
-            context.osk_return_focus = FocusTarget::Editor;
+        if (context.focus_target == FocusTarget::Prompt) {
+            // B over an active prompt cancels it outright: handing the pad back first would
+            // cost a second B for what reads as one "get me out of here". Cancelling moves the
+            // keyboard focus to the editor; the on-screen keyboard keeps the pad, so typing
+            // can continue.
             context.command_runner.runCommand(u"prompt cancel", false);
-            context.focus_target = FocusTarget::Osk;
             context.wants_redraw = true;
             return true;
         }
 
-        // Hand the pad back to where it was taken from; the OSK stays visible for touch
-        context.focus_target = context.osk_return_focus;
+        // Hand the pad back to the bindings; the OSK stays visible for touch
+        viewState.setPadFocus(false);
         context.wants_redraw = true;
         return true;
     }
@@ -751,7 +751,7 @@ void Osk::tickRepeat(CursorContext &context, OskState &viewState) const {
     // buffer active. The release ending the hold is polled only after that command returned, so
     // on a slow open the deadline passes first and the repeat would type into the file just
     // opened, leaving a blank line at its top.
-    if (!viewState.isRepeatTarget(context.effectiveFocus())) {
+    if (!viewState.isRepeatTarget(context.focus_target)) {
         viewState.getRepeater().disarm();
         return;
     }

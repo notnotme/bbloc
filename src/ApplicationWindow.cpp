@@ -564,8 +564,7 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
         // runs, without touching the prompt, the feedback or the focus. Prompt input itself
         // (fromPrompt) and the commands the prompt machinery relies on stay executable; the mouse
         // side already preserves the interaction by never moving the keyboard focus.
-        // effectiveFocus keeps the prompt active while the OSK holds the pad it took from it.
-        const auto prompt_is_active = context.effectiveFocus() == FocusTarget::Prompt || feedback_was_pending;
+        const auto prompt_is_active = context.focus_target == FocusTarget::Prompt || feedback_was_pending;
         if (!fromPrompt && prompt_is_active && !m_command_manager.isAllowedDuringPrompt(tokens[0])) {
             m_token_scratch = std::move(tokens);
             return false;
@@ -614,12 +613,7 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
         switch (m_prompt_state.getRunningState()) {
             case PromptState::RunningState::Idle:
                 resetPrompt(PromptState::PROMPT_READY);
-
-                // The Osk focus survives: "osk show" hands the pad to the on-screen keyboard,
-                // and the physical keyboard behaves like the editor focus there anyway.
-                if (active_context.focus_target != FocusTarget::Osk) {
-                    active_context.focus_target = FocusTarget::Editor;
-                }
+                active_context.focus_target = FocusTarget::Editor;
             break;
             default:
                 // Don't change anything

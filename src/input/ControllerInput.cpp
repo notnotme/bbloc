@@ -32,22 +32,20 @@ bool ControllerInput::dispatch(const SDL_Keycode keycode, const uint16_t modifie
     // instead of running bindings; anything it does not handle falls through unchanged.
     auto &context = m_context_manager.active();
     if (m_osk_state.isVisible()) {
-        // Lazy acquisition: the visible OSK takes the pad focus (and shows its key cursor)
-        // only when a pad actually navigates it, so mouse and touch users never see the
-        // cursor. The origin focus is remembered: typing routes to it while the OSK holds
-        // the pad, and B hands the pad back to it — so the OSK types into an active
-        // prompt too, and pad prompt navigation asks for hiding the OSK first.
+        // Lazy acquisition: the visible OSK takes the pad (and shows its key cursor) only
+        // when a pad actually navigates it, so mouse and touch users never see the cursor.
+        // Only the pad moves: the keyboard focus stays where it is, so the OSK types into
+        // an active prompt as well as the editor.
         const auto is_direction = keycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_DPAD_UP)
             || keycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_DPAD_DOWN)
             || keycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_DPAD_LEFT)
             || keycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_DPAD_RIGHT);
         const auto acquires = is_direction || keycode == PadInput::fromButton(SDL_CONTROLLER_BUTTON_A);
-        if (context.focus_target != FocusTarget::Osk && acquires) {
-            context.osk_return_focus = context.focus_target;
-            context.focus_target = FocusTarget::Osk;
+        if (!m_osk_state.hasPadFocus() && acquires) {
+            m_osk_state.setPadFocus(true);
         }
 
-        if (context.focus_target == FocusTarget::Osk && m_osk.onPadInput(context, m_osk_state, keycode)) {
+        if (m_osk_state.hasPadFocus() && m_osk.onPadInput(context, m_osk_state, keycode)) {
             // Only held directions auto-repeat: A would re-tap keys, B would re-leave.
             return is_direction;
         }
