@@ -109,10 +109,15 @@ classDiagram
         <<struct>>
     }
     class UndoHistory {
-        note: "linear snapshot stacks, cvar-capped depth"
+        note: "linear stacks of inverse edits, cvar-capped depth and retained characters"
     }
-    class Snapshot {
+    class Group {
         <<struct>>
+        note: "one undo step: the edits of a run, plus the caret before and after"
+    }
+    class Edit {
+        <<struct>>
+        note: "start position, text removed, text inserted"
     }
     class CVarInt
 
@@ -120,7 +125,8 @@ classDiagram
     Cursor *-- UndoHistory
     Cursor ..> SurrogatePair : uses
     PromptCursor ..> SurrogatePair : uses
-    UndoHistory *-- Snapshot : nested
+    UndoHistory *-- Group : nested
+    Group *-- Edit
     UndoHistory o-- CVarInt : shared dim_max_undo
     Cursor ..> TextRange : returns
     Cursor ..> BufferEdit : produces

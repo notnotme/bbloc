@@ -92,7 +92,7 @@ void seed(Cursor &cursor, const std::u16string_view text) {
  * @return true when a step was undone, false when the history was exhausted.
  */
 bool undoStep(Cursor &cursor) {
-    return cursor.undo().has_value();
+    return !cursor.undo().empty();
 }
 
 /**
@@ -102,7 +102,7 @@ bool undoStep(Cursor &cursor) {
  * @return true when a step was redone, false when there was nothing to replay.
  */
 bool redoStep(Cursor &cursor) {
-    return cursor.redo().has_value();
+    return !cursor.redo().empty();
 }
 
 /**

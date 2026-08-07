@@ -60,7 +60,7 @@ private:
     /** Holds the index of the column where the selection starts. */
     uint32_t m_selected_column_start;
 
-    /** Undo/redo history of full-buffer snapshots. */
+    /** Undo/redo history, holding the text each edit replaced. */
     UndoHistory m_history;
 
     /** True when the buffer text changed since it was last saved or loaded. */
@@ -92,13 +92,8 @@ private:
      */
     [[nodiscard]] std::u16string textInRange(uint32_t lineStart, uint32_t columnStart, uint32_t lineEnd, uint32_t columnEnd) const;
 
-    /**
-     * @brief Pushes a snapshot of the current state when the history is at a boundary.
-     *
-     * The history drops the snapshot when it repeats the text it already holds on top, so a
-     * boundary crossed without any text change costs a comparison instead of a retained copy.
-     */
-    void recordBeforeEdit();
+    /** @return The caret's current position, packaged for the undo history. */
+    [[nodiscard]] BufferEdit::Position position() const;
 
     /**
      * @brief Pulls a column off the trailing half of a surrogate pair.
@@ -113,18 +108,14 @@ private:
     [[nodiscard]] uint32_t snapToCharBoundary(uint32_t line, uint32_t column) const;
 
     /**
-     * @brief Replaces the buffer content and cursor position with a snapshot.
+     * @brief Puts the caret where a history step left it and settles the state around it.
      *
-     * Only the region where the two texts differ is rewritten: the common prefix and the common
-     * suffix stay in place, so the returned edit is no wider than the change itself and the
-     * incremental re-parse keeps its work proportional to it. Deactivates the selection and marks
-     * a history boundary.
+     * Shared by undo and redo: both deactivate the selection, mark a boundary so the next edit
+     * opens its own group, and raise the modified flag.
      *
-     * @param snapshot The snapshot to restore.
-     * @param currentText The buffer content before the restore, with its lines joined as getText() joins them.
-     * @return A BufferEdit covering the differing region only, degenerate when both texts are equal.
+     * @param caret The position the step restores.
      */
-    [[nodiscard]] BufferEdit restore(const UndoHistory::Snapshot &snapshot, std::u16string_view currentText);
+    void settleAfterHistoryStep(const BufferEdit::Position &caret);
 
 public:
     /** @brief Deleted copy constructor. */
@@ -311,18 +302,23 @@ public:
     [[nodiscard]] BufferEdit clear();
 
     /**
-     * @brief Restores the buffer to its state before the last recorded edit.
+     * @brief Restores the buffer to its state before the last recorded group of edits.
      *
-     * @return An optional BufferEdit describing the change, or std::nullopt if there is nothing to undo.
+     * A group holds one edit per contiguous run of typing, so the returned vector is short; it is
+     * a vector rather than a single edit because a group that mixed operations has to be reverted
+     * one edit at a time, and the highlighter needs to see each of them.
+     *
+     * @return The edits describing the change, in the order they were applied, empty when there is
+     *         nothing to undo.
      */
-    [[nodiscard]] std::optional<BufferEdit> undo();
+    [[nodiscard]] std::vector<BufferEdit> undo();
 
     /**
-     * @brief Re-applies the last undone edit.
+     * @brief Re-applies the last undone group of edits.
      *
-     * @return An optional BufferEdit describing the change, or std::nullopt if there is nothing to redo.
+     * @return The edits describing the change, empty when there is nothing to redo.
      */
-    [[nodiscard]] std::optional<BufferEdit> redo();
+    [[nodiscard]] std::vector<BufferEdit> redo();
 
     /** @brief Wipes the undo/redo history. */
     void clearHistory();

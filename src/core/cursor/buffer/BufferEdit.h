@@ -20,6 +20,7 @@
 #define BUFFER_EDIT_H
 
 #include <cstdint>
+#include <string_view>
 
 
 /**
@@ -43,6 +44,31 @@ struct BufferEdit final {
     Position old_end;       ///< Cursor position where the original content ended.
     Position new_end;       ///< Cursor position where the new content ends.
 };
+
+
+/**
+ * @brief Returns the position reached by walking a piece of text forward from a starting position.
+ *
+ * Each line break lands on column 0 of the next line, every other code unit advances the column.
+ * Costs the length of the text, not of the buffer, which is what lets the undo history turn a
+ * stored chunk back into the range it occupies.
+ *
+ * @param start The position the text begins at.
+ * @param text The text to walk over.
+ * @return The position just past the last code unit of the text, start itself when it is empty.
+ */
+[[nodiscard]] inline BufferEdit::Position advancePosition(const BufferEdit::Position &start, const std::u16string_view text) {
+    auto position = start;
+    for (const auto unit : text) {
+        if (unit == u'\n') {
+            ++position.line;
+            position.column = 0;
+        } else {
+            ++position.column;
+        }
+    }
+    return position;
+}
 
 
 #endif //BUFFER_EDIT_H

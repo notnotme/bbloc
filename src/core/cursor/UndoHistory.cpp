@@ -19,6 +19,7 @@
 #include "UndoHistory.h"
 
 #include <algorithm>
+#include <utility>
 
 
 UndoHistory::UndoHistory()
@@ -37,14 +38,29 @@ uint32_t UndoHistory::capacity() const {
     return DEFAULT_MAX_HISTORY_DEPTH;
 }
 
+std::size_t UndoHistory::weigh(const Group &group) {
+    auto characters = std::size_t{0};
+    for (const auto &edit : group.edits) {
+        characters += edit.removed.length() + edit.inserted.length();
+    }
+    return characters;
+}
+
 void UndoHistory::shareMaxDepth(std::shared_ptr<CVarInt> maxDepth) {
     m_max_undo = std::move(maxDepth);
     applyMaxDepth();
 }
 
-void UndoHistory::dropOldest(std::deque<Snapshot> &stack) {
-    m_retained_characters -= stack.front().text.length();
+void UndoHistory::dropOldest(std::deque<Group> &stack) {
+    m_retained_characters -= weigh(stack.front());
     stack.pop_front();
+}
+
+void UndoHistory::clearRedo() {
+    for (const auto &group : m_redo_stack) {
+        m_retained_characters -= weigh(group);
+    }
+    m_redo_stack.clear();
 }
 
 void UndoHistory::trim() {
@@ -57,15 +73,17 @@ void UndoHistory::trim() {
         dropOldest(m_redo_stack);
     }
 
-    // Character cap: a snapshot weighs the whole buffer, so a handful of them on a large file is
-    // enough to exhaust memory. Drop the oldest history first, but never the last snapshot left.
+    // Character cap: an edit weighs what it replaced, so this is now reached by a genuinely long
+    // editing session rather than by a handful of steps on a large file. Drop the oldest history
+    // first, but never the newest group of either stack: undo() and redo() hand out a pointer into
+    // one of them and this runs while that pointer is still live.
     while (m_retained_characters > MAX_HISTORY_CHARACTERS) {
         if (m_undo_stack.size() > 1) {
             dropOldest(m_undo_stack);
-        } else if (!m_redo_stack.empty()) {
+        } else if (m_redo_stack.size() > 1) {
             dropOldest(m_redo_stack);
         } else {
-            // One snapshot bigger than the whole budget: keep it, undo must stay usable
+            // One group per stack left and still over budget: keep them, undo must stay usable
             break;
         }
     }
@@ -75,69 +93,88 @@ void UndoHistory::applyMaxDepth() {
     trim();
 }
 
-bool UndoHistory::isAtBoundary() const {
-    return m_at_boundary;
-}
+bool UndoHistory::coalesce(Group &group, const Edit &edit) {
+    auto &previous = group.edits.back();
 
-bool UndoHistory::canUndo() const {
-    return !m_undo_stack.empty();
-}
-
-bool UndoHistory::canRedo() const {
-    return !m_redo_stack.empty();
-}
-
-void UndoHistory::push(Snapshot snapshot) {
-    // An edit is coming: whatever could be redone is now unreachable
-    for (const auto &redo_snapshot : m_redo_stack) {
-        m_retained_characters -= redo_snapshot.text.length();
+    if (previous.removed.empty() && edit.removed.empty()) {
+        // Typing: the new text starts exactly where the previous insert ended
+        if (advancePosition(previous.start, previous.inserted).line == edit.start.line
+            && advancePosition(previous.start, previous.inserted).column == edit.start.column) {
+            previous.inserted.append(edit.inserted);
+            return true;
+        }
+        return false;
     }
-    m_redo_stack.clear();
 
-    if (!m_undo_stack.empty() && m_undo_stack.back().text == snapshot.text) {
-        // Same text as the snapshot on top: undo would restore the very same buffer, so keep the
-        // older one (its cursor position is the one to restore) instead of retaining a second copy
+    if (previous.inserted.empty() && edit.inserted.empty()) {
+        // Backspacing: the new erase ends exactly where the previous one began, so it belongs
+        // in front of it — the text has to come back in reading order, not in typing order
+        const auto edit_end = advancePosition(edit.start, edit.removed);
+        if (edit_end.line == previous.start.line && edit_end.column == previous.start.column) {
+            previous.removed.insert(0, edit.removed);
+            previous.start = edit.start;
+            return true;
+        }
+
+        // Deleting forward: the caret never moves, so both erases start at the same place
+        if (edit.start.line == previous.start.line && edit.start.column == previous.start.column) {
+            previous.removed.append(edit.removed);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void UndoHistory::record(Edit edit, const BufferEdit::Position &cursorBefore, const BufferEdit::Position &cursorAfter) {
+    // An edit is coming: whatever could be redone is now unreachable
+    clearRedo();
+
+    if (edit.removed.empty() && edit.inserted.empty()) {
+        // Replacing nothing with nothing leaves no trace to undo, but it still closes the
+        // boundary the way any other edit would
         m_at_boundary = false;
         return;
     }
 
-    m_retained_characters += snapshot.text.length();
-    m_undo_stack.emplace_back(std::move(snapshot));
-    trim();
+    if (m_at_boundary || m_undo_stack.empty()) {
+        m_undo_stack.emplace_back(Group{.edits = {}, .cursor_before = cursorBefore, .cursor_after = cursorAfter});
+        m_at_boundary = false;
+    }
 
-    m_at_boundary = false;
+    auto &group = m_undo_stack.back();
+    m_retained_characters += edit.removed.length() + edit.inserted.length();
+    if (group.edits.empty() || !coalesce(group, edit)) {
+        group.edits.emplace_back(std::move(edit));
+    }
+    group.cursor_after = cursorAfter;
+
+    trim();
 }
 
-std::optional<UndoHistory::Snapshot> UndoHistory::undo(Snapshot current) {
+const UndoHistory::Group *UndoHistory::undo() {
     if (m_undo_stack.empty()) {
-        return std::nullopt;
+        return nullptr;
     }
 
-    auto snapshot = std::move(m_undo_stack.back());
-    m_retained_characters -= snapshot.text.length();
+    // The group only changes stacks, so the retained total is unchanged
+    m_redo_stack.emplace_back(std::move(m_undo_stack.back()));
     m_undo_stack.pop_back();
-
-    m_retained_characters += current.text.length();
-    m_redo_stack.emplace_back(std::move(current));
     trim();
 
-    return snapshot;
+    return &m_redo_stack.back();
 }
 
-std::optional<UndoHistory::Snapshot> UndoHistory::redo(Snapshot current) {
+const UndoHistory::Group *UndoHistory::redo() {
     if (m_redo_stack.empty()) {
-        return std::nullopt;
+        return nullptr;
     }
 
-    auto snapshot = std::move(m_redo_stack.back());
-    m_retained_characters -= snapshot.text.length();
+    m_undo_stack.emplace_back(std::move(m_redo_stack.back()));
     m_redo_stack.pop_back();
-
-    m_retained_characters += current.text.length();
-    m_undo_stack.emplace_back(std::move(current));
     trim();
 
-    return snapshot;
+    return &m_undo_stack.back();
 }
 
 void UndoHistory::clear() {

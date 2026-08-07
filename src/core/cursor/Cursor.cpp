@@ -23,37 +23,35 @@
 #include "SurrogatePair.h"
 
 
-/** @brief Tells whether a boundary at the given index falls between the two units of a surrogate pair. */
-static bool splitsSurrogatePair(const std::u16string_view text, const size_t index) {
-    return index > 0 && index < text.length()
-        && (text[index] & 0xFC00) == 0xDC00
-        && (text[index - 1] & 0xFC00) == 0xD800;
-}
-
 /**
- * @brief Walks a flat text from a known point up to an index, counting the line ends it crosses.
+ * @brief Applies a stored replacement to the buffer and describes it as one edit.
  *
- * The buffer is line-structured, so a flat character offset only becomes a BufferEdit position by
- * walking the text; walking from an already known point keeps that to one pass per boundary.
+ * The range to remove is the stored text turned back into a span, so both halves of an undo step
+ * are exact: nothing is diffed and no boundary is ever computed, which is why neither side can
+ * land inside a surrogate pair. Each half degenerates to a no-op at start when its text is empty.
  *
- * @param text The text to walk, with its lines joined by line ends.
- * @param from The index the walk starts at.
- * @param fromPoint The position the index `from` designates.
- * @param to The index to walk up to, never before `from`.
- * @return The position the index `to` designates.
+ * @param buffer The buffer to rewrite.
+ * @param start The position the replacement begins at.
+ * @param remove The text currently occupying the range, removed by this call.
+ * @param insert The text to put in its place.
+ * @return A BufferEdit covering the replacement, for the incremental re-parse.
  */
-static BufferEdit::Position advanceToIndex(const std::u16string_view text, const size_t from, const BufferEdit::Position &fromPoint, const size_t to) {
-    auto point = fromPoint;
-    for (auto index = from; index < to; ++index) {
-        if (text[index] == u'\n') {
-            ++point.line;
-            point.column = 0;
-        } else {
-            ++point.column;
-        }
-    }
+static BufferEdit replaceRange(TextBuffer &buffer, const BufferEdit::Position &start, const std::u16string_view remove, const std::u16string_view insert) {
+    const auto end = advancePosition(start, remove);
 
-    return point;
+    // The two halves carry the offsets and the points of the combined edit: the erase leaves the
+    // start of the range where it was, so the insert that follows starts at the very same offset.
+    const auto &erase_edit = buffer.erase(start.line, start.column, end.line, end.column);
+    const auto &insert_edit = buffer.insert(start.line, start.column, insert);
+
+    return BufferEdit{
+        .start_byte = erase_edit.start_byte,
+        .old_end_byte = erase_edit.old_end_byte,
+        .new_end_byte = insert_edit.new_end_byte,
+        .start = erase_edit.start,
+        .old_end = erase_edit.old_end,
+        .new_end = insert_edit.new_end
+    };
 }
 
 Cursor::Cursor(std::unique_ptr<TextBuffer> buffer)
@@ -309,12 +307,15 @@ void Cursor::setPosition(const uint32_t line, const uint32_t column) {
 }
 
 BufferEdit Cursor::insert(const std::u16string_view characters) {
-    recordBeforeEdit();
+    const auto cursor_before = position();
     m_is_modified = true;
     const auto previous_line = m_line;
     const auto &edit = m_buffer->insert(m_line, m_column, characters);
     m_line = edit.new_end.line;
     m_column = edit.new_end.column;
+
+    m_history.record(UndoHistory::Edit{.start = edit.start, .removed = {}, .inserted = std::u16string(characters)}, cursor_before, position());
+
     if (m_line != previous_line) {
         m_history.markBoundary();
     }
@@ -326,11 +327,14 @@ BufferEdit Cursor::erase(const uint32_t lineStart, const uint32_t columnStart, c
 }
 
 BufferEdit Cursor::newLine() {
-    recordBeforeEdit();
+    const auto cursor_before = position();
     m_is_modified = true;
     const auto &edit = m_buffer->insert(m_line, m_column, u"\n");
     m_line = edit.new_end.line;
     m_column = edit.new_end.column;
+
+    m_history.record(UndoHistory::Edit{.start = edit.start, .removed = {}, .inserted = u"\n"}, cursor_before, position());
+
     // The cursor always changes line
     m_history.markBoundary();
     return edit;
@@ -339,21 +343,29 @@ BufferEdit Cursor::newLine() {
 std::optional<BufferEdit> Cursor::eraseLeft() {
     if (m_column > 0) {
         // We can erase on the left since column > 0
-        recordBeforeEdit();
+        const auto cursor_before = position();
         m_is_modified = true;
-        const auto &edit = m_buffer->erase(m_line, m_column, m_line, m_column - charLengthBefore(m_buffer->getString(m_line), m_column));
+        const auto erased_column = m_column - charLengthBefore(m_buffer->getString(m_line), m_column);
+        auto removed = textInRange(m_line, erased_column, m_line, m_column);
+        const auto &edit = m_buffer->erase(m_line, m_column, m_line, erased_column);
         m_column = edit.new_end.column;
+
+        m_history.record(UndoHistory::Edit{.start = edit.start, .removed = std::move(removed), .inserted = {}}, cursor_before, position());
         return edit;
     }
 
     if (m_line > 0) {
         // We can't erase left because column = 0, so we move the remainder of this line to the end of the line above
-        recordBeforeEdit();
+        const auto cursor_before = position();
         m_is_modified = true;
         const auto string_above_length = static_cast<uint32_t>(m_buffer->getString(m_line - 1).length());
+        auto removed = textInRange(m_line - 1, string_above_length, m_line, m_column);
         const auto &edit =  m_buffer->erase(m_line, m_column, m_line - 1, string_above_length);
         m_line = edit.new_end.line;
         m_column = edit.new_end.column;
+
+        m_history.record(UndoHistory::Edit{.start = edit.start, .removed = std::move(removed), .inserted = {}}, cursor_before, position());
+
         // The cursor always changes line
         m_history.markBoundary();
         return edit;
@@ -365,16 +377,25 @@ std::optional<BufferEdit> Cursor::eraseLeft() {
 std::optional<BufferEdit> Cursor::eraseRight() {
     if (m_column < m_buffer->getString(m_line).length()) {
         // We can erase on the right since column < string_length
-        recordBeforeEdit();
+        const auto cursor_before = position();
         m_is_modified = true;
-        return m_buffer->erase(m_line, m_column, m_line, m_column + charLengthAfter(m_buffer->getString(m_line), m_column));
+        const auto erased_column = m_column + charLengthAfter(m_buffer->getString(m_line), m_column);
+        auto removed = textInRange(m_line, m_column, m_line, erased_column);
+        const auto &edit = m_buffer->erase(m_line, m_column, m_line, erased_column);
+
+        m_history.record(UndoHistory::Edit{.start = edit.start, .removed = std::move(removed), .inserted = {}}, cursor_before, position());
+        return edit;
     }
 
     if (m_line < m_buffer->getStringCount() - 1) {
         // We can't erase right because column >= string_length, so we move the line below and append it to this line
-        recordBeforeEdit();
+        const auto cursor_before = position();
         m_is_modified = true;
-        return m_buffer->erase(m_line, m_column, m_line + 1, 0);
+        auto removed = textInRange(m_line, m_column, m_line + 1, 0);
+        const auto &edit = m_buffer->erase(m_line, m_column, m_line + 1, 0);
+
+        m_history.record(UndoHistory::Edit{.start = edit.start, .removed = std::move(removed), .inserted = {}}, cursor_before, position());
+        return edit;
     }
 
     return std::nullopt;
@@ -390,12 +411,16 @@ std::optional<BufferEdit> Cursor::eraseSelection() {
         return std::nullopt;
     }
 
-    recordBeforeEdit();
+    const auto cursor_before = position();
     m_is_modified = true;
     const auto previous_line = m_line;
+    auto removed = textInRange(range->line_start, range->column_start, range->line_end, range->column_end);
     const auto &edit = m_buffer->erase(range->line_start, range->column_start, range->line_end, range->column_end);
     m_line = edit.new_end.line;
     m_column = edit.new_end.column;
+
+    m_history.record(UndoHistory::Edit{.start = edit.start, .removed = std::move(removed), .inserted = {}}, cursor_before, position());
+
     if (m_line != previous_line) {
         m_history.markBoundary();
     }
@@ -454,10 +479,8 @@ std::u16string Cursor::getText() const {
     return textInRange(0, 0, last_line, last_column);
 }
 
-void Cursor::recordBeforeEdit() {
-    if (m_history.isAtBoundary()) {
-        m_history.push(UndoHistory::Snapshot{.text = getText(), .line = m_line, .column = m_column});
-    }
+BufferEdit::Position Cursor::position() const {
+    return BufferEdit::Position{.line = m_line, .column = m_column};
 }
 
 uint32_t Cursor::snapToCharBoundary(const uint32_t line, const uint32_t column) const {
@@ -470,92 +493,50 @@ uint32_t Cursor::snapToCharBoundary(const uint32_t line, const uint32_t column) 
     return column;
 }
 
-BufferEdit Cursor::restore(const UndoHistory::Snapshot &snapshot, const std::u16string_view currentText) {
-    const auto &new_text = snapshot.text;
-
-    // Only the differing middle is rewritten. Replacing the whole buffer would hand the highlighter
-    // an edit spanning the entire document, so a one-character undo would cost a from-scratch
-    // re-parse and a full longest-line re-measure.
-    const auto &prefix_mismatch = std::mismatch(currentText.begin(), currentText.end(), new_text.begin(), new_text.end());
-    auto prefix_length = static_cast<size_t>(prefix_mismatch.first - currentText.begin());
-
-    // The two ends must never meet: over a repeating region ("aaaa" -> "aaa") the common suffix
-    // reaches back into the common prefix, and the range between them would then run backwards.
-    const auto suffix_limit = std::min(currentText.length(), new_text.length()) - prefix_length;
-    const auto &suffix_mismatch = std::mismatch(currentText.rbegin(), currentText.rbegin() + static_cast<ptrdiff_t>(suffix_limit), new_text.rbegin());
-    auto suffix_length = static_cast<size_t>(suffix_mismatch.first - currentText.rbegin());
-
-    // Neither boundary may land inside a surrogate pair. Widening the range by one code unit is
-    // always safe; splitting the pair would leave both sides of the edit unencodable.
-    if (splitsSurrogatePair(currentText, prefix_length) || splitsSurrogatePair(new_text, prefix_length)) {
-        --prefix_length;
-    }
-    if (splitsSurrogatePair(currentText, currentText.length() - suffix_length)
-        || splitsSurrogatePair(new_text, new_text.length() - suffix_length)) {
-        --suffix_length;
+std::vector<BufferEdit> Cursor::undo() {
+    const auto *const group = m_history.undo();
+    if (group == nullptr) {
+        return {};
     }
 
-    // Both points describe the buffer as it stands, which is exactly what currentText holds.
-    const auto start = advanceToIndex(currentText, 0, BufferEdit::Position{.line = 0, .column = 0}, prefix_length);
-    const auto old_end = advanceToIndex(currentText, prefix_length, start, currentText.length() - suffix_length);
-    const auto middle = std::u16string_view(new_text).substr(prefix_length, new_text.length() - suffix_length - prefix_length);
+    // Reverting means walking the group backwards: each edit's coordinates describe the buffer as
+    // it stood just before that edit, which is only true once the later ones are already undone.
+    auto edits = std::vector<BufferEdit>{};
+    edits.reserve(group->edits.size());
+    for (auto it = group->edits.rbegin(); it != group->edits.rend(); ++it) {
+        edits.emplace_back(replaceRange(*m_buffer, it->start, it->inserted, it->removed));
+    }
 
-    // The two halves carry the offsets and the points of the combined edit: the erase leaves the
-    // start of the range where it was, so the insert that follows starts at the very same offset.
-    // Each half degenerates to a no-op edit at start when its side is empty, identical texts included.
-    const auto &erase_edit = m_buffer->erase(start.line, start.column, old_end.line, old_end.column);
-    const auto &insert_edit = m_buffer->insert(start.line, start.column, middle);
+    settleAfterHistoryStep(group->cursor_before);
+    return edits;
+}
 
-    m_line = snapshot.line;
-    m_column = snapshot.column;
+std::vector<BufferEdit> Cursor::redo() {
+    const auto *const group = m_history.redo();
+    if (group == nullptr) {
+        return {};
+    }
+
+    // Re-applying replays the group in its original order, the mirror image of undo
+    auto edits = std::vector<BufferEdit>{};
+    edits.reserve(group->edits.size());
+    for (const auto &edit : group->edits) {
+        edits.emplace_back(replaceRange(*m_buffer, edit.start, edit.removed, edit.inserted));
+    }
+
+    settleAfterHistoryStep(group->cursor_after);
+    return edits;
+}
+
+void Cursor::settleAfterHistoryStep(const BufferEdit::Position &caret) {
+    m_line = caret.line;
+    m_column = caret.column;
     activateSelection(false);
     m_history.markBoundary();
 
     // An undo/redo rewrites the text: it may well restore the very saved state, but the flag is a
     // plain boolean, so the restore conservatively counts as a modification (accepted simplification).
     m_is_modified = true;
-
-    return BufferEdit {
-        .start_byte = erase_edit.start_byte,
-        .old_end_byte = erase_edit.old_end_byte,
-        .new_end_byte = insert_edit.new_end_byte,
-        .start = erase_edit.start,
-        .old_end = erase_edit.old_end,
-        .new_end = insert_edit.new_end
-    };
-}
-
-std::optional<BufferEdit> Cursor::undo() {
-    if (!m_history.canUndo()) {
-        // Ask before building the current state: an empty stack would only discard it, and under
-        // key repeat that is a full-buffer copy per event
-        return std::nullopt;
-    }
-
-    // The current text is needed twice, as the state handed to the history and as the left side of
-    // the diff below: joining the lines once and copying it is cheaper than building it twice.
-    const auto current_text = getText();
-    const auto &snapshot = m_history.undo(UndoHistory::Snapshot{.text = current_text, .line = m_line, .column = m_column});
-    if (!snapshot) {
-        return std::nullopt;
-    }
-
-    return restore(snapshot.value(), current_text);
-}
-
-std::optional<BufferEdit> Cursor::redo() {
-    if (!m_history.canRedo()) {
-        // Same as undo: nothing to restore means nothing to capture
-        return std::nullopt;
-    }
-
-    const auto current_text = getText();
-    const auto &snapshot = m_history.redo(UndoHistory::Snapshot{.text = current_text, .line = m_line, .column = m_column});
-    if (!snapshot) {
-        return std::nullopt;
-    }
-
-    return restore(snapshot.value(), current_text);
 }
 
 void Cursor::clearHistory() {

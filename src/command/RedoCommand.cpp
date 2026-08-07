@@ -32,12 +32,16 @@ std::optional<std::u16string> RedoCommand::run(CursorContext &payload, const std
         return u"Expected 0 argument.";
     }
 
-    const auto &edit = payload.cursor.redo();
-    if (!edit) {
+    const auto &edits = payload.cursor.redo();
+    if (edits.empty()) {
         return u"Nothing to redo.";
     }
 
-    payload.highlighter.edit(edit.value());
+    // A group can hold more than one edit; tree-sitter takes them in sequence and merges the
+    // dirty span itself, so each one is relayed as it comes.
+    for (const auto &edit : edits) {
+        payload.highlighter.edit(edit);
+    }
     payload.cursor.activateSelection(false);
     payload.stick.index = payload.cursor.getColumn();
     payload.search.resetMatches();
