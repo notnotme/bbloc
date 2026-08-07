@@ -12,6 +12,12 @@ This project includes third-party software:
 - tree-sitter-toml — MIT License
 - tree-sitter-markdown — MIT License
 
+Test-only, vendored in this repository:
+
+- doctest — MIT License
+  Single header, vendored at tests/doctest.h with its license header intact.
+  Built only by the bbloc_tests target; never linked into bbloc itself.
+
 Fonts:
 
 - JetBrains Mono — SIL Open Font License 1.1

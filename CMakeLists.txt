@@ -190,6 +190,26 @@ else()
     target_link_libraries(bbloc PRIVATE glad::glad)
 endif()
 
+# Unit tests
+# ========================================
+# Desktop only: the devkitPro build produces an NRO with no way to run a test binary, and the
+# subsystem under test is platform-independent anyway. The target links the undo subsystem and
+# what it needs to stand up a buffer — no SDL, no GL, no FreeType, no tree-sitter — so it builds
+# in a couple of seconds. doctest is vendored at tests/doctest.h; nothing new comes from vcpkg.
+if(NOT NINTENDO_SWITCH)
+    add_executable(bbloc_tests
+            src/core/cursor/Cursor.cpp
+            src/core/cursor/UndoHistory.cpp
+            src/core/cursor/buffer/LineBuffer.cpp
+            src/core/cursor/buffer/LongestLineTracker.cpp
+            src/core/cvar/CVarInt.cpp
+            tests/UndoTests.cpp
+    )
+    target_include_directories(bbloc_tests PRIVATE src)
+    target_compile_options(bbloc_tests PRIVATE -Wall -Wextra)
+    target_link_libraries(bbloc_tests PRIVATE utf8::cpp utf8cpp::utf8cpp)
+endif()
+
 # get_cmake_property(_variableNames VARIABLES)
 # list (SORT _variableNames)
 # foreach (_variableName ${_variableNames})
