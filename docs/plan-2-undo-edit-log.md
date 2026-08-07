@@ -89,6 +89,16 @@ line span across repeated calls before the next parse.
 same surrogate-boundary guarantee, and `advanceToIndex` converts a chunk length into an end position.
 `getText()` itself stays; `SaveFileCommand` still uses it.
 
+### What plan 1 deliberately left untested
+
+The **character cap** has no test, on purpose. Its threshold is representation-specific: with
+snapshots it bites at ~33 groups on a 1 MB file, and after this rewrite the same input would never
+reach it. A test pinning today's behaviour would have to be rewritten by task 2.2, which is exactly
+what the plan-1 tests exist to avoid. Reaching it also costs a ~68 MB fixture.
+
+Task 2.2 must therefore re-check the character accounting by inspection rather than by a
+pre-existing test, and may add a cap test afterwards written against the new thresholds.
+
 ## Tasks
 
 - [ ] **2.1 — `Cursor::textInRange`.** The erase paths discard what they remove, so add a private

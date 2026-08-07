@@ -27,6 +27,7 @@
 #include <utf8.h>
 
 #include "core/cursor/Cursor.h"
+#include "core/cvar/CVarInt.h"
 #include "core/cursor/buffer/LineBuffer.h"
 
 
@@ -162,6 +163,29 @@ uint32_t undoAll(Cursor &cursor) {
         ++steps;
     }
     return steps;
+}
+
+/**
+ * @brief Reports whether a UTF-16 buffer contains a surrogate that lost its partner.
+ *
+ * Text equality already catches most damage, but a split pair is worth naming: it is the one
+ * corruption that makes a buffer unencodable to UTF-8, so saving would throw rather than round-trip.
+ *
+ * @param text The buffer to scan.
+ * @return true when a high surrogate is unfollowed or a low surrogate unpreceded.
+ */
+bool hasLoneSurrogate(const std::u16string_view text) {
+    for (auto index = std::size_t{0}; index < text.length(); ++index) {
+        const auto is_high = (text[index] & 0xFC00) == 0xD800;
+        const auto is_low = (text[index] & 0xFC00) == 0xDC00;
+        if (is_high && (index + 1 >= text.length() || (text[index + 1] & 0xFC00) != 0xDC00)) {
+            return true;
+        }
+        if (is_low && (index == 0 || (text[index - 1] & 0xFC00) != 0xD800)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 }
@@ -358,4 +382,85 @@ TEST_CASE("a backspace run inside one line is a single undo step") {
 
     CHECK(undoAll(cursor) == 1);
     CHECK(cursor.getText() == std::u16string(u"abcdef"));
+}
+
+TEST_CASE("erasing a non-BMP character takes the whole pair and undo restores it") {
+    const auto grin = std::u16string(u"\U0001F600");
+    REQUIRE(grin.length() == 2);
+
+    auto cursor = Cursor(std::make_unique<LineBuffer>());
+    const auto original = std::u16string(u"a") + grin + u"b";
+    seed(cursor, original);
+
+    cursor.moveToEndOfLine();
+    (void) cursor.eraseLeft();                  // drops 'b'
+    (void) cursor.eraseLeft();                  // must drop both code units of the pair
+    REQUIRE(cursor.getText() == std::u16string(u"a"));
+    REQUIRE_FALSE(hasLoneSurrogate(cursor.getText()));
+
+    REQUIRE(undoAll(cursor) == 1);
+    CHECK(cursor.getText() == original);
+    CHECK_FALSE(hasLoneSurrogate(cursor.getText()));
+}
+
+TEST_CASE("undo across two pairs sharing a high surrogate does not split them") {
+    // U+1F600 and U+1F601 differ only in their trailing code unit, so the common prefix of the two
+    // buffer states ends *inside* the pair and the common suffix reaches back into it. Both ends
+    // have to be widened off the pair, or the undo leaves an unencodable buffer behind.
+    const auto grin = std::u16string(u"\U0001F600");
+    const auto beam = std::u16string(u"\U0001F601");
+    REQUIRE(grin[0] == beam[0]);
+    REQUIRE(grin[1] != beam[1]);
+
+    auto cursor = Cursor(std::make_unique<LineBuffer>());
+    const auto original = std::u16string(u"a") + grin + u"b";
+    seed(cursor, original);
+
+    // Replace the emoji, the shape SearchCommand::replaceSelection produces
+    select(cursor, 0, 1, 0, 3);
+    (void) cursor.eraseSelection();
+    cursor.activateSelection(false);
+    (void) cursor.insert(beam);
+    REQUIRE(cursor.getText() == std::u16string(u"a") + beam + u"b");
+    REQUIRE_FALSE(hasLoneSurrogate(cursor.getText()));
+
+    REQUIRE(undoAll(cursor) == 1);
+    CHECK(cursor.getText() == original);
+    CHECK_FALSE(hasLoneSurrogate(cursor.getText()));
+}
+
+TEST_CASE("the entry cap keeps the most recent steps and drops the oldest") {
+    auto cursor = Cursor(std::make_unique<LineBuffer>());
+    seed(cursor, u"");
+
+    auto max_undo = std::make_shared<CVarInt>(3);
+    cursor.shareMaxHistoryDepth(max_undo);
+
+    for (const auto *const text : {u"a", u"b", u"c", u"d", u"e", u"f"}) {
+        appendAsNewGroup(cursor, text);
+    }
+    REQUIRE(cursor.getText() == std::u16string(u"abcdef"));
+
+    // Six groups were made, three fit: undo reaches back exactly three steps and stops
+    CHECK(undoAll(cursor) == 3);
+    CHECK(cursor.getText() == std::u16string(u"abc"));
+}
+
+TEST_CASE("lowering the entry cap at runtime trims the history immediately") {
+    auto cursor = Cursor(std::make_unique<LineBuffer>());
+    seed(cursor, u"");
+
+    auto max_undo = std::make_shared<CVarInt>(10);
+    cursor.shareMaxHistoryDepth(max_undo);
+
+    for (const auto *const text : {u"a", u"b", u"c", u"d", u"e"}) {
+        appendAsNewGroup(cursor, text);
+    }
+
+    // What the cvar command does: write the value, then let the change callback apply it
+    max_undo->m_value = 2;
+    cursor.setMaxHistoryDepth();
+
+    CHECK(undoAll(cursor) == 2);
+    CHECK(cursor.getText() == std::u16string(u"abc"));
 }
