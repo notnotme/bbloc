@@ -101,14 +101,15 @@ Actions can be mapped to keystrokes using the `bind` command. The editor include
 
 #### Renderer
 - **OpenGL Integration**: Dynamic function loading via glad
-- **Batched Quad Rendering**: Efficient vertex buffer rendering with QuadBuffer
-- **Shader System**: Custom QuadProgram for textured quad rendering
+- **Two Backends**: `QuadBuffer`/`QuadProgram`/`QuadTexture` have one header and two CMake-selected implementations — `gl45/` (OpenGL 4.5 direct state access, desktop) and `gl43/` (bind-based, Nintendo Switch)
+- **Batched Quad Rendering**: Each view stages one batch CPU-side and draws it immediately; the batch may be drawn in more than one call when parts of it need different scissor boxes
+- **Shader System**: Custom QuadProgram for textured quad rendering, one instanced draw per call
 - **Orthogonal Projection**: Coordinate system for UI layout
 
 #### Views
 - **View Pattern**: Base class with common rendering and input handling
 - **View Subclasses**: InfoBar, Editor, Prompt, and Osk implementations
-- **Focus Management**: Handles focus switching between Editor and Prompt; a third Osk focus redirects only the pad to the on-screen keyboard
+- **Focus Management**: `FocusTarget` has exactly two values, Editor and Prompt, and tracks the keyboard only; whether the OSK owns the game pad is a separate flag on `OskState`
 - **State Management**: ViewState hierarchy for view-specific state
 
 #### Input Routing
@@ -146,8 +147,8 @@ Actions can be mapped to keystrokes using the `bind` command. The editor include
 
 ```
 ApplicationWindow
-├── InfoBar (InfoBarState)
-├── Editor (EditorState)
+├── InfoBar (ViewState)
+├── Editor (ViewState)
 ├── Prompt (PromptState)
 └── Osk (OskState)
 ```
@@ -180,7 +181,7 @@ chapter).
 
 ### Core Libraries
 - **SDL2**: Input handling and window management
-- **OpenGL 4.3+**: Graphics rendering
+- **OpenGL 4.5** (4.3 on Nintendo Switch): Graphics rendering
 - **glad**: Dynamic OpenGL function loader
 - **Freetype**: Font glyph rendering
 - **utfcpp**: UTF-8/UTF-16 string conversion
@@ -243,13 +244,13 @@ make
 - Scissor test to confine rendering per view
 
 ### Texture Atlas
-- FreeType-generated layered glyph atlas (256x256x256 pixels)
+- FreeType-generated layered glyph atlas (255x255x255 pixels, the `uint8_t` coordinate range)
 - Lazy glyph loading (generated on-demand)
 - AtlasArray for tracking character positions and layers
 
 ### Performance Optimization
 - Texture atlas caching for glyphs
-- Batched rendering (single draw call per view)
+- Batched rendering: one staged batch per view, drawn in one call — except the Editor, which splits its batch in two so the text can be scissored away from the margin and the scrollbars
 - Delta time calculation via high-resolution performance counters
 - Metrics tracking for render and command times
 
@@ -281,16 +282,13 @@ make
 - Customizable key bindings
 - Tab handling (space expansion)
 - Selection and clipboard operations
-- Undo/redo (linear, snapshot-based, 64 entries deep)
+- Undo/redo (linear, storing the text each edit replaced rather than whole-buffer snapshots, 64 steps deep)
 - Multiple open buffers with per-buffer scroll, search, undo, and highlight state
 - Dirty-flag tracking with close/quit confirmation on unsaved changes
 - Mouse support: caret placement, drag selection, wheel scrolling, and scrollbar interactions
 - Touch support: single-finger caret/selection/taps, two-finger scrolling
 - Game controller support with rebindable buttons/axes and shoulder modifier layers
 - On-screen keyboard with sticky modifiers, hold auto-repeat, and international layouts
-
-### Known Limitations
-- Undoing back to the last saved state still shows the buffer as modified
 
 ### Future Enhancements (no ordering)
 - Additional language support
