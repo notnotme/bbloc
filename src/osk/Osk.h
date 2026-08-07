@@ -81,6 +81,9 @@ private:
      * latches, then arms the auto-repeat with that same mask, captured so the repeats keep
      * emitting the events the press did even after the latches went away.
      *
+     * Does nothing while the other source already holds a key: there is one press slot, and
+     * overwriting it would leave that press with no release able to settle it.
+     *
      * @param context Reference to the cursor context.
      * @param viewState The OSK view state.
      * @param row Row of the key to press.
@@ -92,9 +95,10 @@ private:
     /**
      * @brief Releases the key a press is holding: settles a sticky key and disarms the repeat.
      *
-     * Does nothing unless the source asking matches the one that started the press: a pointer
-     * and the pad A button can hold a key at the same time, and one release must not end the
-     * other's press.
+     * Does nothing unless the source asking matches the one that started the press. There is a
+     * single press slot, so the first holder keeps the key and a press from the other source is
+     * ignored while it lasts; the release must reach the press it started from, since that is
+     * the one a sticky key settles against.
      *
      * @param context Reference to the cursor context.
      * @param viewState The OSK view state.

@@ -424,7 +424,11 @@ namespace {
                 text_event.user.type = Osk::textEventType();
                 text_event.user.timestamp = timestamp;
                 text_event.user.data1 = SDL_strdup(text.c_str());
-                SDL_PushEvent(&text_event);
+                if (SDL_PushEvent(&text_event) <= 0) {
+                    // The event was filtered out or the queue is full: nothing will pump it, so the
+                    // payload it owns has to be released here.
+                    SDL_free(text_event.user.data1);
+                }
             }
         }
 
@@ -605,6 +609,13 @@ void Osk::pressKey(CursorContext &context, OskState &viewState, const int32_t ro
         return;
     }
 
+    // One press slot, so the first holder keeps the key: a finger already holding Shift must not
+    // have its press destroyed by a pad A press, which would settle nothing when the finger lifts.
+    if (viewState.getPressSource() != OskState::PressSource::None
+        && viewState.getPressSource() != source) {
+        return;
+    }
+
     // Remember the press so the release can match it (sticky settle, repeat disarm), along
     // with what holds it, so the other source's release cannot end it
     viewState.setPressed(row, col, SDL_GetTicks64(), source);
@@ -635,8 +646,8 @@ void Osk::pressKey(CursorContext &context, OskState &viewState, const int32_t ro
 }
 
 void Osk::releaseKey(CursorContext &context, OskState &viewState, const OskState::PressSource source) const {
-    // Only the source that started the press may end it: a finger lifting must not settle the
-    // key the pad A button is holding, nor the other way around.
+    // Only the source that started the press may end it: the press slot belongs to its holder
+    // until it lifts, so a stray release from the other source cannot settle it in its place.
     if (viewState.getPressedRow() < 0 || viewState.getPressSource() != source) {
         return;
     }

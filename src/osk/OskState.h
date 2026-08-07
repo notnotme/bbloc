@@ -59,9 +59,9 @@ public:
     /**
      * @brief The input source holding the currently pressed key.
      *
-     * A pointer and the pad A button can hold a key at the same time; the source tells their
-     * releases apart, so lifting a finger never settles the press the pad started, nor the
-     * other way around.
+     * There is one press slot, so the first holder keeps the key: while a pointer holds one, a
+     * pad A press is ignored, and the other way around. The source records that holder, so the
+     * sticky settle only runs for the release matching the press it started from.
      */
     enum class PressSource : uint8_t {
         None,     ///< No key is pressed.
@@ -259,8 +259,9 @@ public:
     /**
      * @brief Records the pressed key and what holds it, to match them on release.
      *
-     * The source matters because a pointer and the pad A button can hold a key at the same
-     * time: the release only ends the press when it comes from the source that started it.
+     * The source matters because both a pointer and the pad A button can start a press: the
+     * release only ends it when it comes from the source that started it, and the caller keeps
+     * the other source out of the single slot while that one holds it.
      *
      * @param row Row of the pressed key.
      * @param col Column of the pressed key.
