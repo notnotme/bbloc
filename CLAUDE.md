@@ -49,7 +49,7 @@ The `misc/pre-commit` hook runs clang-tidy on the staged sources; activate it on
 cmake --build cmake-build-debug --target bbloc_tests && ./cmake-build-debug/bbloc_tests
 ```
 
-It links `Cursor`, `PromptCursor`, `UndoHistory`, `LineBuffer`, `LongestLineTracker` and `CVarInt` only — no SDL, GL, FreeType or tree-sitter — so it builds in seconds. doctest is vendored at `tests/doctest.h` (MIT, never edited); nothing comes from vcpkg. `tests/` is outside the toolchain's reach: `misc/pre-commit` globs `src/*.cpp` and `src/*.h`, and `.clang-tidy` filters headers to `.*/src/.*`, so nothing there is linted.
+It links `Cursor`, `PromptCursor`, `UndoHistory`, `LineBuffer`, `LongestLineTracker` and the four CVar types only — no SDL, GL, FreeType or tree-sitter — so it builds in seconds. doctest is vendored at `tests/doctest.h` (MIT, never edited); nothing comes from vcpkg. `tests/` is outside the toolchain's reach: `misc/pre-commit` globs `src/*.cpp` and `src/*.h`, and `.clang-tidy` filters headers to `.*/src/.*`, so nothing there is linted.
 
 Coverage is deliberately bounded to what is cheap to link and silent when it breaks:
 
@@ -57,8 +57,11 @@ Coverage is deliberately bounded to what is cheap to link and silent when it bre
 - `BufferTests.cpp` — `LineBuffer` and `LongestLineTracker` driven against an independent `std::vector<std::u16string>` model, compared on every observable after every edit. This is the shape to keep: the bugs worth catching are sequence-dependent (a detached current line never committed, a stale `m_line_data` offset), and hand-written expectations only find those if the author guessed the sequence.
 - `CursorTests.cpp` — cursor moves, selection ranges and UTF-16 stepping.
 - `PromptTests.cpp` — `PromptCursor`, the single-line prompt input.
+- `CVarTests.cpp` — the four CVar types and their completions. A rejection is asserted as two facts, the message *and* the value staying put: theme scripts and `autoexec` set every colour and dimension at startup, where the message is shown to nobody.
+- `TabStopTests.cpp` — `nextTabStop` and `visualColumns`, checked against a naive per-character walk that derives the stop differently, so the two cannot be wrong together.
+- `SurrogateTests.cpp` — `charLengthBefore`, `charLengthAfter` and `snapToCharBoundary`, on ordinary text and on lines already holding a lone surrogate.
 
-Anything needing SDL, GL, FreeType or tree-sitter stays out: the target's cheapness is why it gets run. When adding cases, check they actually bite by mutating the code under test and confirming they go red — a green suite written against shipping code proves nothing on its own. A case that fails against existing code is a finding to report, not an expectation to reshape.
+Anything needing SDL, GL, FreeType or tree-sitter stays out: the target's cheapness is why it gets run. `CommandManager::tokenize`, the prompt's parser, is the notable thing this costs — `CommandManager.cpp` includes `CursorContext.h` and so the whole render stack. When adding cases, check they actually bite by mutating the code under test and confirming they go red — a green suite written against shipping code proves nothing on its own. A case that fails against existing code is a finding to report, not an expectation to reshape.
 
 ## Architecture
 
