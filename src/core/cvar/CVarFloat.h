@@ -48,6 +48,8 @@ public:
      * @brief Sets the value using string arguments.
      *
      * The vector must contain only one element which is the float representation of the value.
+     * The number must be finite: "nan" and "inf" are spellings the conversion accepts and this
+     * rejects.
      *
      * @param args The vector must contain only one element that is the string representation of the float.
      * @return Nothing in case of success, an error message otherwise.

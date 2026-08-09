@@ -228,6 +228,18 @@ TEST_CASE("a float cvar rejects text the parser cannot finish") {
     CHECK(rejects(cvar, { u"1e400" }));
 }
 
+TEST_CASE("a float cvar rejects a number that is not finite") {
+    auto cvar = CVarFloat(1.5f, false);
+
+    // These are the words the conversion accepts and consumes whole, so only an explicit check
+    // stops them: a NaN or an infinity taken here spreads through every measure using the value
+    CHECK(rejects(cvar, { u"nan" }));
+    CHECK(rejects(cvar, { u"NaN" }));
+    CHECK(rejects(cvar, { u"inf" }));
+    CHECK(rejects(cvar, { u"-inf" }));
+    CHECK(rejects(cvar, { u"infinity" }));
+}
+
 TEST_CASE("a colour cvar renders its four channels in order") {
     const auto cvar = CVarColor(10, 20, 30, 40, false);
 

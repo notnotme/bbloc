@@ -18,6 +18,7 @@
  */
 #include "CVarFloat.h"
 
+#include <cmath>
 #include <string>
 #include <utf8.h>
 
@@ -37,6 +38,12 @@ std::optional<std::u16string> CVarFloat::setValueFromStrings(const std::span<con
         if (parsed_length != arg.length()) {
             // Reject trailing garbage such as "4x"
             return u"Unable to convert argument to float";
+        }
+
+        if (!std::isfinite(value)) {
+            // "nan" and "inf" convert cleanly and consume the whole argument, but nothing downstream
+            // can be drawn from them: they propagate through every measure that touches the value
+            return u"Expected a finite number";
         }
 
         m_value = value;
