@@ -212,6 +212,7 @@ if(NOT NINTENDO_SWITCH)
             tests/CursorTests.cpp
             tests/CVarTests.cpp
             tests/PromptTests.cpp
+            tests/TabStopTests.cpp
             tests/UndoTests.cpp
     )
     target_include_directories(bbloc_tests PRIVATE src)
