@@ -211,6 +211,7 @@ if(NOT NINTENDO_SWITCH)
             src/core/cvar/CVarInt.cpp
             tests/TestMain.cpp
             tests/BufferTests.cpp
+            tests/CommandLineTests.cpp
             tests/CursorTests.cpp
             tests/CVarTests.cpp
             tests/PromptTests.cpp
