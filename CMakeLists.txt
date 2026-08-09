@@ -212,6 +212,7 @@ if(NOT NINTENDO_SWITCH)
             tests/CursorTests.cpp
             tests/CVarTests.cpp
             tests/PromptTests.cpp
+            tests/SurrogateTests.cpp
             tests/TabStopTests.cpp
             tests/UndoTests.cpp
     )
