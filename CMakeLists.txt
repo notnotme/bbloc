@@ -203,10 +203,14 @@ if(NOT NINTENDO_SWITCH)
             src/core/cursor/buffer/LineBuffer.cpp
             src/core/cursor/buffer/LongestLineTracker.cpp
             src/core/cursor/PromptCursor.cpp
+            src/core/cvar/CVarBool.cpp
+            src/core/cvar/CVarColor.cpp
+            src/core/cvar/CVarFloat.cpp
             src/core/cvar/CVarInt.cpp
             tests/TestMain.cpp
             tests/BufferTests.cpp
             tests/CursorTests.cpp
+            tests/CVarTests.cpp
             tests/PromptTests.cpp
             tests/UndoTests.cpp
     )
