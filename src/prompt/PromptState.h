@@ -25,7 +25,7 @@
 #include <vector>
 
 #include "../core/cvar/CVarInt.h"
-#include "../core/CommandManager.h"
+#include "../core/base/CVarRegistry.h"
 #include "../core/ViewState.h"
 
 /**
@@ -53,8 +53,8 @@ public:
     static constexpr auto MAX_COMMAND_HISTORY = 32;
 
 private:
-    /** Reference to the command manager (used to register cvars and commands). */
-    CommandManager &m_command_manager;
+    /** Registry the prompt's own CVar is registered with. */
+    CVarRegistry &m_cvar_registry;
 
     /** Current label displayed on the prompt line. */
     std::u16string m_prompt_text;
@@ -88,7 +88,7 @@ public:
     PromptState &operator=(const PromptState &) = delete;
 
     /** @brief Constructs a PromptState with default values. */
-    explicit PromptState(CommandManager &commandManager);
+    explicit PromptState(CVarRegistry &cvarRegistry);
 
     /** @brief Gets the current prompt label text. */
     [[nodiscard]] std::u16string_view getPromptText() const;

@@ -264,7 +264,12 @@ classDiagram
         <<abstract>>
         note: "int32 window rectangle (position + size)"
     }
-    class PromptState
+    class PromptState {
+        note: "history + completion rings; holds a CVarRegistry ref only, for dim_max_history"
+    }
+    class CVarRegistry {
+        <<interface>>
+    }
     class View~TState~ {
         <<abstract>>
         +render(context, viewState, quadBuffer, dt)*
@@ -311,6 +316,7 @@ classDiagram
     }
 
     ViewState <|-- PromptState
+    PromptState ..> CVarRegistry : registers dim_max_history
     ViewState <|-- OskState
     View~TState~ <|-- Editor
     View~TState~ <|-- InfoBar

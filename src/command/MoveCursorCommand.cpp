@@ -18,6 +18,8 @@
  */
 #include "MoveCursorCommand.h"
 
+#include <ranges>
+
 #include "../core/theme/DimensionId.h"
 
 

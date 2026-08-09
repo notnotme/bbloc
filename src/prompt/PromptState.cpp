@@ -21,8 +21,8 @@
 #include <algorithm>
 
 
-PromptState::PromptState(CommandManager &commandManager)
-    : m_command_manager(commandManager),
+PromptState::PromptState(CVarRegistry &cvarRegistry)
+    : m_cvar_registry(cvarRegistry),
       m_prompt_text(PROMPT_READY),
       m_completion_index(0),
       m_command_history_index(-1),
@@ -153,7 +153,7 @@ void PromptState::setRunningState(const RunningState state) {
 
 void PromptState::registerMaxHistoryCVar() {
     // register the max_history cvar
-    m_command_manager.registerCvar(u"dim_max_history", m_max_history, [&] {
+    m_cvar_registry.registerCvar(u"dim_max_history", m_max_history, [&] {
         // Clamp history so the user cannot enter funny numbers
         const auto new_size = std::clamp(m_max_history->m_value, 8, 255);
         m_max_history->m_value = new_size;
