@@ -22,6 +22,10 @@ classDiagram
         <<interface>>
     }
     class CommandManager
+    class CommandLine {
+        <<static only>>
+        note: "tokenize / split: the command-line syntax the prompt, the bindings and exec scripts share"
+    }
     class CVarCommand
     class CommandFeedback {
         <<struct>>
@@ -35,6 +39,7 @@ classDiagram
     CVarRegistry <|-- CVarCommand
     CommandManager *-- CVarCommand
     CommandManager o-- Command~TPayload~
+    Command~TPayload~ ..> CommandLine : parses arguments with
     Command~TPayload~ ..> CommandFeedback : may request
 ```
 
@@ -565,6 +570,7 @@ classDiagram
     KeyboardInput ..> View~TState~ : dispatches to focused view
     PointerInput ..> View~TState~ : routes captured pointer events
     ApplicationWindow *-- CommandManager
+    ApplicationWindow ..> CommandLine : tokenizes command lines
     ApplicationWindow *-- Theme
     ApplicationWindow *-- PromptCursor
     ApplicationWindow *-- CursorContextManager

@@ -24,6 +24,7 @@
 #include <SDL_keyboard.h>
 #include <utf8.h>
 
+#include "../core/base/CommandLine.h"
 #include "../core/base/PadInput.h"
 #include "../core/CommandManager.h"
 
@@ -94,7 +95,7 @@ std::optional<std::u16string> BindCommand::run(CursorContext &payload, const std
     }
 
     // Split the first argument which should be the modifier keys.
-    const auto split_modifiers = CommandManager::split(args[0], u'+');
+    const auto split_modifiers = CommandLine::split(args[0], u'+');
 
     // Normalize the modifiers, as the app does not make the difference between left and right.
     auto modifier = 0;

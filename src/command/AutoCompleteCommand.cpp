@@ -20,7 +20,7 @@
 
 #include <ranges>
 
-#include "../core/CommandManager.h"
+#include "../core/base/CommandLine.h"
 
 
 const U16StringMap<AutoCompleteCommand::Direction> AutoCompleteCommand::DIRECTION_MAP = {
@@ -65,7 +65,7 @@ std::optional<std::u16string> AutoCompleteCommand::run(CursorContext &payload, c
     // Get and tokenize the input string
     const auto input = payload.prompt_cursor.getString();
     auto tokens = std::vector<std::u16string_view>{};
-    CommandManager::tokenize(input, tokens);
+    CommandLine::tokenize(input, tokens);
 
     // Reset the history index if we were browsing it
     m_prompt_state.clearHistoryIndex();

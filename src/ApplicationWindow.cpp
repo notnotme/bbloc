@@ -56,6 +56,7 @@
 #include "command/SearchCommand.h"
 #include "command/SetHighLightCommand.h"
 #include "command/UndoCommand.h"
+#include "core/base/CommandLine.h"
 #include "core/theme/DimensionId.h"
 #include "core/FocusTarget.h"
 #include "platform/Platform.h"
@@ -552,7 +553,7 @@ bool ApplicationWindow::runCommand(const std::u16string_view command, const bool
         // Take the scratch by move so a nested runCommand (e.g. exec running script lines) sees an
         // empty member and allocates its own vector, keeping this command's args span valid.
         auto tokens = std::move(m_token_scratch);
-        CommandManager::tokenize(command, tokens);
+        CommandLine::tokenize(command, tokens);
         if (tokens.empty()) {
             m_token_scratch = std::move(tokens);
             return false;
