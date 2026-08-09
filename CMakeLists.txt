@@ -209,12 +209,15 @@ if(NOT NINTENDO_SWITCH)
             src/core/cvar/CVarColor.cpp
             src/core/cvar/CVarFloat.cpp
             src/core/cvar/CVarInt.cpp
+            src/core/ViewState.cpp
+            src/prompt/PromptState.cpp
             tests/TestMain.cpp
             tests/BufferTests.cpp
             tests/CommandLineTests.cpp
             tests/CursorTests.cpp
             tests/CVarTests.cpp
             tests/PromptTests.cpp
+            tests/PromptStateTests.cpp
             tests/SurrogateTests.cpp
             tests/TabStopTests.cpp
             tests/UndoTests.cpp
