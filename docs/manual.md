@@ -99,6 +99,7 @@ Shown by `osk toggle` (pad: left stick click); takes `dim_osk_height` percent of
 | Auto-repeat | Holding a repeatable key re-emits it |
 | Pad keys | D-pad moves the key cursor, A presses — holding it repeats the key, and holding it on a sticky modifier holds that modifier — and B hands the pad back (or cancels the prompt instead, while one is active) |
 | Layouts | `osk layout <name>`: qwerty, azerty, qwertz, uk, spanish, spanish_latin, italian, portuguese, russian |
+| Initial layout | Follows the console keyboard setting on Switch, starts on qwerty on desktop; `osk layout` overrides either |
 
 ## Commands
 
@@ -155,7 +156,8 @@ Put the commands in `romfs/autoexec` to make them permanent; `romfs/light_theme`
 On Switch `romfs/` is packaged inside the NRO and read-only, so the editable `autoexec` is the
 copy bbloc writes next to `bbloc.nro` on the first run and runs from then on. Edit that one;
 delete it to get the shipped defaults back. The console light/dark color set is applied just
-before it, so colors set in `autoexec` override the system scheme.
+before it, so colors set in `autoexec` override the system scheme. The on-screen keyboard
+likewise starts on the layout matching the console keyboard setting; `osk layout` overrides it.
 
 ### Settings
 

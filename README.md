@@ -223,6 +223,14 @@ cmake -G"Unix Makefiles" -DCMAKE_C_FLAGS="$CFLAGS $CPPFLAGS" -DCMAKE_TOOLCHAIN_F
 make
 ```
 
+### Testing
+
+A doctest suite covers the text core (buffers, cursors, undo, prompt input, CVars, command-line parsing, OSK layouts, key modifiers). It is built by the desktop configure only:
+
+```bash
+cmake --build cmake-build-debug --target bbloc_tests && ./cmake-build-debug/bbloc_tests
+```
+
 ## Screenshots
 
 **Default Theme**
@@ -289,6 +297,7 @@ make
 - Touch support: single-finger caret/selection/taps, two-finger scrolling
 - Game controller support with rebindable buttons/axes and shoulder modifier layers
 - On-screen keyboard with sticky modifiers, hold auto-repeat, and international layouts
+- Automated tests: a doctest suite over the text core
 
 ### Future Enhancements (no ordering)
 - Additional language support

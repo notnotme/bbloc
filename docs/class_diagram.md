@@ -59,12 +59,20 @@ classDiagram
     class CVarInt
     class CVarFloat
     class CVarColor
+    class Color {
+        <<struct>>
+        +uint8_t red
+        +uint8_t green
+        +uint8_t blue
+        +uint8_t alpha
+    }
 
     CVar <|-- TypedCVar~T~
     TypedCVar~T~ <|-- CVarBool
     TypedCVar~T~ <|-- CVarInt
     TypedCVar~T~ <|-- CVarFloat
     TypedCVar~T~ <|-- CVarColor
+    CVarColor --> Color : T = Color
 ```
 
 ---
@@ -244,11 +252,15 @@ classDiagram
     class QuadTexture
     class CVarColor
     class CVarInt
+    class Color {
+        <<struct>>
+    }
 
     Theme *-- AtlasArray
     Theme *-- QuadTexture
     Theme o-- CVarColor : ColorId + TokenId map
     Theme o-- CVarInt : DimensionId + font size map
+    Theme ..> Color : getColor() hands values to the views
     Theme --> ColorId
     Theme --> DimensionId
     Theme ..> CVarRegistry : create() registers its color and dimension CVars
