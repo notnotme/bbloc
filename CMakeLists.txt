@@ -41,6 +41,7 @@ endif()
 add_executable(bbloc
         src/core/base/Command.h
         src/core/base/CommandLine.cpp
+        src/core/base/KeyModifiers.cpp
         src/core/base/PadInput.cpp
         src/core/cursor/buffer/LongestLineTracker.cpp
         src/core/cursor/buffer/LineBuffer.cpp
@@ -201,6 +202,7 @@ endif()
 if(NOT NINTENDO_SWITCH)
     add_executable(bbloc_tests
             src/core/base/CommandLine.cpp
+            src/core/base/KeyModifiers.cpp
             src/core/cursor/Cursor.cpp
             src/core/cursor/UndoHistory.cpp
             src/core/cursor/buffer/LineBuffer.cpp

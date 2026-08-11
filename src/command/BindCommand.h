@@ -29,7 +29,6 @@
 #include "../core/CommandManager.h"
 #include "../core/CursorContext.h"
 #include "../core/base/Command.h"
-#include "../core/base/U16StringMap.h"
 
 
 /**
@@ -40,9 +39,6 @@
  */
 class BindCommand final : public Command<CursorContext> {
 private:
-    /** Lookup map to ease mapping modifiers. */
-    static const U16StringMap<uint16_t> MODIFIER_MAP;
-
     /** Reference to the command manager used to complete command names. */
     CommandManager &m_command_manager;
 
@@ -52,32 +48,6 @@ private:
      * (stored as uint16_t) to map to command strings.
      */
     std::unordered_map<SDL_Keycode, std::unordered_map<uint16_t, std::u16string>> m_bindings;
-
-private:
-    /**
-     * @brief Normalize input modifiers from raw SDL input modifiers.
-     *
-     * This basically converts SDL modifiers Left/Right to universal modifier position (LSHIFT -> SHIFT).
-     * The pad modifier bits (KMOD_PAD_L / KMOD_PAD_R) pass through unchanged.
-     *
-     * @param modifiers The raw SDL modifier flags.
-     * @return Normalized modifier flags.
-     */
-    static uint16_t normalizeModifiers(uint16_t modifiers);
-
-    /**
-     * @brief Map a string representation of a key modifier into a int32_t.
-     *
-     * This converts a SDL modifier keycode into an int32_t. This allows returning a negative value in case the mapping
-     * fails, and return an error in this case.
-     *
-     * Values can be "Ctrl", "Alt", "Shift", "L", "R", "None".
-     * "None" is mandatory if the binding does not use key modifiers at all.
-     *
-     * @param modifier The string representation of the modifier to convert.
-     * @return An int representation of the modifier, or -1.
-     */
-    static int32_t mapModifier(std::u16string_view modifier);
 
 public:
     /**

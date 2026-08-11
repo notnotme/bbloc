@@ -18,25 +18,16 @@
  */
 #include "BindCommand.h"
 
-#include <ranges>
 #include <unordered_set>
 
 #include <SDL_keyboard.h>
 #include <utf8.h>
 
 #include "../core/base/CommandLine.h"
+#include "../core/base/KeyModifiers.h"
 #include "../core/base/PadInput.h"
 #include "../core/CommandManager.h"
 
-
-const U16StringMap<uint16_t> BindCommand::MODIFIER_MAP = {
-    { u"Ctrl", KMOD_CTRL },
-    { u"Shift", KMOD_SHIFT },
-    { u"Alt", KMOD_ALT },
-    { u"L", PadInput::KMOD_PAD_L },
-    { u"R", PadInput::KMOD_PAD_R },
-    { u"None", KMOD_NONE }
-};
 
 BindCommand::BindCommand(CommandManager &commandManager)
     : m_command_manager(commandManager) {}
@@ -49,11 +40,11 @@ void BindCommand::provideAutoComplete(const std::span<const std::u16string_view>
         const auto combo_prefix = last_plus_index == std::u16string_view::npos ? std::u16string_view{} : input.substr(0, last_plus_index + 1);
         const auto modifier_input = last_plus_index == std::u16string_view::npos ? input : input.substr(last_plus_index + 1);
 
-        for (const auto &name : std::views::keys(MODIFIER_MAP)) {
+        KeyModifiers::forEachName([&combo_prefix, &modifier_input, &itemCallback](const std::u16string_view name) {
             if (name.starts_with(modifier_input)) {
                 itemCallback(std::u16string(combo_prefix).append(name));
             }
-        }
+        });
     } else if (argumentIndex == 1) {
         // Enumerate every key name known to SDL, skipping unnamed keys and duplicates.
         // The walk starts at the first real scancode: 1 to 3 are not SDL_Scancode values at all,
@@ -100,7 +91,7 @@ std::optional<std::u16string> BindCommand::run(CursorContext &payload, const std
     // Normalize the modifiers, as the app does not make the difference between left and right.
     auto modifier = 0;
     for (const auto string_modifier : split_modifiers) {
-        const auto mapped_modifier = mapModifier(string_modifier);
+        const auto mapped_modifier = KeyModifiers::fromName(string_modifier);
         if (mapped_modifier == -1) {
             return std::u16string(u"Unknown modifier: ").append(string_modifier);
         }
@@ -125,7 +116,7 @@ std::optional<std::u16string> BindCommand::run(CursorContext &payload, const std
 }
 
 std::optional<std::u16string_view> BindCommand::getBinding(const SDL_Keycode keycode, const uint16_t modifiers) {
-    const auto normalized_modifiers = normalizeModifiers(modifiers);
+    const auto normalized_modifiers = KeyModifiers::normalize(modifiers);
     if (const auto &map_entry = m_bindings.find(keycode); map_entry != m_bindings.end()) {
         if (const auto &binding = map_entry->second.find(normalized_modifiers); binding != map_entry->second.end()) {
             return binding->second;
@@ -133,36 +124,4 @@ std::optional<std::u16string_view> BindCommand::getBinding(const SDL_Keycode key
     }
 
     return std::nullopt;
-}
-
-uint16_t BindCommand::normalizeModifiers(const uint16_t modifiers) {
-    auto result = 0;
-    if (modifiers & (KMOD_LCTRL | KMOD_RCTRL)) {
-        result |= KMOD_CTRL;
-    }
-
-    if (modifiers & (KMOD_LSHIFT | KMOD_RSHIFT)) {
-        result |= KMOD_SHIFT;
-    }
-
-    if (modifiers & (KMOD_LALT | KMOD_RALT)) {
-        result |= KMOD_ALT;
-    }
-
-    if (modifiers & (KMOD_LGUI | KMOD_RGUI)) {
-        result |= KMOD_GUI;
-    }
-
-    // The pad modifier bits (held shoulders) have no left/right variants: pass them through.
-    result |= modifiers & (PadInput::KMOD_PAD_L | PadInput::KMOD_PAD_R);
-
-    return result;
-}
-
-int32_t BindCommand::mapModifier(const std::u16string_view modifier) {
-    if (const auto &mapped_modifier = MODIFIER_MAP.find(modifier); mapped_modifier != MODIFIER_MAP.end()) {
-        return mapped_modifier->second;
-    }
-
-    return -1;
 }

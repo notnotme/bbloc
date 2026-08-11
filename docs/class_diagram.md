@@ -367,7 +367,7 @@ directions are encoded as negative pad pseudo-keycodes (the static-only `PadInpu
 `core/base/PadInput.h`, `pad:...` names in `bind`) and dispatched through
 `CommandRunner::runBoundCommand`, exactly like keyboard shortcuts. The two shoulders are not
 bindable: they build the live L/R modifier mask (`KMOD_PAD_L`/`KMOD_PAD_R`, the two KMOD bits
-SDL leaves free, passed through by `BindCommand::normalizeModifiers`). Sticks and triggers act
+SDL leaves free, passed through by `KeyModifiers::normalize`). Sticks and triggers act
 as digital pseudo-buttons with press/release hysteresis, and a successfully dispatched press
 arms an auto-repeat (delay then fast interval) that `mainLoop` honors by waiting with
 `SDL_WaitEventTimeout` and ticking after the poll loop. Hotplug opens/closes the pads and a
@@ -439,6 +439,13 @@ classDiagram
     class BindCommand {
         note: "keyboard keys and pad: names (via PadInput), L/R shoulder modifiers"
     }
+    class KeyModifiers {
+        <<static only>>
+        -MODIFIER_MAP
+        +normalize(modifiers)$
+        +fromName(modifier)$
+        +forEachName(itemCallback)$
+    }
     class MoveCursorCommand
     class AutoCompleteCommand
     class ActivatePromptCommand
@@ -478,6 +485,7 @@ classDiagram
     }
 
     Command~CursorContext~ <|-- BindCommand
+    BindCommand ..> KeyModifiers : maps and normalizes the modifiers
     Command~CursorContext~ <|-- MoveCursorCommand
     Command~CursorContext~ <|-- AutoCompleteCommand
     Command~CursorContext~ <|-- ActivatePromptCommand
