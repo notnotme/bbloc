@@ -195,8 +195,9 @@ endif()
 # ========================================
 # Desktop only: the devkitPro build produces an NRO with no way to run a test binary, and the
 # subsystem under test is platform-independent anyway. The target links the undo subsystem and
-# what it needs to stand up a buffer — no SDL, no GL, no FreeType, no tree-sitter — so it builds
-# in a couple of seconds. doctest is vendored at tests/doctest.h; nothing new comes from vcpkg.
+# what it needs to stand up a buffer — it compiles against the SDL headers but links no SDL, GL,
+# FreeType or tree-sitter library — so it builds in a couple of seconds. doctest is vendored at
+# tests/doctest.h; nothing new comes from vcpkg.
 if(NOT NINTENDO_SWITCH)
     add_executable(bbloc_tests
             src/core/base/CommandLine.cpp
@@ -210,6 +211,7 @@ if(NOT NINTENDO_SWITCH)
             src/core/cvar/CVarFloat.cpp
             src/core/cvar/CVarInt.cpp
             src/core/ViewState.cpp
+            src/osk/OskLayout.cpp
             src/prompt/PromptState.cpp
             tests/TestMain.cpp
             tests/BufferTests.cpp
@@ -223,6 +225,7 @@ if(NOT NINTENDO_SWITCH)
             tests/UndoTests.cpp
     )
     target_include_directories(bbloc_tests PRIVATE src)
+    target_include_directories(bbloc_tests PRIVATE $<TARGET_PROPERTY:SDL2::SDL2,INTERFACE_INCLUDE_DIRECTORIES>)
     target_compile_options(bbloc_tests PRIVATE -Wall -Wextra)
     target_link_libraries(bbloc_tests PRIVATE utf8::cpp utf8cpp::utf8cpp)
 endif()

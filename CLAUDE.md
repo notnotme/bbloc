@@ -49,7 +49,7 @@ The `misc/pre-commit` hook runs clang-tidy on the staged sources; activate it on
 cmake --build cmake-build-debug --target bbloc_tests && ./cmake-build-debug/bbloc_tests
 ```
 
-It links `Cursor`, `PromptCursor`, `UndoHistory`, `LineBuffer`, `LongestLineTracker`, `CommandLine`, `PromptState`/`ViewState` and the four CVar types only — no SDL, GL, FreeType or tree-sitter — so it builds in seconds. doctest is vendored at `tests/doctest.h` (MIT, never edited); nothing comes from vcpkg. `tests/` is outside the toolchain's reach: `misc/pre-commit` globs `src/*.cpp` and `src/*.h`, and `.clang-tidy` filters headers to `.*/src/.*`, so nothing there is linted.
+It links `Cursor`, `PromptCursor`, `UndoHistory`, `LineBuffer`, `LongestLineTracker`, `CommandLine`, `OskLayout`, `PromptState`/`ViewState` and the four CVar types only — it compiles against the SDL headers but links no SDL, GL, FreeType or tree-sitter library — so it builds in seconds. doctest is vendored at `tests/doctest.h` (MIT, never edited); nothing comes from vcpkg. `tests/` is outside the toolchain's reach: `misc/pre-commit` globs `src/*.cpp` and `src/*.h`, and `.clang-tidy` filters headers to `.*/src/.*`, so nothing there is linted.
 
 Coverage is deliberately bounded to what is cheap to link and silent when it breaks:
 
