@@ -488,6 +488,14 @@ classDiagram
     class SearchCommand {
         note: "search / find_next / find_prev / replace / replace_all"
     }
+    class LineScanner {
+        +LineScanner(term, caseSensitive)
+        +setLine(line)
+        +indexOf(from)
+        +lastIndexOf(limit)
+        +termLength()
+        +isSelfOverlapping()
+    }
     class GotoLineCommand
     class BufferCommand {
         note: "buffer next / prev / close / name, via CursorContextManager"
@@ -516,6 +524,7 @@ classDiagram
     Command~CursorContext~ <|-- UndoCommand
     Command~CursorContext~ <|-- RedoCommand
     Command~CursorContext~ <|-- SearchCommand
+    SearchCommand ..> LineScanner : scans buffer lines with
     Command~CursorContext~ <|-- GotoLineCommand
     Command~CursorContext~ <|-- BufferCommand
     Command~CursorContext~ <|-- HelpCommand
