@@ -527,9 +527,9 @@ void Osk::drawKeys(QuadBuffer &quadBuffer, const OskState &viewState) {
     const auto &dot_color = m_theme.getColor(ColorId::CursorIndicator);
     const auto gap = m_theme.getDimension(DimensionId::OskKeyGap);
     const auto dot_side = m_theme.getDimension(DimensionId::IndicatorWidth) * 2;
-    const auto line_height = m_theme.getLineHeight();
-    const auto font_advance = m_theme.getFontAdvance();
-    const auto font_descender = m_theme.getFontDescender();
+    const auto line_height = m_theme.getLabelLineHeight();
+    const auto font_advance = m_theme.getLabelAdvance();
+    const auto font_descender = m_theme.getLabelDescender();
 
     // The pad key cursor only shows while the OSK has the pad focus
     const auto cursor_visible = viewState.hasPadFocus();
@@ -566,13 +566,16 @@ void Osk::drawKeys(QuadBuffer &quadBuffer, const OskState &viewState) {
             label = utf8::utf8to16(std::string_view(text));
         }
 
-        // Center the label on the key
-        const auto label_width = static_cast<int32_t>(m_theme.measure(label));
+        // Center the label on the key. The line height is clamped to the cell height so a cell
+        // shorter than the fixed-size label (small window, low dim_osk_height) never pushes the
+        // centering offset negative and overdraws the row above.
+        const auto label_width = static_cast<int32_t>(label.length()) * font_advance;
+        const auto label_height = std::min(line_height, cell.height);
         auto pen_x = cell.x + (cell.width - label_width) / 2;
-        const auto pen_y = cell.y + (cell.height - line_height) / 2 + line_height + font_descender;
+        const auto pen_y = cell.y + (cell.height - label_height) / 2 + label_height + font_descender;
         for (const auto c : label) {
-            const auto &character = m_theme.getCharacter(c);
-            drawCharacter(quadBuffer, pen_x, pen_y, character, text_color);
+            const auto &character = m_theme.getLabelCharacter(c);
+            drawCharacter(quadBuffer, pen_x, pen_y, character, text_color, Theme::LABEL_TEXTURE_UNIT);
             pen_x += font_advance;
         }
 

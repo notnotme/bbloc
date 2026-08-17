@@ -59,6 +59,16 @@ public:
     /** @brief Maximum font size allowed. */
     static constexpr auto MAX_FONT_SIZE = 96;
 
+    /** @brief Texture unit the label atlas texture is bound to; the shaders' binding-1 sampler must match it. */
+    static constexpr uint8_t LABEL_TEXTURE_UNIT = 1;
+
+
+private:
+    /** @brief Fixed size of the OSK key label font, in pixels. */
+    static constexpr int32_t LABEL_FONT_SIZE = 16;
+
+    /** @brief Layer count of the label atlas texture; the worst-case label census over all layouts (~226 glyphs, never cleared) fits two layers at label ppem, plus one spare. */
+    static constexpr uint8_t LABEL_LAYER_COUNT = 3;
 
 private:
     /** Handle to the FreeType library instance. */
@@ -66,6 +76,9 @@ private:
 
     /** Handle to the font face used for rendering. */
     FT_Face m_font;
+
+    /** Handle to the font face rendering the OSK key labels, sized once at LABEL_FONT_SIZE. */
+    FT_Face m_label_font;
 
     /** Color CVars for ui rendering, indexed by ColorId. */
     std::array<std::shared_ptr<CVarColor>, COLOR_ID_COUNT> m_colors;
@@ -82,6 +95,12 @@ private:
     /** Texture storing glyph pixel data. */
     QuadTexture m_quad_texture;
 
+    /** Atlas array storing the label glyph metadata. */
+    AtlasArray m_label_atlas;
+
+    /** Texture storing the label glyph pixel data, bound to LABEL_TEXTURE_UNIT for the app's lifetime. */
+    QuadTexture m_label_texture;
+
     /** Font size CVar. */
     std::shared_ptr<CVarInt> m_font_size;
 
@@ -97,7 +116,52 @@ private:
     /** Vertical descender below the baseline. */
     int32_t m_font_descender;
 
+    /** Height of a label line in pixels. */
+    int32_t m_label_line_height;
+
+    /** Horizontal advance per label glyph. */
+    int32_t m_label_advance;
+
+    /** Vertical descender of the label face below the baseline. */
+    int32_t m_label_descender;
+
 private:
+    /**
+     * @brief Reads the line metrics of a sized face, corrected by its design bbox.
+     *
+     * @param face The face to read from, already sized.
+     * @param lineHeight Receives the height of a line in pixels.
+     * @param fontAdvance Receives the horizontal advance per glyph.
+     * @param fontDescender Receives the vertical descender below the baseline.
+     */
+    static void readFaceMetrics(FT_Face face, int32_t &lineHeight, int32_t &fontAdvance, int32_t &fontDescender);
+
+    /**
+     * @brief Requests a nominal pixel size on a face, at the 96 DPI every face is sized with.
+     *
+     * The nominal-at-96-DPI convention lives here alone; computeMaxFontSize's back-conversion
+     * of the atlas ceiling into this size unit relies on it.
+     *
+     * @param face The face to size.
+     * @param size Font size in pixels.
+     * @return true when FreeType accepted the request.
+     */
+    [[nodiscard]] static bool requestNominalSize(FT_Face face, int32_t size);
+
+    /**
+     * @brief Returns glyph metadata for a character, rasterizing it into the atlas on first use.
+     *
+     * A glyph the atlas cannot store is memoized as blank and returned as an empty entry, so it
+     * draws nothing instead of aborting the frame.
+     *
+     * @param face The face to load the glyph from, already sized.
+     * @param atlas The atlas array holding the glyph metadata.
+     * @param texture The texture receiving the glyph pixels.
+     * @param character The UTF-16 character.
+     * @return Pointer to the glyph's atlas entry, or nullptr when the face cannot load it.
+     */
+    [[nodiscard]] static const AtlasEntry *loadGlyph(FT_Face face, AtlasArray &atlas, QuadTexture &texture, char16_t character);
+
     /**
      * @brief Derives the largest font size whose glyphs still fit the atlas texture.
      *
@@ -173,6 +237,14 @@ public:
     [[nodiscard]] const AtlasEntry &getCharacter(char16_t character);
 
     /**
+     * @brief Returns label glyph metadata for the given character, from the fixed-size label atlas.
+     *
+     * @param character The UTF-16 character.
+     * @return Reference to the glyph's atlas entry.
+     */
+    [[nodiscard]] const AtlasEntry &getLabelCharacter(char16_t character);
+
+    /**
      * @brief Retrieves a dimension value by its identifier.
      *
      * @param id The dimension identifier.
@@ -188,6 +260,15 @@ public:
 
     /** @brief Returns the font descender (used for baseline alignment). */
     [[nodiscard]] int32_t getFontDescender() const;
+
+    /** @brief Returns the height of a label line in pixels. */
+    [[nodiscard]] int32_t getLabelLineHeight() const;
+
+    /** @brief Returns the horizontal advance (spacing) between label glyphs. */
+    [[nodiscard]] int32_t getLabelAdvance() const;
+
+    /** @brief Returns the label font descender (used for baseline alignment). */
+    [[nodiscard]] int32_t getLabelDescender() const;
 
     /**
      * @brief Calculates the rendered width of a UTF-16 string, one font advance per unit.

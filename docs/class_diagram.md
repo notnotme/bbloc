@@ -240,7 +240,7 @@ and the shader helpers in `core/renderer/Shader.cpp`.
 ```mermaid
 classDiagram
     class Theme {
-        note: "FreeType fonts + CVars + atlas"
+        note: "FreeType fonts + CVars + atlas; a second face fixed at 16 px feeds the OSK label atlas, bound to LABEL_TEXTURE_UNIT (getLabelCharacter + label metrics)"
     }
     class TabStop {
         <<free functions>>
@@ -263,8 +263,8 @@ classDiagram
         <<struct>>
     }
 
-    Theme *-- AtlasArray
-    Theme *-- QuadTexture
+    Theme "1" *-- "2" AtlasArray : main + label
+    Theme "1" *-- "2" QuadTexture : units 0 + 1
     Theme o-- CVarColor : ColorId + TokenId map
     Theme o-- CVarInt : DimensionId + font size map
     Theme ..> Color : getColor() hands values to the views
@@ -402,7 +402,9 @@ key taps push synthesized `SDL_KEYDOWN`/`SDL_KEYUP` (scancode + keycode + the st
 Ctrl/Shift/Alt/AltGr mask in `keysym.mod`) and `SDL_TEXTINPUT` for printables through
 `SDL_PushEvent`, so bindings, chords, prompt, and editor input all work unchanged and
 nothing downstream knows the OSK exists (no `SDL_TEXTINPUT` while Ctrl or Alt is latched).
-Key labels and text come from the `OskLayout` hybrid layouts — one fixed US base (digits
+Key labels are rasterized at a fixed 16 px from `Theme`'s dedicated label atlas
+(`getLabelCharacter` and the label metrics, drawn through `View::drawCharacter` with
+`Theme::LABEL_TEXTURE_UNIT`), so `dim_font_size` never changes them. Labels and text come from the `OskLayout` hybrid layouts — one fixed US base (digits
 always plain, punctuation always US) plus a per-layout letter permutation and an AltGr
 accent column on mnemonic letters, the injected keycode following the displayed letter —
 selected via `Platform::keyboardLayout()` and overridden by `osk layout`. While visible,

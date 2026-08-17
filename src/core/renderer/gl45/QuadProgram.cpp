@@ -86,6 +86,7 @@ static constexpr auto FRAGMENT_SRC = R"text(
     out vec4 o_color;
 
     layout (binding = 0) uniform sampler2DArray texture_0;
+    // Binding 1 must match Theme::LABEL_TEXTURE_UNIT, where the label atlas texture is bound.
     layout (binding = 1) uniform sampler2DArray texture_1;
 
     void main() {
