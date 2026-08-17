@@ -58,6 +58,12 @@ bind Shift Home "move bol true"
 bind None End "move eol"
 bind Shift End "move eol true"
 
+# Move to the beginning or end of the file
+bind Ctrl Home "move bof"
+bind Ctrl+Shift Home "move bof true"
+bind Ctrl End "move eof"
+bind Ctrl+Shift End "move eof true"
+
 # Move a page up or down
 bind None PageUp "move page_up"
 bind Shift PageUp "move page_up true"
@@ -77,6 +83,9 @@ bind Shift F3 find_prev
 
 # Go to a line (prompts for the line number)
 bind Ctrl g goto_line
+
+# Open the manual
+bind None F1 help
 
 # Manual theme override shortcuts (at startup the theme follows the system color scheme when the platform exposes one)
 bind Ctrl+Shift l "exec romfs/light_theme"

@@ -16,6 +16,8 @@ Default bindings, all set in `autoexec` (see Configuration for where it lives).
 | Shift+Arrow | move ... true | Move extending the selection |
 | Home / End | move bol / move eol | Beginning / end of line |
 | Shift+Home / Shift+End | move bol/eol true | Select to beginning / end of line |
+| Ctrl+Home / Ctrl+End | move bof / move eof | Beginning / end of file |
+| Ctrl+Shift+Home / Ctrl+Shift+End | move bof/eof true | Select to beginning / end of file |
 | PageUp / PageDown | move page_up / move page_down | Move one page |
 | Shift+PageUp / Shift+PageDown | move page_up/page_down true | Select one page |
 
@@ -54,6 +56,7 @@ Default bindings, all set in `autoexec` (see Configuration for where it lives).
 | Ctrl+Shift+Q | quit | Quit (asks confirmation when any buffer has unsaved changes) |
 | Ctrl+Shift+L | exec romfs/light_theme | Load the light theme |
 | Ctrl+Shift+D | exec romfs/dark_theme | Load the dark theme |
+| F1 | help | Open this manual |
 
 ## Mouse and touch
 

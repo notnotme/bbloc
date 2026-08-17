@@ -11,16 +11,18 @@
   Default bindings, all set in autoexec (see Configuration for where it lives).
 
   Navigation
-  +-------------------------------+---------------------------+---------------------+
-  | Keys                          | Command                   | Description         |
-  +-------------------------------+---------------------------+---------------------+
-  | Up / Down / Left / Right      | move up/down/left/right   | Move the cursor     |
-  | Shift+Arrow                   | move ... true             | Move selecting      |
-  | Home / End                    | move bol / move eol       | Start / end of line |
-  | Shift+Home / Shift+End        | move bol/eol true         | Select to them      |
-  | PageUp / PageDown             | move page_up/page_down    | Move one page       |
-  | Shift+PageUp / Shift+PageDown | move page_up/down true    | Select one page     |
-  +-------------------------------+---------------------------+---------------------+
+  +----------------------------------+---------------------------+---------------------+
+  | Keys                             | Command                   | Description         |
+  +----------------------------------+---------------------------+---------------------+
+  | Up / Down / Left / Right         | move up/down/left/right   | Move the cursor     |
+  | Shift+Arrow                      | move ... true             | Move selecting      |
+  | Home / End                       | move bol / move eol       | Start / end of line |
+  | Shift+Home / Shift+End           | move bol/eol true         | Select to them      |
+  | Ctrl+Home / Ctrl+End             | move bof / move eof       | Start / end of file |
+  | Ctrl+Shift+Home / Ctrl+Shift+End | move bof/eof true         | Select to them      |
+  | PageUp / PageDown                | move page_up/page_down    | Move one page       |
+  | Shift+PageUp / Shift+PageDown    | move page_up/down true    | Select one page     |
+  +----------------------------------+---------------------------+---------------------+
 
   Editing
   +--------------+-------------------------+---------------------------------------+
@@ -58,6 +60,7 @@
   | Ctrl+Shift+Q     | quit                   | Quit (asks when unsaved changes)      |
   | Ctrl+Shift+L     | exec romfs/light_theme | Load the light theme                  |
   | Ctrl+Shift+D     | exec romfs/dark_theme  | Load the dark theme                   |
+  | F1               | help                   | Open this manual                      |
   +------------------+------------------------+---------------------------------------+
 
 
