@@ -18,6 +18,8 @@
  */
 #include "OskState.h"
 
+#include <algorithm>
+
 #include "../platform/Platform.h"
 
 
@@ -152,11 +154,7 @@ void OskState::setSticky(const StickyModifier modifier, const StickyState state)
 }
 
 void OskState::releaseLatched() {
-    for (auto &sticky : m_sticky) {
-        if (sticky == StickyState::Latched) {
-            sticky = StickyState::Idle;
-        }
-    }
+    std::ranges::replace(m_sticky, StickyState::Latched, StickyState::Idle);
 }
 
 void OskState::setCursor(const int32_t row, const int32_t col) {

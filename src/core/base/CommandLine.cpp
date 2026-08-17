@@ -63,19 +63,11 @@ void CommandLine::tokenize(const std::u16string_view input, std::vector<std::u16
 
 std::vector<std::u16string_view> CommandLine::split(const std::u16string_view input, const char16_t delimiter) {
     std::vector<std::u16string_view> parts;
-    std::size_t start = 0;
-    std::size_t index = 0;
-    while (index < input.length()) {
-        if (input[index] == delimiter) {
-            ++index;
-            continue;
-        }
-
-        start = index;
-        while (index < input.size() && input[index] != delimiter) {
-            ++index;
-        }
-        parts.emplace_back(input.substr(start, index - start));
+    auto start = input.find_first_not_of(delimiter);
+    while (start != std::u16string_view::npos) {
+        const auto end = input.find(delimiter, start);
+        parts.emplace_back(input.substr(start, end - start));
+        start = input.find_first_not_of(delimiter, end);
     }
 
     return parts;

@@ -20,7 +20,6 @@
 
 #include <algorithm>
 #include <filesystem>
-#include <fstream>
 #include <limits>
 #include <system_error>
 
@@ -86,16 +85,7 @@ namespace {
             return user_path;
         }
 
-        auto source = std::ifstream(packagedPath, std::ios::in | std::ios::binary);
-        auto destination = std::ofstream(user_path, std::ios::out | std::ios::binary | std::ios::trunc);
-        if (!source || !destination) {
-            return packagedPath;
-        }
-
-        destination << source.rdbuf();
-        const auto copied = destination.good();
-        destination.close();
-        if (!copied) {
+        if (!std::filesystem::copy_file(packagedPath, user_path, error_code)) {
             // A half-written script would win over the packaged one on every later run.
             std::filesystem::remove(user_path, error_code);
             return packagedPath;

@@ -244,8 +244,8 @@ void Editor::updateScroll(CursorContext &context, const ViewState &viewState, co
         const auto longest_line_width = contentWidth(longestLineLength);
         const auto max_scroll_y = static_cast<int64_t>(cursor_line_count) * line_height - (height - hBarHeight);
         const auto max_scroll_x = longest_line_width - (width - marginWidth - border_size - indicator_width - vBarWidth);
-        context.scroll.x = std::clamp(scroll_x, int64_t{0}, max_scroll_x < 0 ? int64_t{0} : max_scroll_x);
-        context.scroll.y = std::clamp(scroll_y, int64_t{0}, max_scroll_y < 0 ? int64_t{0} : max_scroll_y);
+        context.scroll.x = std::clamp(scroll_x, int64_t{0}, std::max(int64_t{0}, max_scroll_x));
+        context.scroll.y = std::clamp(scroll_y, int64_t{0}, std::max(int64_t{0}, max_scroll_y));
     }
 }
 

@@ -323,7 +323,7 @@ std::u16string Theme::ellipsizeStart(const std::u16string_view text, const int32
     }
 
     auto tail_start = text.length() - static_cast<size_t>(max_glyphs - 1);
-    if (tail_start < text.length() && text[tail_start] >= 0xDC00 && text[tail_start] <= 0xDFFF) {
+    if (tail_start < text.length() && (text[tail_start] & 0xFC00) == 0xDC00) {
         // Never start the tail on a low surrogate, drop it to keep the pair intact
         ++tail_start;
     }

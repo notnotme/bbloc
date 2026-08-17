@@ -18,7 +18,9 @@
  */
 #include "../cvar/CVarInt.h"
 
+#include <charconv>
 #include <string>
+#include <system_error>
 #include <utf8.h>
 
 
@@ -30,20 +32,15 @@ std::optional<std::u16string> CVarInt::setValueFromStrings(const std::span<const
         return u"Argument expected: <value>.";
     }
 
-    try {
-        const auto arg = utf8::utf16to8(args[0]);
-        std::size_t parsed_length = 0;
-        const auto value = std::stoi(arg, &parsed_length);
-        if (parsed_length != arg.length()) {
-            // Reject trailing garbage such as "4x"
-            return u"Unable to convert argument to int";
-        }
-
-        m_value = value;
-    } catch (...) {
+    const auto arg = utf8::utf16to8(args[0]);
+    auto value = int32_t{0};
+    const auto [ptr, ec] = std::from_chars(arg.data(), arg.data() + arg.length(), value);
+    if (ec != std::errc{} || ptr != arg.data() + arg.length()) {
+        // The whole argument must convert: reject trailing garbage such as "4x"
         return u"Unable to convert argument to int";
     }
 
+    m_value = value;
     return std::nullopt;
 }
 

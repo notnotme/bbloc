@@ -240,6 +240,26 @@ TEST_CASE("a float cvar rejects a number that is not finite") {
     CHECK(rejects(cvar, { u"infinity" }));
 }
 
+TEST_CASE("a numeric cvar takes the number and nothing around it") {
+    auto int_cvar = CVarInt(42, false);
+    auto float_cvar = CVarFloat(1.5f, false);
+    auto color_cvar = CVarColor(10, 20, 30, 40, false);
+
+    // The strict parser reads the digits and only the digits: no leading "+", no leading space
+    // (which a quoted argument can smuggle in), no trailing garbage
+    CHECK(rejects(int_cvar, { u"+4" }));
+    CHECK(rejects(int_cvar, { u" 4" }));
+    CHECK(rejects(int_cvar, { u"4x" }));
+
+    CHECK(rejects(float_cvar, { u"+4" }));
+    CHECK(rejects(float_cvar, { u" 4" }));
+    CHECK(rejects(float_cvar, { u"4x" }));
+
+    CHECK(rejects(color_cvar, { u"+4", u"0", u"0" }));
+    CHECK(rejects(color_cvar, { u" 4", u"0", u"0" }));
+    CHECK(rejects(color_cvar, { u"4x", u"0", u"0" }));
+}
+
 TEST_CASE("a colour cvar renders its four channels in order") {
     const auto cvar = CVarColor(10, 20, 30, 40, false);
 

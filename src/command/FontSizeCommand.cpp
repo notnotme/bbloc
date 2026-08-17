@@ -18,7 +18,9 @@
  */
 #include "FontSizeCommand.h"
 
+#include <charconv>
 #include <ranges>
+#include <system_error>
 #include <utf8/cpp17.h>
 
 
@@ -57,16 +59,17 @@ std::optional<std::u16string> FontSizeCommand::run(CursorContext &payload, const
         case Size::Minus:
             payload.theme.setFontSize(font_size - 1);
         break;
-        case Size::Unknown:
+        case Size::Unknown: {
             // We don't know the direction, so assume we got a size instead.
-            try {
-                const auto utf16_pixel_size = utf8::utf16to8(args[0]);
-                const auto pixel_size = std::stoi(utf16_pixel_size);
-                payload.theme.setFontSize(pixel_size);
-            } catch (...) {
+            const auto arg = utf8::utf16to8(args[0]);
+            auto pixel_size = int32_t{0};
+            const auto [ptr, ec] = std::from_chars(arg.data(), arg.data() + arg.length(), pixel_size);
+            if (ec != std::errc{} || ptr != arg.data() + arg.length()) {
                 return u"Cannot convert arguments to size.";
             }
-        break;
+
+            payload.theme.setFontSize(pixel_size);
+        } break;
     }
 
     payload.wants_redraw = true;

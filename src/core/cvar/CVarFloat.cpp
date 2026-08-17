@@ -18,8 +18,10 @@
  */
 #include "CVarFloat.h"
 
+#include <charconv>
 #include <cmath>
 #include <string>
+#include <system_error>
 #include <utf8.h>
 
 
@@ -31,26 +33,21 @@ std::optional<std::u16string> CVarFloat::setValueFromStrings(const std::span<con
         return u"Argument expected: <value>.";
     }
 
-    try {
-        const auto arg = utf8::utf16to8(args[0]);
-        std::size_t parsed_length = 0;
-        const auto value = std::stof(arg, &parsed_length);
-        if (parsed_length != arg.length()) {
-            // Reject trailing garbage such as "4x"
-            return u"Unable to convert argument to float";
-        }
-
-        if (!std::isfinite(value)) {
-            // "nan" and "inf" convert cleanly and consume the whole argument, but nothing downstream
-            // can be drawn from them: they propagate through every measure that touches the value
-            return u"Expected a finite number";
-        }
-
-        m_value = value;
-    } catch (...) {
+    const auto arg = utf8::utf16to8(args[0]);
+    auto value = 0.0f;
+    const auto [ptr, ec] = std::from_chars(arg.data(), arg.data() + arg.length(), value);
+    if (ec != std::errc{} || ptr != arg.data() + arg.length()) {
+        // The whole argument must convert: reject trailing garbage such as "4x"
         return u"Unable to convert argument to float";
     }
 
+    if (!std::isfinite(value)) {
+        // "nan" and "inf" convert cleanly and consume the whole argument, but nothing downstream
+        // can be drawn from them: they propagate through every measure that touches the value
+        return u"Expected a finite number";
+    }
+
+    m_value = value;
     return std::nullopt;
 }
 

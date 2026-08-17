@@ -19,6 +19,7 @@
 #include "Cursor.h"
 
 #include <algorithm>
+#include <tuple>
 
 #include "SurrogatePair.h"
 
@@ -137,12 +138,9 @@ std::optional<TextRange> Cursor::getSelectedRange() const {
     auto end_line = m_line;
     auto end_column = m_column;
 
-    if (start_line > end_line) {
-        // Invert coordinates totally
+    if (std::tie(start_line, start_column) > std::tie(end_line, end_column)) {
+        // Invert coordinates (swapping equal lines is a no-op)
         std::swap(start_line, end_line);
-        std::swap(start_column, end_column);
-    } else if (start_line == end_line && start_column > end_column) {
-        // Invert column coordinates
         std::swap(start_column, end_column);
     } else if (start_line == end_line && start_column == end_column) {
         return std::nullopt;

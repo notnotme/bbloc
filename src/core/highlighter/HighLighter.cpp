@@ -174,11 +174,8 @@ void HighLighter::paintCacheLines(const TSNode rootNode, const uint32_t firstLin
 
                 // Paint first-wins: earlier captures keep priority over later overlapping ones
                 const auto paint_end = std::min(end_col, cells.size());
-                for (auto col = start_col; col < paint_end; ++col) {
-                    if (cells[col] == TokenId::None) {
-                        cells[col] = token_id;
-                    }
-                }
+                const auto paint_start = std::min(start_col, paint_end);
+                std::replace(cells.begin() + static_cast<std::ptrdiff_t>(paint_start), cells.begin() + static_cast<std::ptrdiff_t>(paint_end), TokenId::None, token_id);
             }
         }
     }

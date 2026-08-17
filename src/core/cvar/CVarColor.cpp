@@ -18,19 +18,21 @@
  */
 #include "../cvar/CVarColor.h"
 
+#include <charconv>
 #include <format>
-#include <stdexcept>
+#include <optional>
 #include <string>
+#include <system_error>
 #include <utf8.h>
 
 
-/** @brief Parses a color channel in [0, 255]; throws std::invalid_argument on any other input. */
-static uint8_t parseChannel(const std::u16string_view arg) {
-    std::size_t parsed_length = 0;
+/** @brief Parses a color channel in [0, 255]; returns nullopt on any other input. */
+static std::optional<uint8_t> parseChannel(const std::u16string_view arg) {
     const auto utf8_arg = utf8::utf16to8(arg);
-    const auto value = std::stoi(utf8_arg, &parsed_length);
-    if (parsed_length != utf8_arg.length() || value < 0 || value > 255) {
-        throw std::invalid_argument("Color channel out of range");
+    auto value = int32_t{0};
+    const auto [ptr, ec] = std::from_chars(utf8_arg.data(), utf8_arg.data() + utf8_arg.length(), value);
+    if (ec != std::errc{} || ptr != utf8_arg.data() + utf8_arg.length() || value < 0 || value > 255) {
+        return std::nullopt;
     }
 
     return static_cast<uint8_t>(value);
@@ -44,16 +46,15 @@ std::optional<std::u16string> CVarColor::setValueFromStrings(const std::span<con
         return u"Argument expected: <red> <green> <blue> [alpha].";
     }
 
-    try {
-        const auto arg_r = parseChannel(args[0]);
-        const auto arg_g = parseChannel(args[1]);
-        const auto arg_b = parseChannel(args[2]);
-        const auto arg_a = args.size() >= 4 ? parseChannel(args[3]) : static_cast<uint8_t>(255);
-        m_value = Color{.red = arg_r, .green = arg_g, .blue = arg_b, .alpha = arg_a};
-    } catch (...) {
+    const auto arg_r = parseChannel(args[0]);
+    const auto arg_g = parseChannel(args[1]);
+    const auto arg_b = parseChannel(args[2]);
+    const auto arg_a = args.size() >= 4 ? parseChannel(args[3]) : std::optional<uint8_t>{255};
+    if (!arg_r.has_value() || !arg_g.has_value() || !arg_b.has_value() || !arg_a.has_value()) {
         return u"Unable to convert arguments to color";
     }
 
+    m_value = Color{.red = *arg_r, .green = *arg_g, .blue = *arg_b, .alpha = *arg_a};
     return std::nullopt;
 }
 

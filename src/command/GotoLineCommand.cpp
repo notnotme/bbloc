@@ -19,6 +19,8 @@
 #include "GotoLineCommand.h"
 
 #include <algorithm>
+#include <charconv>
+#include <system_error>
 
 #include <utf8/cpp17.h>
 
@@ -47,10 +49,10 @@ std::optional<std::u16string> GotoLineCommand::run(CursorContext &payload, const
         return u"Expected 1 argument.";
     }
 
-    int32_t requested_line;
-    try {
-        requested_line = std::stoi(utf8::utf16to8(args[0]));
-    } catch (...) {
+    const auto arg = utf8::utf16to8(args[0]);
+    auto requested_line = int32_t{0};
+    const auto [ptr, ec] = std::from_chars(arg.data(), arg.data() + arg.length(), requested_line);
+    if (ec != std::errc{} || ptr != arg.data() + arg.length()) {
         return u"Expected a line number.";
     }
 

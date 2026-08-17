@@ -19,6 +19,7 @@
 #include "LineBuffer.h"
 
 #include <algorithm>
+#include <tuple>
 
 
 LineBuffer::LineBuffer() {
@@ -92,12 +93,9 @@ uint32_t LineBuffer::getByteOffset(const uint32_t line, const uint32_t column) c
 }
 
 uint32_t LineBuffer::getByteCount(uint32_t lineStart, uint32_t columnStart, uint32_t lineEnd, uint32_t columnEnd) const {
-    if (lineStart > lineEnd) {
-        // Invert coordinates totally
+    if (std::tie(lineStart, columnStart) > std::tie(lineEnd, columnEnd)) {
+        // Invert coordinates (swapping equal lines is a no-op)
         std::swap(lineStart, lineEnd);
-        std::swap(columnStart, columnEnd);
-    } else if (lineStart == lineEnd && columnStart > columnEnd) {
-        // Invert column coordinates
         std::swap(columnStart, columnEnd);
     } else if (lineStart == lineEnd && columnStart == columnEnd) {
         return 0;
@@ -268,12 +266,9 @@ BufferEdit LineBuffer::insert(uint32_t line, uint32_t column, const std::u16stri
 }
 
 BufferEdit LineBuffer::erase(uint32_t line, uint32_t column, uint32_t lineEnd, uint32_t columnEnd) {
-    if (line > lineEnd) {
-        // Invert coordinates totally
+    if (std::tie(line, column) > std::tie(lineEnd, columnEnd)) {
+        // Invert coordinates (swapping equal lines is a no-op)
         std::swap(line, lineEnd);
-        std::swap(column, columnEnd);
-    } else if (line == lineEnd && column > columnEnd) {
-        // Invert column coordinates
         std::swap(column, columnEnd);
     } else if (line == lineEnd && column == columnEnd) {
         // Empty range, describe the untouched position

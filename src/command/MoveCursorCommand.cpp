@@ -18,6 +18,7 @@
  */
 #include "MoveCursorCommand.h"
 
+#include <algorithm>
 #include <ranges>
 
 #include "../core/theme/DimensionId.h"
@@ -228,9 +229,7 @@ void MoveCursorCommand::stickToColumn(CursorContext &payload, const uint32_t lin
     if (payload.stick.active) {
         const auto cursor_line = payload.cursor.getLine();
         const auto string_length = static_cast<uint32_t>(payload.cursor.getString().length());
-        const auto new_column = payload.stick.index > string_length
-            ? string_length
-            : payload.stick.index;
+        const auto new_column = std::min(payload.stick.index, string_length);
 
         payload.cursor.setPosition(cursor_line, new_column);
     }
