@@ -61,37 +61,35 @@
 #include "platform/Platform.h"
 
 
-namespace {
-    /**
-     * @brief Resolves which autoexec to run, seeding a user-editable copy where assets are read-only.
-     *
-     * Where the platform exposes a user config directory (Switch: next to bbloc.nro, the packaged
-     * romfs being read-only there), the script living in it wins, and the packaged one is copied
-     * over the first time so there is always a file the user can edit. Anything going wrong — no
-     * directory, an unwritable destination — falls back to the packaged script.
-     *
-     * @param packagedPath The shipped autoexec, already resolved through Platform::assetPath. UTF-8.
-     * @param userDir The directory returned by Platform::userConfigDir, if any. UTF-8.
-     * @return The path to hand to the exec command. UTF-8.
-     */
-    std::string resolveAutoexecPath(const std::string &packagedPath, const std::optional<std::string> &userDir) {
-        if (!userDir.has_value()) {
-            return packagedPath;
-        }
+/**
+ * @brief Resolves which autoexec to run, seeding a user-editable copy where assets are read-only.
+ *
+ * Where the platform exposes a user config directory (Switch: next to bbloc.nro, the packaged
+ * romfs being read-only there), the script living in it wins, and the packaged one is copied
+ * over the first time so there is always a file the user can edit. Anything going wrong — no
+ * directory, an unwritable destination — falls back to the packaged script.
+ *
+ * @param packagedPath The shipped autoexec, already resolved through Platform::assetPath. UTF-8.
+ * @param userDir The directory returned by Platform::userConfigDir, if any. UTF-8.
+ * @return The path to hand to the exec command. UTF-8.
+ */
+static std::string resolveAutoexecPath(const std::string &packagedPath, const std::optional<std::string> &userDir) {
+    if (!userDir.has_value()) {
+        return packagedPath;
+    }
 
-        auto error_code = std::error_code{};
-        const auto user_path = *userDir + "autoexec";
-        if (std::filesystem::is_regular_file(user_path, error_code)) {
-            return user_path;
-        }
-
-        if (!std::filesystem::copy_file(packagedPath, user_path, error_code)) {
-            // A half-written script would win over the packaged one on every later run.
-            std::filesystem::remove(user_path, error_code);
-            return packagedPath;
-        }
+    auto error_code = std::error_code{};
+    const auto user_path = *userDir + "autoexec";
+    if (std::filesystem::is_regular_file(user_path, error_code)) {
         return user_path;
     }
+
+    if (!std::filesystem::copy_file(packagedPath, user_path, error_code)) {
+        // A half-written script would win over the packaged one on every later run.
+        std::filesystem::remove(user_path, error_code);
+        return packagedPath;
+    }
+    return user_path;
 }
 
 

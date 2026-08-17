@@ -23,19 +23,17 @@
 #include <utf8.h>
 
 
-namespace {
-    /** Prefix every pad binding name carries. */
-    constexpr std::u16string_view NAME_PREFIX = u"pad:";
+/** Prefix every pad binding name carries. */
+static constexpr std::u16string_view NAME_PREFIX = u"pad:";
 
-    /**
-     * @brief Tells whether the axis is a trigger, which only ever goes positive.
-     *
-     * @param axis The SDL controller axis to test.
-     * @return true when the axis is one of the two triggers.
-     */
-    constexpr bool isTrigger(const SDL_GameControllerAxis axis) {
-        return axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT || axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT;
-    }
+/**
+ * @brief Tells whether the axis is a trigger, which only ever goes positive.
+ *
+ * @param axis The SDL controller axis to test.
+ * @return true when the axis is one of the two triggers.
+ */
+static constexpr bool isTrigger(const SDL_GameControllerAxis axis) {
+    return axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT || axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT;
 }
 
 SDL_Keycode PadInput::keycodeFromName(const std::u16string_view name) {

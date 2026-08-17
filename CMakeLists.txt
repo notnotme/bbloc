@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.28)
 
-project(bbloc VERSION 0.0.0 DESCRIPTION "Simple gpu rendering text editor.")
+project(bbloc VERSION 1.0.0 DESCRIPTION "Simple gpu rendering text editor.")
+
+# Release stage appended to the version everywhere it is displayed; empty on a final release.
+set(BBLOC_VERSION_STAGE "-beta")
+set(BBLOC_VERSION_STRING "${CMAKE_PROJECT_VERSION}${BBLOC_VERSION_STAGE}")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -175,7 +179,7 @@ if(NINTENDO_SWITCH)
     # NRO config
     nx_generate_nacp(bbloc.nacp
         NAME ${CMAKE_PROJECT_NAME}
-        VERSION ${CMAKE_PROJECT_VERSION}
+        VERSION ${BBLOC_VERSION_STRING}
         AUTHOR "romain337"
     )
     nx_create_nro(bbloc

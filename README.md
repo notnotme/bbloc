@@ -282,6 +282,17 @@ cmake --build cmake-build-debug --target bbloc_tests && ./cmake-build-debug/bblo
 
 ## Project Status
 
+**1.0 beta.** Every feature the editor set out to have is in, the file paths that can lose work are
+covered (atomic save, unsaved-changes confirmation on close and quit, large-file confirmation,
+invalid UTF-8 refused on open, line endings preserved), and the text core is covered by an
+automated suite. What remains before a final 1.0 is use: bug reports from real editing sessions,
+on desktop and on Switch.
+
+Known limitations:
+
+- A file modified on disk by another program is not detected; saving overwrites it.
+- `exec` scripts are non-interactive — a command asking a question inside a script has it dropped.
+
 ### Implemented
 - Text editing with cursor management
 - Syntax highlighting (C++, JSON, INI, YAML, TOML, Markdown)
