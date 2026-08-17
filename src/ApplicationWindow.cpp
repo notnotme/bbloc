@@ -19,9 +19,10 @@
 #include "ApplicationWindow.h"
 
 #include <algorithm>
-#include <filesystem>
+#include <cstdio>
+#include <fstream>
+#include <iterator>
 #include <limits>
-#include <system_error>
 
 #include <memory>
 #include <stdexcept>
@@ -62,31 +63,69 @@
 
 
 /**
+ * @brief Copies a file through plain streams, opening the destination for writing.
+ *
+ * Deliberately not std::filesystem::copy_file: libstdc++ implements it over fchmod, which the
+ * Switch SD card device does not honor, so the copy failed there while open/read/write — all this
+ * uses, and all the save path uses — work.
+ *
+ * @param fromPath The file to read. UTF-8.
+ * @param toPath The file to write, truncated when it exists. UTF-8.
+ * @return true when the destination holds the whole source.
+ */
+static bool copyFile(const std::string &fromPath, const std::string &toPath) {
+    auto ifs = std::ifstream(fromPath, std::ios::in | std::ios::binary);
+    if (!ifs) {
+        return false;
+    }
+
+    const auto content = std::string(std::istreambuf_iterator(ifs), std::istreambuf_iterator<char>());
+    if (ifs.bad()) {
+        return false;
+    }
+
+    auto ofs = std::ofstream(toPath, std::ios::out | std::ios::binary | std::ios::trunc);
+    if (!ofs) {
+        return false;
+    }
+
+    // Close explicitly so a failure flushing the last block is reported here.
+    ofs.write(content.data(), static_cast<std::streamsize>(content.size()));
+    ofs.close();
+    return !ofs.fail();
+}
+
+/**
  * @brief Resolves which autoexec to run, seeding a user-editable copy where assets are read-only.
  *
  * Where the platform exposes a user config directory (Switch: next to bbloc.nro, the packaged
  * romfs being read-only there), the script living in it wins, and the packaged one is copied
  * over the first time so there is always a file the user can edit. Anything going wrong — no
- * directory, an unwritable destination — falls back to the packaged script.
+ * directory, an unwritable destination — falls back to the packaged script, and says so through
+ * `seedError` rather than leaving the user to notice the missing file with a file browser.
  *
  * @param packagedPath The shipped autoexec, already resolved through Platform::assetPath. UTF-8.
  * @param userDir The directory returned by Platform::userConfigDir, if any. UTF-8.
+ * @param seedError Set to the message to show when the copy was attempted and failed; untouched otherwise.
  * @return The path to hand to the exec command. UTF-8.
  */
-static std::string resolveAutoexecPath(const std::string &packagedPath, const std::optional<std::string> &userDir) {
+static std::string resolveAutoexecPath(const std::string &packagedPath, const std::optional<std::string> &userDir, std::u16string &seedError) {
     if (!userDir.has_value()) {
         return packagedPath;
     }
 
-    auto error_code = std::error_code{};
+    // Probing with a stream keeps the whole function on the file operations the SD card device
+    // implements: a script that cannot be opened for reading is one exec could not run either.
     const auto user_path = *userDir + "autoexec";
-    if (std::filesystem::is_regular_file(user_path, error_code)) {
+    if (const auto probe = std::ifstream(user_path, std::ios::in)) {
         return user_path;
     }
 
-    if (!std::filesystem::copy_file(packagedPath, user_path, error_code)) {
+    if (!copyFile(packagedPath, user_path)) {
         // A half-written script would win over the packaged one on every later run.
-        std::filesystem::remove(user_path, error_code);
+        std::remove(user_path.c_str());
+        seedError = u"Could not write ";
+        seedError.append(utf8::utf8to16(user_path)).append(u", running the packaged autoexec.");
         return packagedPath;
     }
     return user_path;
@@ -277,12 +316,20 @@ void ApplicationWindow::create(const std::string &title, const int32_t width, co
 
     // Don't run it "from prompt", so its not added to history. The path is quoted: the user copy
     // sits wherever the executable does, which may be a directory with spaces in its name.
-    const auto autoexec_path = resolveAutoexecPath(path + "autoexec", Platform::userConfigDir(argc > 0 ? argv[0] : ""));
+    auto seed_error = std::u16string{};
+    const auto autoexec_path = resolveAutoexecPath(path + "autoexec", Platform::userConfigDir(argc > 0 ? argv[0] : ""), seed_error);
     runCommand(std::u16string(u"exec \"").append(utf8::utf8to16(autoexec_path)).append(u"\""), false);
 
     if (argc > 1) {
         // Only the first path is opened; it loads into the pristine startup buffer
         openFile(argv[1]);
+    }
+
+    // Last, so the message survives what the startup commands leave in the prompt: the bindings
+    // still loaded from the packaged script, only the editable copy is missing.
+    if (!seed_error.empty()) {
+        m_prompt_state.setRunningState(PromptState::RunningState::Message);
+        resetPrompt(seed_error);
     }
 }
 
