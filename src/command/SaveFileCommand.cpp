@@ -21,10 +21,12 @@
 #include <filesystem>
 #include <fstream>
 #include <system_error>
+#include <utility>
 
 #include <utf8.h>
 
 #include "../core/CommandManager.h"
+#include "../core/base/LineEnding.h"
 
 
 /** @brief Writes a UTF-8 payload to a path, truncating it; returns false when anything went wrong. */
@@ -130,6 +132,9 @@ std::optional<std::u16string> SaveFileCommand::run(CursorContext &payload, const
     } catch (const utf8::exception &) {
         return std::u16string(u"Could not encode ").append(file_to_save_utf16).append(u" as UTF-8.");
     }
+
+    // Write the file back under the convention it was opened with; a new buffer stays LF.
+    utf8_text = applyLineEnding(std::move(utf8_text), payload.cursor.getLineEnding());
 
     // Preferred path: write a sibling temporary file, then rename it over the destination. Opening
     // the destination directly truncates it, so a failed write would leave nothing behind.

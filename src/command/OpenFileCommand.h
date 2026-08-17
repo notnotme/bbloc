@@ -29,6 +29,7 @@
 #include "../core/CursorContext.h"
 #include "../core/CursorContextManager.h"
 #include "../core/base/Command.h"
+#include "../core/base/LineEnding.h"
 #include "../core/cvar/CVarInt.h"
 
 
@@ -74,9 +75,10 @@ private:
      *
      * @param path UTF-8 encoded path of the file to read.
      * @param outContent Receives the UTF-16 converted file content on success.
+     * @param outLineEnding Receives the detected line-ending convention on success.
      * @return An error message on failure, std::nullopt on success.
      */
-    [[nodiscard]] static std::optional<std::u16string> readFile(const std::string &path, std::u16string &outContent);
+    [[nodiscard]] static std::optional<std::u16string> readFile(const std::string &path, std::u16string &outContent, LineEnding &outLineEnding);
 
     /**
      * @brief Replaces the target context's buffer with the given content.
@@ -87,8 +89,9 @@ private:
      * @param target The context receiving the file content.
      * @param path UTF-8 encoded path of the loaded file.
      * @param content UTF-16 converted file content.
+     * @param lineEnding Line-ending convention detected in the file, kept for saving it back.
      */
-    static void loadInto(CursorContext &target, const std::string &path, std::u16string_view content);
+    static void loadInto(CursorContext &target, const std::string &path, std::u16string_view content, LineEnding lineEnding);
 
 public:
     /**

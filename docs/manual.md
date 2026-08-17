@@ -113,7 +113,7 @@ Shown by `osk toggle` (pad: left stick click); takes `dim_osk_height` percent of
 | `open <filename> [-f]` | Open a file (prompts for the path when bound to a key); switches to the existing buffer when the file is already open; `-f` skips the large-file confirmation |
 | `buffer <next\|prev\|name>` | Cycle through the open buffers, or switch to one by name |
 | `buffer close [-f]` | Close the active buffer; `-f` skips the unsaved-changes confirmation |
-| `save <filename> [-f]` | Save the buffer (prompts for a name when it has none); `-f` skips the overwrite confirmation |
+| `save <filename> [-f]` | Save the buffer (prompts for a name when it has none); `-f` skips the overwrite confirmation. Line endings are detected on open (a mostly-CRLF file counts as CRLF) and written back unchanged; new buffers use LF |
 | `quit [-f]` | Exit; `-f` skips the unsaved-changes confirmation |
 | `exec <filename>` | Execute commands from a file, line by line |
 | `help [section]` | Open this manual, optionally jumping to a section |

@@ -56,7 +56,8 @@ static BufferEdit replaceRange(TextBuffer &buffer, const BufferEdit::Position &s
 }
 
 Cursor::Cursor(std::unique_ptr<TextBuffer> buffer)
-    : m_buffer(std::move(buffer)),
+    : m_line_ending(LineEnding::Lf),
+      m_buffer(std::move(buffer)),
       m_column(0),
       m_line(0),
       m_is_selection_active(false),
@@ -105,6 +106,14 @@ void Cursor::setName(const std::string_view name) {
 
 std::string_view Cursor::getName() const {
     return m_name;
+}
+
+void Cursor::setLineEnding(const LineEnding lineEnding) {
+    m_line_ending = lineEnding;
+}
+
+LineEnding Cursor::getLineEnding() const {
+    return m_line_ending;
 }
 
 bool Cursor::isModified() const {

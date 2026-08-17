@@ -28,6 +28,7 @@
 #include "buffer/BufferEdit.h"
 #include "TextRange.h"
 #include "UndoHistory.h"
+#include "../base/LineEnding.h"
 #include "../cvar/CVarInt.h"
 
 
@@ -41,6 +42,9 @@ class Cursor final {
 private:
     /** Name of the buffer (filename). */
     std::string m_name;
+
+    /** Line-ending convention the buffer is saved with; new buffers default to LF. */
+    LineEnding m_line_ending;
 
     /** Pointer to the text buffer backend (owns it). */
     std::unique_ptr<TextBuffer> m_buffer;
@@ -154,6 +158,12 @@ public:
 
     /** @brief Gets the name of the buffer. */
     [[nodiscard]] std::string_view getName() const;
+
+    /** @brief Sets the line-ending convention the buffer is saved with. */
+    void setLineEnding(LineEnding lineEnding);
+
+    /** @brief Gets the line-ending convention the buffer is saved with. */
+    [[nodiscard]] LineEnding getLineEnding() const;
 
     /**
      * @brief Tells whether the buffer text differs from what was last saved or loaded.

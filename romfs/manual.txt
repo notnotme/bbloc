@@ -134,7 +134,9 @@
   | buffer <next|prev|name>  | Cycle through the open buffers, or switch by name     |
   | buffer close [-f]        | Close the active buffer; -f skips the confirmation    |
   | save <filename> [-f]     | Save the buffer (asks a name when it has none);       |
-  |                          | -f skips the overwrite confirmation                   |
+  |                          | -f skips the overwrite confirmation. Line endings     |
+  |                          | are detected on open (mostly-CRLF counts as CRLF)     |
+  |                          | and written back unchanged; new buffers use LF        |
   | quit [-f]                | Exit; -f skips the unsaved-changes confirmation       |
   | exec <filename>          | Execute commands from a file, line by line            |
   | help [section]           | Open this manual, optionally jumping to a section     |

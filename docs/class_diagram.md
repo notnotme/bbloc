@@ -106,7 +106,7 @@ classDiagram
 ```mermaid
 classDiagram
     class Cursor {
-        note: "multi-line, selection support, undo/redo, modified flag; uint32 line/column"
+        note: "multi-line, selection support, undo/redo, modified flag, line-ending convention; uint32 line/column"
     }
     class PromptCursor {
         note: "single-line command input; uint32 column"
@@ -498,6 +498,10 @@ classDiagram
         +termLength()
         +isSelfOverlapping()
     }
+    class LineEnding {
+        <<free functions>>
+        note: "Lf/Crlf enum, kept per buffer on Cursor; detectLineEnding (strict CRLF majority) and applyLineEnding (rewrite on save)"
+    }
     class GotoLineCommand
     class BufferCommand {
         note: "buffer next / prev / close / name, via CursorContextManager"
@@ -516,7 +520,9 @@ classDiagram
     Command~CursorContext~ <|-- FontSizeCommand
     Command~CursorContext~ <|-- ResetCVarFloatCommand
     Command~CursorContext~ <|-- OpenFileCommand
+    OpenFileCommand ..> LineEnding : detects
     Command~CursorContext~ <|-- SaveFileCommand
+    SaveFileCommand ..> LineEnding : applies
     Command~CursorContext~ <|-- ExecCommand
     Command~CursorContext~ <|-- QuitCommand
     Command~CursorContext~ <|-- SetHighLightCommand

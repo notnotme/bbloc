@@ -119,7 +119,8 @@ std::optional<std::u16string> OpenFileCommand::run(CursorContext &payload, const
     // Read the file fully before touching any buffer,
     // so a failed load leaves no half-open buffer behind.
     auto content = std::u16string{};
-    if (auto error = readFile(path, content)) {
+    auto line_ending = LineEnding::Lf;
+    if (auto error = readFile(path, content, line_ending)) {
         return error;
     }
 
@@ -131,9 +132,9 @@ std::optional<std::u16string> OpenFileCommand::run(CursorContext &payload, const
         && active.cursor.getString(0).empty();
 
     if (is_pristine) {
-        loadInto(active, path, content);
+        loadInto(active, path, content, line_ending);
     } else {
-        loadInto(m_context_manager.createContext(), path, content);
+        loadInto(m_context_manager.createContext(), path, content, line_ending);
 
         // The new context was appended last: make it the active one.
         m_context_manager.activate(m_context_manager.getCount() - 1);
@@ -172,7 +173,7 @@ std::optional<size_t> OpenFileCommand::findOpenContext(const std::string &path) 
     return std::nullopt;
 }
 
-std::optional<std::u16string> OpenFileCommand::readFile(const std::string &path, std::u16string &outContent) {
+std::optional<std::u16string> OpenFileCommand::readFile(const std::string &path, std::u16string &outContent, LineEnding &outLineEnding) {
     auto error_code = std::error_code{};
     const auto is_regular_file = std::filesystem::is_regular_file(path, error_code);
     auto ifs = std::ifstream(path, std::ios::in);
@@ -187,13 +188,18 @@ std::optional<std::u16string> OpenFileCommand::readFile(const std::string &path,
     auto line = std::string{};
     auto all_line = std::u16string{};
 
+    // Line-ending votes, counted over the newline-terminated lines only.
+    auto crlf_line_count = 0u;
+    auto newline_line_count = 0u;
+
     // A UTF-16 unit count never exceeds the UTF-8 byte count, so the file size is a tight upper bound.
     if (const auto file_size = std::filesystem::file_size(path, error_code); !error_code) {
         all_line.reserve(static_cast<size_t>(file_size));
     }
 
     while (getline(ifs, line)) {
-        if (!line.empty() && line.back() == '\r') {
+        const auto had_cr = !line.empty() && line.back() == '\r';
+        if (had_cr) {
             // Strip the carriage return of CRLF line endings
             line.pop_back();
         }
@@ -209,6 +215,12 @@ std::optional<std::u16string> OpenFileCommand::readFile(const std::string &path,
         if (!ifs.eof() && !ifs.fail()) {
             // After the first insert, line ends with \n, but not the last
             all_line.append(u"\n");
+
+            // Only a newline-terminated line votes: a stray "\r" right at EOF says nothing.
+            ++newline_line_count;
+            if (had_cr) {
+                ++crlf_line_count;
+            }
         }
 
         ++line_count;
@@ -216,10 +228,11 @@ std::optional<std::u16string> OpenFileCommand::readFile(const std::string &path,
     ifs.close();
 
     outContent = std::move(all_line);
+    outLineEnding = detectLineEnding(crlf_line_count, newline_line_count);
     return std::nullopt;
 }
 
-void OpenFileCommand::loadInto(CursorContext &target, const std::string &path, const std::u16string_view content) {
+void OpenFileCommand::loadInto(CursorContext &target, const std::string &path, const std::u16string_view content, const LineEnding lineEnding) {
     // The whole content is validated: it is now safe to replace the buffer and switch the highlight
     // mode. The mode goes first because it drops the syntax tree, so the edits installing the file
     // reach a highlighter that parses them from scratch either way.
@@ -234,6 +247,7 @@ void OpenFileCommand::loadInto(CursorContext &target, const std::string &path, c
 
     // Set cursor name. A freshly loaded buffer matches the disk, so it starts clean.
     target.cursor.setName(path);
+    target.cursor.setLineEnding(lineEnding);
     target.cursor.setModified(false);
     target.scroll.follow_indicator = true;
     target.stick.active = false;
