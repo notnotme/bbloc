@@ -22,9 +22,10 @@
 
 
 QuadTexture::QuadTexture()
-    : m_texture(0) {}
+    : m_texture(0),
+      m_bind_unit(0) {}
 
-void QuadTexture::create(const uint8_t bindUnit) {
+void QuadTexture::create(const uint8_t bindUnit, const uint8_t layerCount) {
     glGenTextures(1, &m_texture);
     if (m_texture == 0) {
         throw std::runtime_error("Failed to create quad texture");
@@ -33,20 +34,25 @@ void QuadTexture::create(const uint8_t bindUnit) {
     // Bind and set default states
     // Does not sample the border -> CLAMP_TO_EDGE
     // Does not apply any filtering -> NEAREST
+    m_bind_unit = bindUnit;
     glActiveTexture(GL_TEXTURE0 + bindUnit);
     glBindTexture(GL_TEXTURE_2D_ARRAY, m_texture);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_R8, UINT8_MAX, UINT8_MAX, UINT8_MAX);
+    glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_R8, UINT8_MAX, UINT8_MAX, layerCount);
 }
 
 void QuadTexture::destroy() {
     glDeleteTextures(1, &m_texture);
     m_texture = 0;
+    m_bind_unit = 0;
 }
 
 void QuadTexture::blit(const uint8_t x, const uint8_t y, const uint8_t width, const uint8_t height, const uint8_t layer, const void *pixels) const {
+    // The texture object stays bound to its own unit; re-activate that unit so the
+    // targeted upload reaches this texture and not whichever one was active last.
+    glActiveTexture(GL_TEXTURE0 + m_bind_unit);
     glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, x, y, layer, width, height, 1, GL_RED, GL_UNSIGNED_BYTE, pixels);
 }

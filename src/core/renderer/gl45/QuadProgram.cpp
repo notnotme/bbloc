@@ -34,12 +34,14 @@ static constexpr auto VERTEX_SRC = R"text(
     layout (location = 2) in vec2 a_texture;
     layout (location = 3) in vec4 a_tint;
     layout (location = 4) in float a_texture_layer;
+    layout (location = 5) in float a_texture_unit;
 
     uniform mat4 u_matrix;
 
     out vec4 v_tint;
     out vec2 v_texture;
     flat out int v_texture_layer;
+    flat out int v_texture_unit;
 
     void main() {
         vec2 position;
@@ -67,6 +69,7 @@ static constexpr auto VERTEX_SRC = R"text(
         v_tint = a_tint;
         v_texture = tex_coord / 255;
         v_texture_layer = int(a_texture_layer);
+        v_texture_unit = int(a_texture_unit);
         gl_Position = u_matrix * vec4(position * a_size + a_translation, 0.0, 1.0);
     }
 )text";
@@ -78,14 +81,18 @@ static constexpr auto FRAGMENT_SRC = R"text(
     in vec4 v_tint;
     in vec2 v_texture;
     flat in int v_texture_layer;
+    flat in int v_texture_unit;
 
     out vec4 o_color;
 
     layout (binding = 0) uniform sampler2DArray texture_0;
+    layout (binding = 1) uniform sampler2DArray texture_1;
 
     void main() {
         bool use_texture = v_texture_layer < 255;
-        vec4 texel = texture(texture_0, vec3(v_texture, v_texture_layer));
+        vec4 texel = v_texture_unit == 0
+            ? texture(texture_0, vec3(v_texture, v_texture_layer))
+            : texture(texture_1, vec3(v_texture, v_texture_layer));
         float alpha = mix(1.0, texel.r, use_texture);
         o_color = vec4(v_tint.rgb, v_tint.a * alpha);
     }
@@ -166,6 +173,11 @@ void QuadProgram::create() {
     glVertexArrayAttribFormat(m_vao, 4, 1, GL_UNSIGNED_BYTE, GL_FALSE, offsetof(QuadVertex, texture_layer));
     glVertexArrayAttribBinding(m_vao, 4, 0);
     glVertexArrayBindingDivisor(m_vao, 4, 1);
+
+    glEnableVertexArrayAttrib(m_vao, 5);
+    glVertexArrayAttribFormat(m_vao, 5, 1, GL_UNSIGNED_BYTE, GL_FALSE, offsetof(QuadVertex, texture_unit));
+    glVertexArrayAttribBinding(m_vao, 5, 0);
+    glVertexArrayBindingDivisor(m_vao, 5, 1);
 }
 
 void QuadProgram::destroy() {

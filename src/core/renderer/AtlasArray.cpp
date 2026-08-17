@@ -22,15 +22,16 @@
 
 
 AtlasArray::AtlasArray()
-    : m_max_row_height(0),
+    : m_layer_count(0),
+      m_max_row_height(0),
       m_character_layer(0),
       m_next_character_x(0),
       m_next_character_y(0),
       m_ascii_characters(),
       m_ascii_present() {}
 
-void AtlasArray::create() {
-    // No-op
+void AtlasArray::create(const uint8_t layerCount) {
+    m_layer_count = layerCount;
 }
 
 const AtlasEntry *AtlasArray::insert(const char16_t character, const uint32_t width, const uint32_t height, const int32_t bearingX, const int32_t bearingY) {
@@ -53,7 +54,7 @@ const AtlasEntry *AtlasArray::insert(const char16_t character, const uint32_t wi
 
     // Check if fits in vertical axis
     if (m_next_character_y + glyph_height > UINT8_MAX) {
-        if (m_character_layer + 1 >= UINT8_MAX) {
+        if (m_character_layer + 1 >= m_layer_count) {
             // For now, we just refuse the glyph, and the caller renders nothing for it.
             // The insertion point is left untouched, so the atlas stays consistent.
             // If not lazy, implement this:
@@ -149,6 +150,7 @@ void AtlasArray::destroy() {
     m_characters.clear();
 
     // Default states
+    m_layer_count = 0;
     m_character_layer = 0;
     m_next_character_x = 0;
     m_next_character_y = 0;

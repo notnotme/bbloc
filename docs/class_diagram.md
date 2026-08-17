@@ -195,15 +195,22 @@ classDiagram
 
 ```mermaid
 classDiagram
-    class QuadProgram
+    class QuadProgram {
+        note: "two samplers, units 0 and 1, selected per quad"
+    }
     class QuadBuffer
-    class QuadTexture
-    class AtlasArray
+    class QuadTexture {
+        note: "create(bindUnit, layerCount); bound to its unit for life"
+    }
+    class AtlasArray {
+        note: "create(layerCount) caps the layer packing"
+    }
     class AtlasEntry {
         <<struct>>
     }
     class QuadVertex {
         <<struct>>
+        note: "16 bytes; texture_unit picks the sampled atlas texture"
     }
     class Shader {
         <<free functions>>

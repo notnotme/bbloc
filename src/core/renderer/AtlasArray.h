@@ -38,6 +38,9 @@ private:
     static constexpr uint32_t ASCII_ENTRY_COUNT = 128;
 
 private:
+    /** Number of layers the backing texture holds; insertion refuses glyphs past it. */
+    uint8_t m_layer_count;
+
     /** Maximum height of the current row (used for packing). */
     uint8_t m_max_row_height;
 
@@ -69,8 +72,12 @@ public:
     /** @brief Constructs an uninitialized AtlasArray. */
     explicit AtlasArray();
 
-    /** @brief Initializes the atlas array. */
-    void create();
+    /**
+     * @brief Initializes the atlas array.
+     *
+     * @param layerCount Number of layers of the backing texture, capping the packing.
+     */
+    void create(uint8_t layerCount);
 
     /** @brief Destroys the atlas and clears all stored characters. */
     void destroy();

@@ -107,7 +107,7 @@ void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, 
     });
 }
 
-void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, const uint16_t height, const uint8_t textureS, const uint8_t textureT, const uint8_t textureLayer, const uint8_t tintR, const uint8_t tintG, const uint8_t tintB, const uint8_t tintA) {
+void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, const uint16_t height, const uint8_t textureS, const uint8_t textureT, const uint8_t textureLayer, const uint8_t tintR, const uint8_t tintG, const uint8_t tintB, const uint8_t tintA, const uint8_t textureUnit) {
     m_staging.push_back(QuadVertex{
         .translation_x = x,
         .translation_y = y,
@@ -119,7 +119,8 @@ void QuadBuffer::insert(const int16_t x, const int16_t y, const uint16_t width, 
         .tint_g = tintG,
         .tint_b = tintB,
         .tint_a = tintA,
-        .texture_layer = textureLayer
+        .texture_layer = textureLayer,
+        .texture_unit = textureUnit
     });
 }
 

@@ -89,8 +89,9 @@ protected:
      * @param y The y position of the character.
      * @param character The character to draw (from AtlasEntry).
      * @param color The color to be used to draw this character.
+     * @param textureUnit Which bound atlas texture the glyph samples, 0 = the theme atlas.
      */
-    void drawCharacter(QuadBuffer &quadBuffer, int32_t x, int32_t y, const AtlasEntry &character, const Color &color) const;
+    void drawCharacter(QuadBuffer &quadBuffer, int32_t x, int32_t y, const AtlasEntry &character, const Color &color, uint8_t textureUnit = 0) const;
 
 public:
     /** @brief Deleted copy constructor. */
@@ -242,7 +243,7 @@ void View<TState>::drawQuad(QuadBuffer &quadBuffer, const int32_t x, const int32
 }
 
 template<typename TState>
-void View<TState>::drawCharacter(QuadBuffer &quadBuffer, const int32_t x, const int32_t y, const AtlasEntry &character, const Color &color) const {
+void View<TState>::drawCharacter(QuadBuffer &quadBuffer, const int32_t x, const int32_t y, const AtlasEntry &character, const Color &color, const uint8_t textureUnit) const {
     // Same saturation as drawQuad: a position past what the vertex format holds is clamped to the
     // edge instead of being wrapped around to the opposite side by the narrowing.
     quadBuffer.insert(
@@ -250,7 +251,8 @@ void View<TState>::drawCharacter(QuadBuffer &quadBuffer, const int32_t x, const 
         static_cast<int16_t>(std::clamp(y - character.bearing_y, MIN_QUAD_POSITION, MAX_QUAD_POSITION)),
         character.width, character.height,
         character.texture_s, character.texture_t, character.layer,
-        color.red, color.green, color.blue, color.alpha);
+        color.red, color.green, color.blue, color.alpha,
+        textureUnit);
 
 }
 

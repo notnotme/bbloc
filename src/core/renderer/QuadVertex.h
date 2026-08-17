@@ -40,7 +40,7 @@ struct QuadVertex final {
     uint8_t tint_b = 0;          /**< Tint color blue component. */
     uint8_t tint_a = 0;          /**< Tint color alpha component. */
     uint8_t texture_layer = 0;   /**< Index of the texture layer in the atlas. */
-    uint8_t pad[1] = {0};        /**< Helps cache-miss ?, 16 bytes ! */
+    uint8_t texture_unit = 0;    /**< Which bound atlas texture the quad samples, 0 = the theme atlas. */
 };
 
 

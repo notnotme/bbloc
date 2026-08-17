@@ -36,8 +36,8 @@ Theme::Theme()
 
 void Theme::create(CVarRegistry &registry, const std::string_view path) {
     // Create the atlas and texture
-    m_atlas_array.create();
-    m_quad_texture.create(0);
+    m_atlas_array.create(UINT8_MAX);
+    m_quad_texture.create(0, UINT8_MAX);
 
     // Set up the FT library and load theme text font
     if (FT_Init_FreeType(&m_ft_library) != FT_Err_Ok) {

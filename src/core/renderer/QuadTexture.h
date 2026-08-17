@@ -19,6 +19,8 @@
 #ifndef QUAD_TEXTURE_H
 #define QUAD_TEXTURE_H
 
+#include <cstdint>
+
 #include <glad/glad.h>
 
 /**
@@ -31,6 +33,9 @@ private:
     /** OpenGL handle to the texture array. */
     GLuint m_texture;
 
+    /** Texture unit the texture is bound to for the lifetime of the object. */
+    uint8_t m_bind_unit;
+
 public:
     /** @brief Deleted copy constructor. */
     QuadTexture(const QuadTexture &) = delete;
@@ -42,11 +47,12 @@ public:
     explicit QuadTexture();
 
     /**
-     * @brief Creates the OpenGL texture array of 255x255x255 pixels and bind it to the OpenGL pipeline.
+     * @brief Creates the OpenGL texture array of 255x255xlayerCount pixels and bind it to the OpenGL pipeline.
      *
      * @param bindUnit The unit to bind the texture to.
+     * @param layerCount Depth of the texture array, in layers.
      */
-    void create(uint8_t bindUnit);
+    void create(uint8_t bindUnit, uint8_t layerCount);
 
     /** @brief Releases the OpenGL texture resources. */
     void destroy();

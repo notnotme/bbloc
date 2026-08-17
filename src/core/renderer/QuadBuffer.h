@@ -143,10 +143,12 @@ public:
      * @param tintG Green component of tint color.
      * @param tintB Blue component of tint color.
      * @param tintA Alpha component of tint color.
+     * @param textureUnit Which bound atlas texture the quad samples, 0 = the theme atlas.
      */
     void insert(int16_t x, int16_t y, uint16_t width, uint16_t height,
                 uint8_t textureS, uint8_t textureT, uint8_t textureLayer,
-                uint8_t tintR, uint8_t tintG, uint8_t tintB, uint8_t tintA);
+                uint8_t tintR, uint8_t tintG, uint8_t tintB, uint8_t tintA,
+                uint8_t textureUnit = 0);
 
     /** @brief Returns the OpenGL buffer ID. */
     [[nodiscard]] GLuint getBuffer() const;
