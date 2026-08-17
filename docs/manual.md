@@ -110,7 +110,7 @@ Shown by `osk toggle` (pad: left stick click); takes `dim_osk_height` percent of
 
 | Command | Description |
 |---------|-------------|
-| `open <filename>` | Open a file (prompts for the path when bound to a key); switches to the existing buffer when the file is already open |
+| `open <filename> [-f]` | Open a file (prompts for the path when bound to a key); switches to the existing buffer when the file is already open; `-f` skips the large-file confirmation |
 | `buffer <next\|prev\|name>` | Cycle through the open buffers, or switch to one by name |
 | `buffer close [-f]` | Close the active buffer; `-f` skips the unsaved-changes confirmation |
 | `save <filename> [-f]` | Save the buffer (prompts for a name when it has none); `-f` skips the overwrite confirmation |
@@ -169,6 +169,7 @@ likewise starts on the layout matching the console keyboard setting; `osk layout
 | `tab_to_space` | bool | Insert spaces instead of a tab character |
 | `search_case_sensitive` | bool | Whether search and replace match case |
 | `show_scrollbar` | bool | Show editor scrollbars when content overflows |
+| `open_size_limit` | int | Confirm before opening files larger than this many MB (0 disables) |
 | `inf_draw_time` | float | Maximum render time in seconds (read-only) |
 | `inf_command_time` | float | Maximum command processing time (read-only) |
 

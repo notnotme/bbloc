@@ -120,6 +120,9 @@ private:
     /** CVar tracking whether searches match case. */
     std::shared_ptr<CVarBool> m_search_case_sensitive;
 
+    /** CVar tracking the size in megabytes past which the open command asks for confirmation; 0 disables it. */
+    std::shared_ptr<CVarInt> m_open_size_limit;
+
     /** The bind command. */
     std::shared_ptr<BindCommand> m_bind_command;
 

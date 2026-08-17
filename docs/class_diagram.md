@@ -470,7 +470,9 @@ classDiagram
     class FontSizeCommand
     class ResetCVarFloatCommand
     class OpenFileCommand {
-        note: "activates the existing buffer when the file is already open, via CursorContextManager"
+        -m_open_size_limit: shared_ptr~CVarInt~
+        +OpenFileCommand(contextManager, openSizeLimit)
+        note: "activates the existing buffer when the file is already open, via CursorContextManager; confirms before loading past open_size_limit MB, skipped by -f"
     }
     class SaveFileCommand
     class ExecCommand {

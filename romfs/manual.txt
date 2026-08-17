@@ -128,8 +128,9 @@
   +--------------------------+-------------------------------------------------------+
   | Command                  | Description                                           |
   +--------------------------+-------------------------------------------------------+
-  | open <filename>          | Open a file (asks the path when bound to a key);      |
-  |                          | switches to the buffer when the file is already open  |
+  | open <filename> [-f]     | Open a file (asks the path when bound to a key);      |
+  |                          | switches to the buffer when the file is already open; |
+  |                          | -f skips the large-file confirmation                  |
   | buffer <next|prev|name>  | Cycle through the open buffers, or switch by name     |
   | buffer close [-f]        | Close the active buffer; -f skips the confirmation    |
   | save <filename> [-f]     | Save the buffer (asks a name when it has none);       |
@@ -193,6 +194,7 @@
   | tab_to_space          | bool  | Insert spaces instead of a tab character          |
   | search_case_sensitive | bool  | Whether search and replace match case             |
   | show_scrollbar        | bool  | Show editor scrollbars when content overflows     |
+  | open_size_limit       | int   | Confirm before opening larger files (MB, 0 = off) |
   | inf_draw_time         | float | Max render time in seconds (read-only)            |
   | inf_command_time      | float | Max command processing time (read-only)           |
   +-----------------------+-------+---------------------------------------------------+

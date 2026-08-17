@@ -224,6 +224,7 @@ if(NOT NINTENDO_SWITCH)
             tests/CVarTests.cpp
             tests/KeyModifiersTests.cpp
             tests/LineScannerTests.cpp
+            tests/OpenSizeLimitTests.cpp
             tests/OskLayoutTests.cpp
             tests/PromptTests.cpp
             tests/PromptStateTests.cpp

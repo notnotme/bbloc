@@ -108,6 +108,7 @@ ApplicationWindow::ApplicationWindow()
       m_command_time(std::make_shared<CVarFloat>(0.0f, true)),
       m_draw_time(std::make_shared<CVarFloat>(0.0f, true)),
       m_search_case_sensitive(std::make_shared<CVarBool>(false)),
+      m_open_size_limit(std::make_shared<CVarInt>(10)),
       m_bind_command(std::make_shared<BindCommand>(m_command_manager)),
       m_orthogonal(),
       m_keyboard_input(*this, m_context_manager, m_editor, m_editor_state, m_prompt, m_prompt_state),
@@ -235,8 +236,12 @@ void ApplicationWindow::create(const std::string &title, const int32_t width, co
         // Re-count matches for the stored term in place so the indicator reflects the new mode immediately.
         SearchCommand::refreshMatchStats(m_context_manager.active(), m_search_case_sensitive->m_value);
     });
+    m_command_manager.registerCvar(u"open_size_limit", m_open_size_limit, [this] {
+        // A negative limit means nothing: clamp it to 0, which disables the guard.
+        m_open_size_limit->m_value = std::max(0, m_open_size_limit->m_value);
+    });
     m_command_manager.registerCommand(u"quit", std::make_shared<QuitCommand>(m_context_manager), false, false);
-    m_command_manager.registerCommand(u"open", std::make_shared<OpenFileCommand>(m_context_manager), false, false);
+    m_command_manager.registerCommand(u"open", std::make_shared<OpenFileCommand>(m_context_manager, m_open_size_limit), false, false);
     m_command_manager.registerCommand(u"buffer", std::make_shared<BufferCommand>(m_context_manager), false, false);
     m_command_manager.registerCommand(u"save", std::make_shared<SaveFileCommand>(), false, false);
     m_command_manager.registerCommand(u"reset_draw_time", std::make_shared<ResetCVarFloatCommand>(m_draw_time), false, false);

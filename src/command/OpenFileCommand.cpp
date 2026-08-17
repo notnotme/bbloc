@@ -23,30 +23,37 @@
 #include <fstream>
 #include <iterator>
 #include <system_error>
+#include <utility>
 
 #include <utf8.h>
 
 #include "../core/CommandManager.h"
+#include "../core/base/OpenSizeLimit.h"
 
 
-OpenFileCommand::OpenFileCommand(CursorContextManager &contextManager)
-    : m_context_manager(contextManager) {}
+OpenFileCommand::OpenFileCommand(CursorContextManager &contextManager, std::shared_ptr<CVarInt> openSizeLimit)
+    : m_context_manager(contextManager),
+      m_open_size_limit(std::move(openSizeLimit)) {}
 
 void OpenFileCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) previousArgs;
-    if (argumentIndex != 0) {
-        // Only auto-complete the first argument (path)
-        return;
+    if (argumentIndex == 0) {
+        // The first argument is the path
+        CommandManager::getPathCompletions(input, false, itemCallback);
+    } else if (argumentIndex == 1) {
+        // The second argument can only be the force flag
+        constexpr auto force_flag = std::u16string_view(u"-f");
+        if (force_flag.starts_with(input)) {
+            itemCallback(force_flag);
+        }
     }
-
-    CommandManager::getPathCompletions(input, false, itemCallback);
 }
 
 std::optional<std::u16string> OpenFileCommand::run(CursorContext &payload, const std::span<const std::u16string_view> args) {
     if (args.empty()) {
         // From the prompt the filename is mandatory; from the editor, ask for it interactively.
         if (payload.from_prompt) {
-            return u"Usage: open <filename>";
+            return u"Usage: open <filename> [-f]";
         }
 
         payload.command_feedback = requestPathArgument(u"open ", u"open", payload.command_runner,
@@ -57,9 +64,12 @@ std::optional<std::u16string> OpenFileCommand::run(CursorContext &payload, const
         return std::nullopt;
     }
 
-    if (args.size() > 1) {
-        return u"Usage: open <filename>";
+    if (args.size() > 2 || (args.size() == 2 && args[1] != u"-f")) {
+        return u"Usage: open <filename> [-f]";
     }
+
+    // Read the force flag once: it skips the large-file confirmation below.
+    const auto force_open = args.size() == 2 && args[1] == u"-f";
 
     const auto path = utf8::utf16to8(args[0]);
 
@@ -73,6 +83,37 @@ std::optional<std::u16string> OpenFileCommand::run(CursorContext &payload, const
         const auto &context = m_context_manager.active();
         payload.wants_redraw = true;
         return utf8::utf8to16(std::format("buffer {}/{}: {}", context.buffer_index, context.buffer_count, context.cursor.getName()));
+    }
+
+    // The whole file is held in memory at once: ask before loading past the size limit.
+    // On a stat failure the guard is skipped, so readFile reports the real failure instead.
+    auto size_error = std::error_code{};
+    if (const auto file_size = std::filesystem::file_size(path, size_error);
+        !force_open && !size_error && exceedsOpenSizeLimit(file_size, m_open_size_limit->m_value)) {
+        // Round the displayed size up, so it always reads as more than the limit it exceeds.
+        constexpr auto megabyte = uintmax_t{ 1024 } * 1024;
+        const auto size_mb = (file_size + megabyte - 1) / megabyte;
+
+        // Needs user feedback to be able to load it
+        payload.command_feedback = CommandFeedback {
+            .prompt_message = utf8::utf8to16(std::format("File is {} MB, open anyway ? [y/N]: ", size_mb)),
+            // This reuses the same command, but with "-f" argument to skip the confirmation.
+            .command_string = std::u16string(u"open ").append(quoteArgument(args[0])).append(u" -f"),
+            .on_complete_callback = [](const std::u16string_view input, const AutoCompleteCallback &itemCallback) {
+                (void) input;
+                itemCallback(u"n");
+                itemCallback(u"y");
+            },
+            .on_validate_callback = [&](const std::u16string_view input, const std::u16string_view command) -> std::optional<std::u16string> {
+                if (input == u"y" || input == u"Y") {
+                    payload.command_runner.runCommand(command, true);
+                    return std::nullopt;
+                }
+                return std::nullopt;
+            }
+        };
+
+        return std::nullopt;
     }
 
     // Read the file fully before touching any buffer,
