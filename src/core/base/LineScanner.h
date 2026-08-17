@@ -65,6 +65,9 @@ public:
 
     /**
      * @brief Sets the line the next lookups run on, folding it once when needed.
+     *
+     * The scanner keeps a view into the line, not a copy, so the line must outlive the lookups run on it.
+     *
      * @param line The line content to scan.
      */
     void setLine(std::u16string_view line);
