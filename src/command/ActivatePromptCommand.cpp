@@ -19,8 +19,9 @@
 #include "ActivatePromptCommand.h"
 
 
-ActivatePromptCommand::ActivatePromptCommand(PromptState &promptState)
-    : m_prompt_state(promptState) {}
+ActivatePromptCommand::ActivatePromptCommand(Prompt &prompt, PromptState &promptState)
+    : m_prompt(prompt),
+      m_prompt_state(promptState) {}
 
 void ActivatePromptCommand::provideAutoComplete(const std::span<const std::u16string_view> previousArgs, const int32_t argumentIndex, const std::u16string_view input, const AutoCompleteCallback &itemCallback) const {
     (void) previousArgs;
@@ -33,6 +34,16 @@ void ActivatePromptCommand::provideAutoComplete(const std::span<const std::u16st
 std::optional<std::u16string> ActivatePromptCommand::run(CursorContext &payload, const std::span<const std::u16string_view> args) {
     if (!args.empty()) {
         return u"Expected 0 argument.";
+    }
+
+    // A prompt already taking input is validated rather than restarted: the bound key opens the
+    // prompt, then submits what was typed, which is the only way a controller reaches Return.
+    // A confirm may run "buffer close", destroying `payload`: flag the redraw first and never
+    // touch the payload after the delegation.
+    if (m_prompt_state.getRunningState() == PromptState::RunningState::Running) {
+        payload.wants_redraw = true;
+        m_prompt.confirm(payload, m_prompt_state);
+        return std::nullopt;
     }
 
     // Set prompt to running state

@@ -52,7 +52,7 @@ Default bindings, all set in `autoexec` (see Configuration for where it lives).
 | Ctrl+Shift+Tab | buffer prev | Switch to the previous open buffer |
 | Ctrl+W | buffer close | Close the current buffer (asks confirmation on unsaved changes) |
 | Ctrl+Shift+S | save | Save the current buffer (prompts for a name when it has none) |
-| Ctrl+Shift+Space | activate_prompt | Open the command prompt |
+| Ctrl+Shift+Space | activate_prompt | Open the command prompt (again on an open prompt confirms it) |
 | Ctrl+Shift+Q | quit | Quit (asks confirmation when any buffer has unsaved changes) |
 | Ctrl+Shift+L | exec romfs/light_theme | Load the light theme |
 | Ctrl+Shift+D | exec romfs/dark_theme | Load the dark theme |
@@ -81,7 +81,7 @@ Bound in `autoexec` as `pad:*` pseudo-keys. The shoulders are modifier layers.
 | ZL / ZR, right stick up/down | Page up / page down | Page with selection | - |
 | A | Confirm the prompt | copy | paste |
 | B | Cancel the prompt | undo | redo |
-| X | Open the prompt | save | cut |
+| X | Open the prompt, or confirm it when already open | save | cut |
 | Y | Cycle completions forward | Cycle backward | search |
 | Right stick left/right | find_prev / find_next | - | - |
 | Back | Next buffer | Previous buffer | - |
@@ -139,7 +139,7 @@ Shown by `osk toggle` (pad: left stick click); takes `dim_osk_height` percent of
 | `bind <modifiers> <key> "<command>"` | Bind a key or `pad:*` pseudo-key to a command |
 | `set_font_size <size\|+\|->` | Set the font size, absolute or relative |
 | `set_hl_mode <mode>` | Force the syntax highlight mode (cpp, json, ini, yaml, toml, markdown) |
-| `activate_prompt` | Open the command prompt |
+| `activate_prompt` | Open the command prompt; run on an already open prompt it confirms the line, like `prompt confirm` |
 | `prompt <confirm\|cancel>` | Confirm or cancel the prompt |
 | `auto_complete <forward\|backward>` | Cycle the prompt completions |
 | `osk <show\|hide\|toggle>` | Control the on-screen keyboard |

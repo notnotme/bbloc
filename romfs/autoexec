@@ -1,4 +1,4 @@
-# Activate the prompt
+# Activate the prompt (pressing it again on an open prompt validates the line, like Return)
 bind Ctrl+Shift space activate_prompt
 
 # Quit the program (without saving)
@@ -139,7 +139,7 @@ bind L pad:righty- "move page_up true"
 bind None pad:righty+ "move page_down"
 bind L pad:righty+ "move page_down true"
 
-# A confirms and B cancels the prompt (no-ops while it is idle), X opens it, Y cycles the completions
+# A confirms and B cancels the prompt (no-ops while it is idle), X opens it and confirms it once open, Y cycles the completions
 bind None pad:a "prompt confirm"
 bind None pad:b "prompt cancel"
 bind None pad:x activate_prompt

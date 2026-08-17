@@ -394,7 +394,9 @@ disconnect resets the whole pad state; all connected pads feed one state, like a
 
 `Prompt` exposes its Return/Escape handling as `confirm()` / `cancel()`, which `onKeyDown`
 delegates to; the hidden `prompt` command (`PromptCommand`, §9) drives the same entry points
-from controller bindings.
+from controller bindings, and `activate_prompt` (`ActivatePromptCommand`, §9) reaches
+`confirm()` too when the prompt it would open is already running — pad X opens the prompt and
+then submits it.
 
 `Osk` is the on-screen keyboard: a bottom strip of two key pages (letters/symbols) sharing
 one 5-row geometry, shown and hidden by the `osk` command (§9). Injection, not integration:
@@ -469,7 +471,10 @@ classDiagram
     }
     class MoveCursorCommand
     class AutoCompleteCommand
-    class ActivatePromptCommand
+    class ActivatePromptCommand {
+        +ActivatePromptCommand(prompt, promptState)
+        note: "opens the prompt; on an already running prompt it validates the line through Prompt::confirm instead, so one pad button opens and submits"
+    }
     class PromptCommand {
         note: "prompt confirm / cancel, driving Prompt::confirm/cancel; no-op while the prompt is idle"
     }

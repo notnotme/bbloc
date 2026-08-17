@@ -249,7 +249,9 @@ void ApplicationWindow::create(const std::string &title, const int32_t width, co
     m_command_manager.registerCommand(u"set_font_size", std::make_shared<FontSizeCommand>(), false, false);
     m_command_manager.registerCommand(u"set_hl_mode", std::make_shared<SetHighLightCommand>(), false, false);
     m_command_manager.registerCommand(u"bind", m_bind_command, false, false);
-    m_command_manager.registerCommand(u"activate_prompt", std::make_shared<ActivatePromptCommand>(m_prompt_state), true, false);
+    // Allowed during the prompt: on a running prompt the command confirms it instead of opening it,
+    // which is prompt machinery, not a binding evicting the question the way the modal rule guards against.
+    m_command_manager.registerCommand(u"activate_prompt", std::make_shared<ActivatePromptCommand>(m_prompt, m_prompt_state), true, true);
     m_command_manager.registerCommand(u"prompt", std::make_shared<PromptCommand>(m_prompt, m_prompt_state), true, true);
     m_command_manager.registerCommand(u"copy", std::make_shared<CopyTextCommand>(), false, false);
     m_command_manager.registerCommand(u"paste", std::make_shared<PasteTextCommand>(), false, false);

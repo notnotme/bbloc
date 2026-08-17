@@ -25,6 +25,7 @@
 #include "../core/base/AutoCompleteCallback.h"
 #include "../core/CursorContext.h"
 #include "../core/base/Command.h"
+#include "../prompt/Prompt.h"
 #include "../prompt/PromptState.h"
 
 
@@ -35,19 +36,28 @@
  * the prompt within the editor. It handles the interaction between user input
  * and the prompt state, providing auto-completion suggestions and validating
  * when the command can be executed.
+ *
+ * Running it on an already running prompt validates the line instead of restarting it, so the
+ * bound key opens the prompt and then submits it. This is what makes the prompt usable from a
+ * controller with one button: the pad has no Return key, and the alternative — clearing a line
+ * the user just typed — is never what pressing the open key twice was meant to do.
  */
 class ActivatePromptCommand final : public Command<CursorContext> {
 private:
+    /** Reference to the prompt view a second activation validates through. */
+    Prompt &m_prompt;
+
     /** Reference to the prompt state this command will manipulate. */
     PromptState &m_prompt_state;
 
 public:
     /**
-     * @brief Constructs an ActivatePromptCommand with the given prompt state.
+     * @brief Constructs an ActivatePromptCommand with the given prompt view and state.
      *
+     * @param prompt Reference to the prompt view a second activation confirms through.
      * @param promptState Reference to the prompt state to be activated and managed.
      */
-    explicit ActivatePromptCommand(PromptState &promptState);
+    explicit ActivatePromptCommand(Prompt &prompt, PromptState &promptState);
 
     /**
      * @brief Provides auto-completion suggestions for command arguments.
@@ -64,7 +74,10 @@ public:
     /**
      * @brief Executes the prompt activation command.
      *
-     * Activates the prompt with the given context. The args vector must be empty.
+     * Activates the prompt with the given context, or validates it when it is already running.
+     * A validation may destroy the payload context (e.g. the prompt line runs "buffer close"),
+     * so the redraw is flagged before delegating and the payload is never touched afterwards.
+     * The args vector must be empty.
      *
      * @param payload The cursor context to use when activating the prompt.
      * @param args Command arguments. An empty vector is expected.

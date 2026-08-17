@@ -21,7 +21,7 @@ bbloc is a minimalist text editor developed in C++ using SDL2, OpenGL, glad, Fre
 - **Real-Time Configuration**: Change colors, dimensions, and settings at runtime
 - **Customizable Key Bindings**: Rebind any key combination to commands
 - **Mouse & Touch Support**: Click to place the caret, drag to select text, wheel scrolling, and draggable scrollbar thumbs; one finger acts as the mouse, two fingers scroll
-- **Game Controller Support**: Every pad button and axis can be bound to commands like a key, with the shoulders acting as modifier layers
+- **Game Controller Support**: Every pad button and axis can be bound to commands like a key, with the shoulders acting as modifier layers; the prompt is fully drivable from the pad — X opens it and confirms it, B cancels, Y cycles the completions
 - **On-Screen Keyboard**: A built-in OSK with sticky modifiers, hold auto-repeat, and international layouts — usable by touch, mouse, or pad
 
 ## Concept

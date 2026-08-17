@@ -56,7 +56,7 @@
   | Ctrl+Shift+Tab   | buffer prev            | Switch to the previous open buffer    |
   | Ctrl+W           | buffer close           | Close the buffer (asks if unsaved)    |
   | Ctrl+Shift+S     | save                   | Save (asks a name when it has none)   |
-  | Ctrl+Shift+Space | activate_prompt        | Open the command prompt               |
+  | Ctrl+Shift+Space | activate_prompt        | Open the prompt (again confirms it)   |
   | Ctrl+Shift+Q     | quit                   | Quit (asks when unsaved changes)      |
   | Ctrl+Shift+L     | exec romfs/light_theme | Load the light theme                  |
   | Ctrl+Shift+D     | exec romfs/dark_theme  | Load the dark theme                   |
@@ -92,7 +92,8 @@
   | ZL / ZR, r-stick up/down | Page up / down      | Page selecting   | -            |
   | A                        | Confirm the prompt  | copy             | paste        |
   | B                        | Cancel the prompt   | undo             | redo         |
-  | X                        | Open the prompt     | save             | cut          |
+  | X                        | Open the prompt, or | save             | cut          |
+  |                          | confirm it if open  |                  |              |
   | Y                        | Completion forward  | Compl. backward  | search       |
   | Right stick left/right   | find_prev/find_next | -                | -            |
   | Back                     | Next buffer         | Previous buffer  | -            |
@@ -166,7 +167,9 @@
   | set_font_size <size|+|->         | Set the font size, absolute or relative       |
   | set_hl_mode <mode>               | Force the highlight mode (cpp, json, ini,     |
   |                                  | yaml, toml, markdown)                         |
-  | activate_prompt                  | Open the command prompt                       |
+  | activate_prompt                  | Open the command prompt; on an already open   |
+  |                                  | prompt it confirms the line, like             |
+  |                                  | prompt confirm                                |
   | prompt <confirm|cancel>          | Confirm or cancel the prompt                  |
   | auto_complete <forward|backward> | Cycle the prompt completions                  |
   | osk <show|hide|toggle>           | Control the on-screen keyboard                |
