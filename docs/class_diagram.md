@@ -490,7 +490,7 @@ classDiagram
     }
     class SaveFileCommand
     class ExecCommand {
-        note: "resolves the romfs/ prefix via Platform::assetPath"
+        note: "resolves the romfs/ prefix via Platform::assetPath; runs the lines non-interactively, so a command asking a question has it overwritten by the next line"
     }
     class QuitCommand {
         note: "confirms when any open buffer is modified, via CursorContextManager"

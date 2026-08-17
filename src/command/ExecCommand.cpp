@@ -87,8 +87,11 @@ std::optional<std::u16string> ExecCommand::run(CursorContext &payload, const std
 
     ++m_recursion_depth;
     for (const auto &command : command_list) {
-        // fixme?: At this point, any feedback needed will interrupt the command list execution
-        // fixme!: This is not well tested at all.
+        // Scripts run non-interactively: a command that asks a question (a confirmation, a missing
+        // argument) parks it in `command_feedback`, and the next line overwrites it before anyone
+        // could answer. Only commands that complete on their own belong in a script — `bind`,
+        // `cvar`, `exec` and the like, which is all `autoexec` and the theme scripts use. Reaching
+        // for `save`, `open` or `quit` here silently drops their prompt.
         command_runner.runCommand(command, false);
     }
     --m_recursion_depth;

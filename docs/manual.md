@@ -115,7 +115,7 @@ Shown by `osk toggle` (pad: left stick click); takes `dim_osk_height` percent of
 | `buffer close [-f]` | Close the active buffer; `-f` skips the unsaved-changes confirmation |
 | `save <filename> [-f]` | Save the buffer (prompts for a name when it has none); `-f` skips the overwrite confirmation. Line endings are detected on open (a mostly-CRLF file counts as CRLF) and written back unchanged; new buffers use LF |
 | `quit [-f]` | Exit; `-f` skips the unsaved-changes confirmation |
-| `exec <filename>` | Execute commands from a file, line by line |
+| `exec <filename>` | Execute commands from a file, line by line. Scripts are non-interactive: a command that asks a question (`open`, `save`, `quit`, `buffer close` without `-f`) has it discarded by the next line, so scripts hold self-contained commands only |
 | `help [section]` | Open this manual, optionally jumping to a section |
 
 ### Cursor, search and clipboard

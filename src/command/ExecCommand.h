@@ -32,6 +32,11 @@
  *
  * This class implements the Command interface for executing editor commands listed in a text file,
  * potentially capturing their output and integrating it with the editor.
+ *
+ * Scripts are non-interactive: every line runs to completion without anyone reading its feedback,
+ * so a command requesting interactive input (a confirmation, a missing argument) has its question
+ * discarded by the following line. Scripts are for self-contained commands — `bind`, `cvar`,
+ * `exec` — which is what `autoexec` and the theme scripts hold.
  */
 class ExecCommand final : public Command<CursorContext> {
     /** @brief Maximum number of nested exec calls before execution is refused. */
